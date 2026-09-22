@@ -27,9 +27,32 @@ export interface OFXStatement {
   accountType: string;
   startDate: string;
   endDate: string;
+  /** BALAMT do LEDGERBAL; `undefined` quando o arquivo não o traz — nunca zero. */
   finalBalance?: number;
+  /** DTASOF do LEDGERBAL (AAAA-MM-DD), cru; `ancoraDoExtrato` diz a que fim de dia ele se refere. */
+  finalBalanceAsOf?: string;
   currency: string;
   transactions: OFXTransaction[];
+}
+
+/**
+ * Só o saldo declarado, sem exigir transações — para a tela dizer o que o
+ * arquivo traz antes de importar. `null` sem LEDGERBAL/BALAMT.
+ */
+export function lerSaldoDeclarado(content: string): { valor: number; dtasof: string; dtstart: string; dtend: string } | null {
+  const xml = sgmlToXml((content ?? "").replace(/\r/g, ""));
+  const bloco = xml.match(/<LEDGERBAL>([\s\S]*?)<\/LEDGERBAL>/)?.[1];
+  const bruto = bloco?.match(/<BALAMT>([^<]*)/)?.[1]?.trim() ?? "";
+  if (!bloco || !bruto) return null;
+  const valor = parseValorOFX(bruto);
+  if (!Number.isFinite(valor)) return null;
+  const lista = xml.match(/<BANKTRANLIST>([\s\S]*?)<\/BANKTRANLIST>/)?.[1] ?? "";
+  return {
+    valor,
+    dtasof: parseOFXDate(bloco.match(/<DTASOF>([^<]*)/)?.[1] ?? ""),
+    dtstart: parseOFXDate(lista.match(/<DTSTART>([^<]*)/)?.[1] ?? ""),
+    dtend: parseOFXDate(lista.match(/<DTEND>([^<]*)/)?.[1] ?? ""),
+  };
 }
 
 export class OFXParseError extends Error {
@@ -107,6 +130,11 @@ export function parseOFX(content: string): OFXStatement {
     throw new OFXParseError("Nenhuma transação encontrada no arquivo");
   }
 
+  // Sem LEDGERBAL o saldo é AUSENTE, não zero: zero é um saldo, e a
+  // conferência contra o banco acusaria divergência onde só falta o dado.
+  const balamt = get("LEDGERBAL", "BALAMT");
+  const dtasof = get("LEDGERBAL", "DTASOF");
+
   return {
     bankId: get("BANKACCTFROM", "BANKID") ?? undefined,
     branchId: get("BANKACCTFROM", "BRANCHID") ?? undefined,
@@ -114,7 +142,8 @@ export function parseOFX(content: string): OFXStatement {
     accountType: get("BANKACCTFROM", "ACCTTYPE") ?? "CHECKING",
     startDate: parseOFXDate(get("BANKTRANLIST", "DTSTART") ?? ""),
     endDate: parseOFXDate(get("BANKTRANLIST", "DTEND") ?? ""),
-    finalBalance: parseValorOFX(get("LEDGERBAL", "BALAMT") ?? "0"),
+    finalBalance: balamt ? parseValorOFX(balamt) : undefined,
+    finalBalanceAsOf: dtasof ? parseOFXDate(dtasof) || undefined : undefined,
     currency: get("CURDEF", "CURDEF") ?? "BRL",
     transactions,
   };

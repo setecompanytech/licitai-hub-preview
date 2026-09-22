@@ -2,9 +2,13 @@
 -- Defeitos de código da auditoria contábil de 21/09/2026 — o que é de banco
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- Dos sete defeitos da seção 5 do relatório, o que pede SQL:
+-- Dos sete defeitos da seção 5 do relatório, dois tocam o banco:
 --   1. a RPC `vincular_lancamento_a_pedido` gravava título com vencimento e
---      conta nulos (NF-e sem duplicata, pela Extração de Documentos).
+--      conta nulos (NF-e sem duplicata, pela Extração de Documentos);
+--   5. a âncora do saldo do extrato (`saldo_final_em`) passa a ter UMA
+--      semântica — o saldo no FIM do dia gravado — e `saldo_apos` passa a
+--      ser preenchido pela edge `import-ofx` (seção 2: só comentários das
+--      colunas e conferência; a mudança é na edge).
 -- O resto (régua de caixa, atraso derivado, paginação, DRE, par de
 -- transferência) é código do front, sem mudança de schema.
 
@@ -240,7 +244,7 @@ COMMENT ON FUNCTION public.vincular_lancamento_a_pedido(
   'competência > hoje, com nota do que foi assumido) e recebe a conta informada ou a única '
   'conta ativa da empresa. Escada espelhada em src/lib/financeiro/vencimento-do-titulo.ts.';
 
--- ── Conferência (só leitura) ────────────────────────────────────────────────
+-- ── Conferência da seção 1 (só leitura) ─────────────────────────────────────
 -- 1) A função nova está no ar, com 25 parâmetros (o último é p_conta_id):
 --   SELECT pronargs, pg_get_function_identity_arguments(oid)
 --     FROM pg_proc WHERE proname = 'vincular_lancamento_a_pedido';
@@ -252,3 +256,48 @@ COMMENT ON FUNCTION public.vincular_lancamento_a_pedido(
 --    WHERE l.contrato_pedido_id IS NOT NULL AND l.data_vencimento IS NULL
 --      AND l.status IN ('previsto','em_atraso')
 --    ORDER BY l.valor DESC;
+
+-- ── 2. A âncora do saldo do extrato tem UMA semântica ───────────────────────
+--
+-- A edge `import-ofx` gravava `saldo_final_em` como a data de geração do OFX
+-- (o DTEND, quando faltava DTASOF — e até sem saldo nenhum), e nunca
+-- preenchia `saldo_apos`. Os bancos não dizem a mesma coisa: o Banpará
+-- declara o saldo ANTERIOR ao período com DTASOF = início; o Itaú declara na
+-- data de geração. A regra agora vive em src/lib/financeiro/ancora-do-extrato.ts
+-- (espelho Deno em _shared/ofx-ancora.ts): `saldo_final_em` é o dia no FIM do
+-- qual `saldo_final` vale — para o Banpará, o dia anterior ao início —, e a
+-- função `financeiro_confronto_com_extrato` (27/08) já lê exatamente assim
+-- (`lancamentos_apos` conta o que veio depois desse dia). Sem LEDGERBAL, as
+-- duas colunas ficam nulas e `saldo_apos` também: a tela diz que o arquivo
+-- não trouxe o saldo. Aqui só os comentários mudam; nenhum dado é reescrito.
+COMMENT ON COLUMN public.financeiro_extratos_importados.saldo_final_em IS
+  'Dia no FIM do qual vale saldo_final (OFX: LEDGERBAL/DTASOF, normalizado pela '
+  'edge import-ofx desde 23/09/2026). O Banpará declara o saldo ANTERIOR ao período '
+  'com DTASOF = início: fica gravado o dia anterior. O Itaú declara na data de '
+  'geração e fica como está. Nulo quando o arquivo não traz LEDGERBAL — nunca a data '
+  'de geração no lugar do saldo.';
+
+COMMENT ON COLUMN public.financeiro_extrato_movimentos.saldo_apos IS
+  'Saldo da conta depois deste movimento, acumulado pela edge import-ofx a partir do '
+  'saldo declarado do próprio arquivo (data, depois ordem do arquivo). Nulo quando o '
+  'arquivo não traz LEDGERBAL. Extrato importado antes de 23/09/2026 não o tem.';
+
+-- ── Conferência da seção 2 (só leitura) ─────────────────────────────────────
+-- 1) Âncoras gravadas ANTES desta versão da edge com DTASOF no início do
+--    período (o formato do Banpará): a data está um dia à frente do que a
+--    semântica nova diz. Não são reescritas; reimportar o OFX corrige.
+--   SELECT x.id, c.nome, x.arquivo_nome, x.data_inicio, x.data_fim, x.saldo_final, x.saldo_final_em
+--     FROM public.financeiro_extratos_importados x
+--     JOIN public.financeiro_contas c ON c.id = x.conta_id
+--    WHERE x.saldo_final IS NOT NULL AND x.saldo_final_em = x.data_inicio
+--    ORDER BY x.created_at DESC;
+-- 2) Âncora sem saldo (a data de geração gravada sozinha, o defeito):
+--   SELECT count(*) FROM public.financeiro_extratos_importados
+--    WHERE saldo_final IS NULL AND saldo_final_em IS NOT NULL;
+-- 3) Depois da primeira importação com a edge nova, o saldo após o último
+--    movimento tem de bater com o saldo declarado (Itaú) ou com o declarado
+--    mais os movimentos (Banpará):
+--   SELECT m.data_movimento, m.valor, m.saldo_apos
+--     FROM public.financeiro_extrato_movimentos m
+--    WHERE m.extrato_id = '<id do extrato>'
+--    ORDER BY m.data_movimento, m.created_at;

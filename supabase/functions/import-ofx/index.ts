@@ -1,6 +1,7 @@
 // Edge Function: import-ofx
 // Recebe OFX (texto) + conta_id + empresa_id, parseia e persiste extrato + movimentos.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { ancoraDoExtrato, saldosApos, valorDeclarado, type AncoraDoExtrato } from "../_shared/ofx-ancora.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,13 +178,18 @@ function parseOFX(content: string) {
    *
    * Foi assim que R$ 48.907,10 de saldo inexistente sobreviveram numa conta
    * até alguém olhar o extrato no banco e dizer o número em voz alta.
+   *
+   * E a DATA a que o saldo se refere não é a mesma em todo banco (21/09,
+   * defeito 5): o Banpará declara o saldo ANTERIOR ao período com DTASOF =
+   * início; o Itaú, na data de geração. `ancoraDoExtrato` (_shared/ofx-ancora,
+   * espelho de src/lib/financeiro/ancora-do-extrato.ts) normaliza para UMA
+   * semântica — o dia no FIM do qual o saldo vale — e é dela que se acumula o
+   * saldo após cada movimento. Sem LEDGERBAL não há âncora: tudo fica nulo, e
+   * a tela diz isso. BALAMT é lido pela gramática brasileira ("1.234,56").
    */
   const ledgerBal = findFirst(root, "LEDGERBAL");
-  const saldoBruto = leafValue(ledgerBal, "BALAMT");
-  const saldoFinal = saldoBruto !== null && saldoBruto !== undefined && saldoBruto !== ""
-    ? Number(String(saldoBruto).replace(",", "."))
-    : null;
-  const saldoFinalEm = parseOFXDate(leafValue(ledgerBal, "DTASOF") ?? "") || endDate;
+  const saldoDeclarado = valorDeclarado(leafValue(ledgerBal, "BALAMT"));
+  const dtasof = parseOFXDate(leafValue(ledgerBal, "DTASOF") ?? "");
 
   const trxNodes = findAll(root, "STMTTRN");
   console.log("[import-ofx] STMTTRN encontradas:", trxNodes.length);
@@ -230,7 +236,16 @@ function parseOFX(content: string) {
     throw new Error("Nenhuma transação <STMTTRN> encontrada no arquivo OFX.");
   }
 
-  return { accountId, startDate, endDate, transactions, saldoFinal, saldoFinalEm };
+  // Sem DTSTART/DTEND no arquivo, o período é o dos próprios movimentos.
+  const datas = transactions.map((t) => t.date).filter(Boolean).sort();
+  const ancora: AncoraDoExtrato | null = ancoraDoExtrato({
+    saldo: saldoDeclarado,
+    dtasof,
+    dtstart: startDate || datas[0] || "",
+    dtend: endDate || datas[datas.length - 1] || "",
+  });
+
+  return { accountId, startDate, endDate, transactions, ancora };
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -329,8 +344,10 @@ Deno.serve(async (req) => {
         arquivo_hash,
         data_inicio: stmt.startDate || null,
         data_fim: stmt.endDate || null,
-        saldo_final: Number.isFinite(stmt.saldoFinal as number) ? stmt.saldoFinal : null,
-        saldo_final_em: stmt.saldoFinalEm || stmt.endDate || null,
+        // A âncora, ou nada: gravar a data de geração sem saldo (como antes)
+        // fazia a conferência comparar com um momento que ninguém declarou.
+        saldo_final: stmt.ancora?.valor ?? null,
+        saldo_final_em: stmt.ancora?.em ?? null,
         total_movimentos: stmt.transactions.length,
         status: "processando",
         importado_por: user.id,
@@ -340,8 +357,13 @@ Deno.serve(async (req) => {
 
     if (errExtrato) throw errExtrato;
 
-    // Insere movimentos (upsert por (conta_id, fitid))
-    const movimentos = stmt.transactions.map((t) => ({
+    // Insere movimentos (upsert por (conta_id, fitid)). O saldo após cada um
+    // se acumula a partir da âncora do próprio arquivo; sem âncora, fica nulo
+    // — e a resposta diz isso à tela.
+    const saldos = stmt.ancora
+      ? saldosApos(stmt.transactions.map((t) => ({ data: t.date, valor: t.amount })), stmt.ancora)
+      : null;
+    const movimentos = stmt.transactions.map((t, i) => ({
       empresa_id,
       extrato_id: extrato.id,
       conta_id,
@@ -351,6 +373,7 @@ Deno.serve(async (req) => {
       data_movimento: t.date,
       descricao: t.description || "(sem descrição)",
       descricao_extra: t.memo ?? null,
+      saldo_apos: saldos ? saldos[i] : null,
     }));
 
     /**
@@ -432,6 +455,8 @@ Deno.serve(async (req) => {
         movimentos_atualizados: atualizados,
         importacoes_esvaziadas: esvaziados,
         periodo: { inicio: stmt.startDate, fim: stmt.endDate },
+        // O que o banco declarou (ou `null`, quando o arquivo não traz LEDGERBAL).
+        saldo_declarado: stmt.ancora,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -43,6 +43,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motivoDoDescarte, ehLinhaInformativa } from "@/lib/financeiro/linha-informativa";
 import { buscarTodos } from "@/lib/financeiro/paginar";
+import { lerSaldoDeclarado } from "@/lib/financeiro/ofx-parser";
+import { ancoraDoExtrato, descricaoDaAncora, type AncoraDoExtrato } from "@/lib/financeiro/ancora-do-extrato";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { BancoLogo, findBanco } from "./BancoSelectorLogos";
@@ -234,6 +236,8 @@ export default function FinImportarOFX() {
   const { data: pessoas = [] } = usePessoas();
   const [contaId, setContaId] = useState<string>("");
   const [movimentos, setMovimentos] = useState<MovimentoOFX[]>([]);
+  /** O saldo que o banco declarou no arquivo (LEDGERBAL), ou `null` quando não trouxe. */
+  const [ancora, setAncora] = useState<AncoraDoExtrato | null>(null);
   const [analisando, setAnalisando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
@@ -270,6 +274,19 @@ export default function FinImportarOFX() {
         toast.error("Nenhuma transação encontrada. Verifique o arquivo OFX.");
         return;
       }
+      // O saldo declarado pelo banco, dito na tela antes de importar — com a
+      // data certa: o Banpará declara o saldo ANTERIOR ao período (DTASOF =
+      // início), o Itaú o saldo na data de geração (21/09, defeito 5).
+      const declarado = lerSaldoDeclarado(text);
+      const datas = parsed.map((m) => m.data).sort();
+      setAncora(
+        ancoraDoExtrato({
+          saldo: declarado?.valor ?? null,
+          dtasof: declarado?.dtasof ?? "",
+          dtstart: declarado?.dtstart || datas[0] || "",
+          dtend: declarado?.dtend || datas[datas.length - 1] || "",
+        }),
+      );
       // enriquecimento inteligente: categoria + pessoa
       const enriquecido = parsed.map((mov) => {
         const natureza = mov.valor > 0 ? "receita" : "despesa";
@@ -473,6 +490,7 @@ export default function FinImportarOFX() {
       }
       toast.success(`Importação concluída: ${partes.join(", ")}.`);
       setMovimentos([]);
+      setAncora(null);
       if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["fin-lancamentos"] });
       qc.invalidateQueries({ queryKey: ["fin-resumo-visor"] });
@@ -630,6 +648,13 @@ export default function FinImportarOFX() {
 
         {movimentos.length > 0 && (
           <>
+            {/* O que o banco declarou — ou que o arquivo não trouxe. Sem isto a
+                pessoa importa sem saber que a conferência contra o banco vai
+                ficar sem referência. */}
+            <Alert variant={ancora ? "default" : "warning"}>
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription>{descricaoDaAncora(ancora)}</AlertDescription>
+            </Alert>
             {/* Prévia em tabela (Design System v3): cabeçalho rebaixado preso ao
                 topo, linhas de 48px, valor à direita em dígitos tabulares. A
                 altura máxima vai no scroller que ui/table cria — um segundo

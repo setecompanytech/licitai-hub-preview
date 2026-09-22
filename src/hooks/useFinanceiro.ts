@@ -3,6 +3,7 @@ import { estaForaDoDRE, montarDRE, type DRELinhaRaw, type DREResumo } from "@/li
 import { hojeLocal, somarDiasLocal, mesLocal, dataLocal } from "@/lib/financeiro/data-local";
 import { ehMovimentacao, ehTransferenciaEntreContasProprias } from "@/lib/financeiro/movimentacao";
 import { condicaoDeAtrasoNoBanco, diasDeAtraso, estaEmAtraso } from "@/lib/financeiro/atraso";
+import { descricaoDaAncora, type AncoraDoExtrato } from "@/lib/financeiro/ancora-do-extrato";
 import { buscarTodos } from "@/lib/financeiro/paginar";
 import { acumularProjecao, type DiaProjetado, type LinhaDoFluxo } from "@/lib/financeiro/projecao-de-caixa";
 import { supabase } from "@/integrations/supabase/client";
@@ -1082,6 +1083,8 @@ export function useImportarOFX() {
       const partes: string[] = [];
       if (novos > 0) partes.push(`${novos} novo(s)`);
       if (atualizados > 0) partes.push(`${atualizados} atualizado(s)`);
+      // O saldo que o banco declarou — ou que o arquivo não trouxe (21/09).
+      const ancora = (data?.saldo_declarado ?? null) as AncoraDoExtrato | null;
       toast.success(
         `${data?.total_movimentos ?? 0} movimento(s) no extrato`,
         {
@@ -1090,8 +1093,9 @@ export function useImportarOFX() {
             esvaziadas > 0
               ? `${esvaziadas} importação(ões) anterior(es) ficaram sem movimentos — podem ser apagadas.`
               : undefined,
+            descricaoDaAncora(ancora),
           ].filter(Boolean).join(' · ') || undefined,
-          duration: esvaziadas > 0 ? 10000 : 5000,
+          duration: esvaziadas > 0 || !ancora ? 10000 : 7000,
         },
       );
     },
