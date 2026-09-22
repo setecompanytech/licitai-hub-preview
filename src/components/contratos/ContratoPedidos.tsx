@@ -19,7 +19,7 @@ import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEn
 import { situacaoDoPrazo } from '@/lib/contratos/prazo-de-entrega';
 import { useDocumentoFiscal, useDocumentosPorNumeroNota, chaveDoNumero } from '@/hooks/useDocumentoFiscal';
 import { useNotasDosPedidos } from '@/hooks/useNotaDoPedido';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -2862,14 +2862,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   // quebrado: o selo fica igual, só não clica. Dizer
                                   // qual dos dois é — e onde se resolve — evita a
                                   // conclusão de que o sistema perdeu a nota.
+                                  //
+                                  // Pedido quitado SEM título próprio foi pago por
+                                  // rateio (uma TED para várias notas): não há linha
+                                  // dele em A Receber para o clipe. A DANFE entra pela
+                                  // Extração, como PARTE do recebimento que a pagou
+                                  // (22/09), e aparece aqui pelo número.
+                                  const porRateio = !!p.nf_quitada;
                                   return (
                                     <>
                                       <Badge variant="outline" className="g-meta block w-fit text-foreground"
-                                        title="A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber.">
+                                        title={porRateio
+                                          ? 'A nota foi recebida por rateio (um recebimento pagou várias notas) e não tem arquivo guardado. Anexe a DANFE em Financeiro › Contas a Receber › Extração de documentos: ela entra como parte do recebimento e aparece aqui.'
+                                          : 'A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber, ou pela Extração de documentos.'}>
                                         {conteudo}
                                         <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
                                       </Badge>
                                       {quitada}
+                                      {porRateio && (
+                                        <Link to="/financeiro/a_receber" className="g-meta text-primary hover:underline">
+                                          anexar pela Extração
+                                        </Link>
+                                      )}
                                     </>
                                   );
                                 }
@@ -3928,7 +3942,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const cx = editingPedido ? custosPedidos[editingPedido.id] : undefined;
               const c = { declarado: q * cu, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
               const s = cx?.situacao ?? situacaoDoCusto(c);
-              const unidade = itens.find(i => i.id === editForm.contrato_item_id)?.unidade || 'unidade';
+              // "null" chegou como texto num item importado (print de 22/09):
+              // unidade vazia, nula ou "null" vira a palavra, nunca o literal.
+              const unidadeCrua = String(itens.find(i => i.id === editForm.contrato_item_id)?.unidade ?? '').trim();
+              const unidade = unidadeCrua && !/^(null|undefined|-)$/i.test(unidadeCrua) ? unidadeCrua : 'unidade';
               return (
                 <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
