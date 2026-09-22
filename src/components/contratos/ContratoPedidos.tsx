@@ -2664,9 +2664,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <TableHead className="whitespace-nowrap text-right">Quantidade</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Situação</TableHead>
-                      <TableHead className="whitespace-nowrap">NF-e</TableHead>
+                      <TableHead className="min-w-[15rem] whitespace-nowrap">NF-e</TableHead>
                       {podeVerCustos && (
-                        <TableHead className="whitespace-nowrap text-right"
+                        <TableHead className="min-w-[10rem] whitespace-nowrap text-right"
                           title="Custo de compra declarado no pedido e a situação do cruzamento com as contas a pagar atribuídas a ele.">
                           Custo
                         </TableHead>
@@ -2779,7 +2779,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <TableCell className="text-center whitespace-nowrap">
                             <SeloSituacao tom={tomDoStatus(p.status)}>{cfg.label}</SeloSituacao>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[15rem]">
                             <div className="space-y-1">
                               {/* ── A coluna da NOTA: número, estado e o documento ──
                                   Aqui é onde a nota vive. O número identifica; a
@@ -2804,14 +2804,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 // número e estado disputavam a mesma linha e a leitura
                                 // vinha espremida.
                                 const quitada = p.nf_quitada && p.data_quitacao && (
-                                  <p className="g-meta text-success-ink">
+                                  <p className="g-meta whitespace-nowrap text-success-ink">
                                     Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                                   </p>
                                 );
                                 if (!nd.storage_path) {
                                   return (
                                     <>
-                                      <Badge variant="outline" className="g-meta block w-fit text-foreground"
+                                      <Badge variant="outline" className="g-meta block w-fit whitespace-nowrap text-foreground"
                                         title="A nota está lançada no Financeiro, mas sem arquivo anexado.">
                                         {rotulo}
                                         <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
@@ -2826,7 +2826,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                       onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')}
                                       title={`Abrir ${nd.arquivo_nome} em nova aba`}>
                                       <Badge variant="outline"
-                                        className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
+                                        className="g-meta whitespace-nowrap text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                         {rotulo}
                                         <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 text-primary" />
                                       </Badge>
@@ -2854,7 +2854,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   </>
                                 );
                                 const quitada = p.nf_quitada && p.data_quitacao && (
-                                  <p className="g-meta text-success-ink">
+                                  <p className="g-meta whitespace-nowrap text-success-ink">
                                     Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                                   </p>
                                 );
@@ -2872,18 +2872,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   const porRateio = !!p.nf_quitada;
                                   return (
                                     <>
-                                      <Badge variant="outline" className="g-meta block w-fit text-foreground"
+                                      <Badge variant="outline" className="g-meta block w-fit whitespace-nowrap text-foreground"
                                         title={porRateio
                                           ? 'A nota foi recebida por rateio (um recebimento pagou várias notas) e não tem arquivo guardado. Anexe a DANFE em Financeiro › Contas a Receber › Extração de documentos: ela entra como parte do recebimento e aparece aqui.'
                                           : 'A nota não tem arquivo guardado. Anexe pelo clipe na linha do lançamento, em Financeiro › A Receber, ou pela Extração de documentos.'}>
                                         {conteudo}
                                         <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
                                       </Badge>
-                                      {quitada}
-                                      {porRateio && (
-                                        <Link to="/financeiro/a_receber" className="g-meta text-primary hover:underline">
-                                          anexar pela Extração
-                                        </Link>
+                                      {((p.nf_quitada && p.data_quitacao) || porRateio) && (
+                                        <p className="g-meta whitespace-nowrap">
+                                          {p.nf_quitada && p.data_quitacao && (
+                                            <span className="text-success-ink">Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                          )}
+                                          {porRateio && (
+                                            <>
+                                              {p.nf_quitada && p.data_quitacao ? ' · ' : ''}
+                                              <Link to="/financeiro/a_receber" className="text-primary hover:underline">anexar pela Extração</Link>
+                                            </>
+                                          )}
+                                        </p>
                                       )}
                                     </>
                                   );
@@ -2897,7 +2904,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                       className="block w-fit"
                                     >
                                       <Badge variant="outline"
-                                        className="g-meta text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
+                                        className="g-meta whitespace-nowrap text-foreground border-primary/40 hover:bg-primary-tint cursor-pointer transition-colors">
                                         {conteudo}
                                         <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 text-primary" />
                                       </Badge>
@@ -2938,14 +2945,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </div>
                           </TableCell>
                           {podeVerCustos && (
-                            <TableCell className="whitespace-nowrap text-right tabular-nums">
+                            <TableCell className="min-w-[10rem] whitespace-nowrap text-right tabular-nums">
                               {(() => {
                                 const cx = custosPedidos[p.id];
                                 const c = { declarado: Number(p.custo_total) || 0, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
                                 const s = cx?.situacao ?? situacaoDoCusto(c);
                                 return (
-                                  <div className="space-y-1" title={fraseDaCobertura(c, s)}>
-                                    <div>{c.declarado > 0 ? fmt(c.declarado) : <span className="text-foreground-tertiary">—</span>}</div>
+                                  <div className="flex flex-col items-end gap-1 whitespace-nowrap" title={fraseDaCobertura(c, s)}>
+                                    {c.declarado > 0 && <div>{fmt(c.declarado)}</div>}
                                     <SeloSituacao tom={ROTULO_SITUACAO[s].tom}>{ROTULO_SITUACAO[s].rotulo}</SeloSituacao>
                                   </div>
                                 );
@@ -2983,8 +2990,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="sticky right-0 z-10 border-l border-border bg-card">
-                            <div className="flex items-center gap-1">
+                          <TableCell className="sticky right-0 z-10 whitespace-nowrap border-l border-border bg-card">
+                            <div className="flex items-center gap-1 whitespace-nowrap">
                               {/* Kit vale antes e depois da quitação: o órgão pede a
                                   segunda via, e a fila do financeiro só mostra o que
                                   ainda não foi baixado. */}
