@@ -29,7 +29,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Download, Eye, FolderOpen, Loader2, MoreHorizontal, PencilLine, Plus,
+  Download, ExternalLink, Eye, FolderOpen, Loader2, Mail, MoreHorizontal, PencilLine, Plus,
   Repeat, Trash2, Upload, Users,
 } from 'lucide-react';
 import MergeDocumentos from '@/components/documentos/MergeDocumentos';
@@ -49,6 +49,9 @@ import {
   CATEGORIAS_PREVISTAS, VAGAS_PREVISTAS, type CategoriaPrevista,
 } from '@/lib/documentos/previstos';
 import { diaDaValidade } from '@/lib/documentos/situacao';
+import { ROTULO_DA_ACAO, orgaosPorVaga } from '@/lib/documentos/orgao-emissor';
+import { modeloDeSolicitacao } from '@/data/certidoes-catalogo';
+import { formatCNPJ } from '@/lib/financeiro/formatters';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -260,6 +263,21 @@ export default function Documentos() {
   }, [user, empresaAtiva, modoTodasEmpresas, carregar]);
 
   const itens = useMemo(() => montarItensDoCofre(linhas), [linhas]);
+
+  /* O ÓRGÃO EMISSOR de cada vaga sai do catálogo de certidões pelo DOMICÍLIO
+     FISCAL da empresa ativa — a UF e o município gravados em `empresas`. Sem
+     eles, as vagas estaduais e municipais dizem o que falta no cadastro; o
+     cofre nunca escolhe uma cidade por conta própria. */
+  const domicilio = useMemo(
+    () => ({ uf: empresaAtiva?.uf ?? null, municipio: empresaAtiva?.municipio ?? null }),
+    [empresaAtiva?.uf, empresaAtiva?.municipio],
+  );
+  const orgaoPorVaga = useMemo(
+    () => orgaosPorVaga(VAGAS_PREVISTAS.map((v) => v.nome), domicilio),
+    [domicilio],
+  );
+  const razaoSocial = empresaAtiva?.razao_social ?? '';
+  const cnpjLegivel = empresaAtiva?.cnpj ? formatCNPJ(empresaAtiva.cnpj) : '';
 
   const contagem = useMemo(
     () => contarCofre(itens.map((i) => i.situacao), VAGAS_PREVISTAS.length),
@@ -606,76 +624,105 @@ export default function Documentos() {
       largura: '11rem',
       // `stopPropagation` no contêiner: clicar num botão de ação não pode também
       // selecionar a linha e abrir o painel por cima do que a pessoa pediu.
-      render: (i) => (
-        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          {i.arquivoPath ? (
-            <>
+      render: (i) => {
+        // O caminho até o órgão emissor, na própria linha: o site do órgão,
+        // ou o e-mail de solicitação pronto.
+        const orgao = orgaoPorVaga[i.nome];
+        const certidao = orgao?.certidao ?? null;
+        const linkDeEmissao = certidao && orgao.acoes.includes('emitir') ? certidao.urlEmissao : undefined;
+        const mailtoDeSolicitacao = certidao && orgao.acoes.includes('solicitar')
+          ? modeloDeSolicitacao({
+            certidao: certidao.nome,
+            orgao: certidao.emissor,
+            razaoSocial: razaoSocial || '(razão social)',
+            cnpj: cnpjLegivel || '(CNPJ)',
+          }).mailto
+          : undefined;
+        return (
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            {i.arquivoPath ? (
+              <>
+                <Button
+                  size="sm" variant="ghost" onClick={() => visualizar(i)}
+                  title="Visualizar em tela" aria-label={`Visualizar ${i.nome} em tela`}
+                >
+                  <Eye aria-hidden="true" />
+                </Button>
+                <Button
+                  size="sm" variant="ghost" onClick={() => baixar(i)}
+                  title="Baixar arquivo" aria-label={`Baixar o arquivo de ${i.nome}`}
+                >
+                  <Download aria-hidden="true" />
+                </Button>
+              </>
+            ) : (
               <Button
-                size="sm" variant="ghost" onClick={() => visualizar(i)}
-                title="Visualizar em tela" aria-label={`Visualizar ${i.nome} em tela`}
+                size="sm" variant="outline"
+                onClick={() => escolherArquivo(i)}
+                disabled={enviandoNome === i.nome}
+                aria-label={`Anexar arquivo de ${i.nome}`}
               >
-                <Eye aria-hidden="true" />
+                {enviandoNome === i.nome
+                  ? <Loader2 className="animate-spin" aria-hidden="true" />
+                  : <Upload aria-hidden="true" />}
+                Anexar
               </Button>
-              <Button
-                size="sm" variant="ghost" onClick={() => baixar(i)}
-                title="Baixar arquivo" aria-label={`Baixar o arquivo de ${i.nome}`}
-              >
-                <Download aria-hidden="true" />
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm" variant="outline"
-              onClick={() => escolherArquivo(i)}
-              disabled={enviandoNome === i.nome}
-              aria-label={`Anexar arquivo de ${i.nome}`}
-            >
-              {enviandoNome === i.nome
-                ? <Loader2 className="animate-spin" aria-hidden="true" />
-                : <Upload aria-hidden="true" />}
-              Anexar
-            </Button>
-          )}
+            )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" aria-label={`Mais ações para ${i.nome}`}>
-                <MoreHorizontal aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => escolherArquivo(i)}>
-                {i.arquivoPath
-                  ? <><Repeat aria-hidden="true" className="mr-2 h-4 w-4" /> Substituir arquivo</>
-                  : <><Upload aria-hidden="true" className="mr-2 h-4 w-4" /> Anexar documento</>}
-              </DropdownMenuItem>
-              {i.dbId && i.vencePorNatureza && (
-                <DropdownMenuItem onSelect={() => setDialogo({ item: i, arquivo: null })}>
-                  <PencilLine aria-hidden="true" className="mr-2 h-4 w-4" /> Editar validade
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" aria-label={`Mais ações para ${i.nome}`}>
+                  <MoreHorizontal aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => escolherArquivo(i)}>
+                  {i.arquivoPath
+                    ? <><Repeat aria-hidden="true" className="mr-2 h-4 w-4" /> Substituir arquivo</>
+                    : <><Upload aria-hidden="true" className="mr-2 h-4 w-4" /> Anexar documento</>}
                 </DropdownMenuItem>
-              )}
-              {i.legadoPrivado && empresaAtiva && (
-                <DropdownMenuItem onSelect={() => compartilhar(i)}>
-                  <Users aria-hidden="true" className="mr-2 h-4 w-4" /> Compartilhar com a equipe
-                </DropdownMenuItem>
-              )}
-              {i.arquivoPath && (
-                <>
-                  <DropdownMenuSeparator />
-                  {/* Excluir mora no menu secundário e SEMPRE pede confirmação:
-                      é a única ação desta tela que não tem desfazer. */}
-                  <DropdownMenuItem
-                    className="text-destructive-ink focus:text-destructive-ink"
-                    onSelect={() => setAExcluir(i)}
-                  >
-                    <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" /> Excluir
+                {i.dbId && i.vencePorNatureza && (
+                  <DropdownMenuItem onSelect={() => setDialogo({ item: i, arquivo: null })}>
+                    <PencilLine aria-hidden="true" className="mr-2 h-4 w-4" /> Editar validade
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+                )}
+                {linkDeEmissao && (
+                  <DropdownMenuItem asChild>
+                    <a href={linkDeEmissao} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.emitir}
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                {mailtoDeSolicitacao && (
+                  <DropdownMenuItem asChild>
+                    <a href={mailtoDeSolicitacao}>
+                      <Mail aria-hidden="true" className="mr-2 h-4 w-4" /> {ROTULO_DA_ACAO.solicitar}
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                {i.legadoPrivado && empresaAtiva && (
+                  <DropdownMenuItem onSelect={() => compartilhar(i)}>
+                    <Users aria-hidden="true" className="mr-2 h-4 w-4" /> Compartilhar com a equipe
+                  </DropdownMenuItem>
+                )}
+                {i.arquivoPath && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Excluir mora no menu secundário e SEMPRE pede confirmação:
+                        é a única ação desta tela que não tem desfazer. */}
+                    <DropdownMenuItem
+                      className="text-destructive-ink focus:text-destructive-ink"
+                      onSelect={() => setAExcluir(i)}
+                    >
+                      <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" /> Excluir
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
     },
   ];
 
@@ -689,6 +736,9 @@ export default function Documentos() {
       }
       podeVerHistorico={isCompanyAdmin}
       nomeDaEmpresa={empresaAtiva?.nome_fantasia ?? empresaAtiva?.razao_social ?? null}
+      orgao={orgaoPorVaga[selecionado.nome] ?? null}
+      razaoSocial={razaoSocial}
+      cnpj={cnpjLegivel}
       aoVisualizar={() => visualizar(selecionado)}
       aoBaixar={() => baixar(selecionado)}
       aoAnexar={() => escolherArquivo(selecionado)}

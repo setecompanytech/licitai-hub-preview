@@ -402,8 +402,12 @@ export function validadeLegivel(dias: number | null): string {
   return `${dias} dias`;
 }
 
-/** O e-mail de solicitação ao órgão, pronto para o cliente de e-mail; o endereço fica com quem envia. */
-export function modeloDeSolicitacao(dados: { certidao: string; orgao: string; razaoSocial: string; cnpj: string; exercicio?: number }): { assunto: string; corpo: string; mailto: string } {
+/**
+ * O e-mail de solicitação ao órgão, pronto para o cliente de e-mail. O
+ * destinatário (`para`) entra quando se conhece o endereço do órgão; sem ele,
+ * o endereço fica com quem envia.
+ */
+export function modeloDeSolicitacao(dados: { certidao: string; orgao: string; razaoSocial: string; cnpj: string; exercicio?: number; para?: string | null }): { assunto: string; corpo: string; mailto: string } {
   const exercicio = dados.exercicio ?? new Date().getFullYear();
   const assunto = `Solicitação de ${dados.certidao} — ${dados.razaoSocial} — CNPJ ${dados.cnpj}`;
   const corpo = [
@@ -416,5 +420,6 @@ export function modeloDeSolicitacao(dados: { certidao: string; orgao: string; ra
     'Atenciosamente,',
     dados.razaoSocial,
   ].join('\n');
-  return { assunto, corpo, mailto: `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}` };
+  const para = dados.para?.trim() ? encodeURIComponent(dados.para.trim()) : '';
+  return { assunto, corpo, mailto: `mailto:${para}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}` };
 }

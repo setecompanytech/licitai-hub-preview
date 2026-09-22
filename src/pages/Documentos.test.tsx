@@ -101,7 +101,12 @@ vi.mock('@/integrations/supabase/client', () => {
 const sessao = vi.hoisted(() => ({
   user: { id: 'u1' },
   empresa: {
-    empresaAtiva: { id: 'e1', razao_social: 'Empresa de Teste', nome_fantasia: 'Teste' },
+    // O domicílio fiscal (UF e município) vem do cadastro da empresa: é ele
+    // que decide o órgão estadual e o municipal de cada vaga.
+    empresaAtiva: {
+      id: 'e1', razao_social: 'Empresa de Teste', nome_fantasia: 'Teste', cnpj: '24687187000101',
+      uf: 'PA' as string | null, municipio: 'Belém' as string | null,
+    },
     empresas: [],
     todasSelecionadas: false,
     setEmpresaAtiva: () => undefined,
@@ -368,6 +373,66 @@ describe('Controle de Documentos — abas, indicadores e tabela', () => {
     expect(
       screen.getByText(new RegExp(`3 de ${VAGAS_PREVISTAS.length} itens previstos`, 'i')),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Controle de Documentos — o órgão emissor de cada vaga', () => {
+  const NOME_MUNICIPAL = 'Certidão Negativa de Débitos Municipais';
+
+  beforeEach(() => {
+    dados.erro = null;
+    janelaLarga();
+    sessao.autorizacao.isCompanyAdmin = true;
+    sessao.empresa.empresaAtiva.uf = 'PA';
+    sessao.empresa.empresaAtiva.municipio = 'Belém';
+    dados.linhas = [linha(NOMES.cnd, diaISO(300))];
+  });
+
+  it('a CND federal leva à Receita/PGFN — o cofre aponta o órgão, não emite', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOMES.cnd)[0]);
+    const painel = oPainel(NOMES.cnd);
+
+    expect(within(painel).getByText('Órgão emissor')).toBeInTheDocument();
+    expect(within(painel).getByText(/Receita Federal do Brasil/)).toBeInTheDocument();
+    const link = within(painel).getByRole('link', { name: /Emitir no órgão/ });
+    expect(link).toHaveAttribute('href', 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(within(painel).getByText('180 dias')).toBeInTheDocument();
+  });
+
+  it('a municipal de Belém sai por e-mail de solicitação, em nome da empresa — nunca pela prefeitura de outra cidade', async () => {
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOME_MUNICIPAL)[0]);
+    const painel = oPainel(NOME_MUNICIPAL);
+
+    expect(within(painel).getByText(/Prefeitura Municipal de Belém/)).toBeInTheDocument();
+    const email = within(painel).getByRole('link', { name: /Solicitar por e-mail/ });
+    const href = decodeURIComponent(email.getAttribute('href') ?? '');
+    expect(href.startsWith('mailto:')).toBe(true);
+    expect(href).toContain('Empresa de Teste');
+    expect(href).toContain('24.687.187/0001-01');
+    expect(within(painel).queryByText(/São Paulo/)).toBeNull();
+    // O site do órgão (Agiliza, com login) fica como alternativa, não como o caminho principal.
+    expect(within(painel).getByRole('link', { name: /Emitir no órgão/ })).toHaveAttribute('href', expect.stringContaining('belem.pa.gov.br'));
+  });
+
+  it('sem UF no cadastro, a estadual pede o domicílio em vez de escolher um', async () => {
+    sessao.empresa.empresaAtiva.uf = null;
+    sessao.empresa.empresaAtiva.municipio = null;
+    montar();
+    await screen.findByText(NOMES.cnd);
+    fireEvent.click(screen.getAllByText(NOMES.estaduais)[0]);
+    const painel = oPainel(NOMES.estaduais);
+
+    expect(within(painel).getByText(/Informe a UF do domicílio fiscal/)).toBeInTheDocument();
+    expect(within(painel).getByRole('link', { name: /Abrir o cadastro da empresa/ })).toHaveAttribute('href', '/configuracoes');
+    expect(within(painel).queryByRole('link', { name: /Emitir no órgão/ })).toBeNull();
+    // A federal continua apontando a Receita: a União não depende do domicílio.
+    fireEvent.click(screen.getAllByText(NOMES.cnd)[0]);
+    expect(within(oPainel(NOMES.cnd)).getByRole('link', { name: /Emitir no órgão/ })).toBeInTheDocument();
   });
 });
 

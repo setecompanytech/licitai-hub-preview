@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import ListaDeCampos, { BlocoDoPainel, type Campo } from '@/components/gestao/ListaDeCampos';
 import { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
+import type { OrgaoDaVaga } from '@/lib/documentos/orgao-emissor';
+import OrgaoEmissorDaVaga from './OrgaoEmissorDaVaga';
 import SeloDocumento, { ValidadeDoDocumento } from './SeloDocumento';
 import { nomeDoArquivo, tamanhoLegivel, type ItemDoCofre } from './item-do-cofre';
 
@@ -46,6 +48,18 @@ interface Props extends AcoesDoPainel {
   podeVerHistorico: boolean;
   /** Nome da empresa ativa, para o texto de compartilhamento. */
   nomeDaEmpresa?: string | null;
+  /**
+   * O órgão emissor desta vaga, pelo domicílio fiscal da empresa
+   * (`lib/documentos/orgao-emissor.ts`). Sem ele, o bloco não aparece.
+   */
+  orgao?: OrgaoDaVaga | null;
+  /** Razão social e CNPJ da empresa ativa, para o e-mail de solicitação. */
+  razaoSocial?: string | null;
+  cnpj?: string | null;
+  /** Solicitar ao órgão com registro (fase 2, entrega b). */
+  aoSolicitar?: () => void;
+  /** Cadastrar o órgão do município fora do mapa (fase 2, entrega c). */
+  aoCadastrarOrgao?: () => void;
 }
 
 /**
@@ -66,6 +80,11 @@ export default function PainelDocumento({
   ocupado,
   podeVerHistorico,
   nomeDaEmpresa,
+  orgao,
+  razaoSocial,
+  cnpj,
+  aoSolicitar,
+  aoCadastrarOrgao,
   aoVisualizar,
   aoBaixar,
   aoAnexar,
@@ -143,6 +162,18 @@ export default function PainelDocumento({
       <BlocoDoPainel titulo="Identificação">
         <ListaDeCampos campos={campos} />
       </BlocoDoPainel>
+
+      {/* Quem emite esta certidão, e o caminho até lá. O cofre não emite: a
+          pessoa vai ao órgão e traz o PDF de volta para a vaga. */}
+      {orgao && (
+        <OrgaoEmissorDaVaga
+          orgao={orgao}
+          razaoSocial={razaoSocial || '(razão social)'}
+          cnpj={cnpj || '(CNPJ)'}
+          aoSolicitar={aoSolicitar}
+          aoCadastrarOrgao={aoCadastrarOrgao}
+        />
+      )}
 
       {temArquivo && (
         <BlocoDoPainel titulo="Conferência">
