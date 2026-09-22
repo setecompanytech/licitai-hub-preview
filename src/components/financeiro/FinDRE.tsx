@@ -274,7 +274,9 @@ export default function FinDRE() {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     A categoria existe, mas não está ligada a um grupo do DRE — então
-                    não há onde somá-la. Financeiro → Categorias, coluna Grupo DRE.
+                    fica na linha "Sem grupo no plano de contas" da tabela, fora do
+                    resultado, enquanto o painel a soma como receita ou despesa.
+                    Financeiro → Categorias, coluna Grupo DRE.
                   </p>
                 </div>
               )}

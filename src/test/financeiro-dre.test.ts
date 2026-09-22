@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { montarDRE, type DRELinhaRaw } from '@/lib/financeiro/dre';
+import {
+  estaForaDoDRE, montarDRE, resultadoIncluindoSemGrupo, semGrupoLiquido, type DRELinhaRaw,
+} from '@/lib/financeiro/dre';
 
 const linha = (p: Partial<DRELinhaRaw>): DRELinhaRaw => ({
   empresa_id: 'e1',
@@ -163,5 +165,37 @@ describe('montarDRE', () => {
     // Lucro Bruto sobe — dinheiro que voltou é resultado a favor.
     expect(dre.custos).toBe(4000 - 5040);
     expect(dre.lucroBruto).toBe(9500 - (4000 - 5040));
+  });
+});
+
+describe('sem grupo no plano de contas — a ponte entre o DRE e o painel (21/09, defeito 3)', () => {
+  it('a linha "Sem grupo" é receita − despesa do que não tem grupo, e o resultado não a absorve', () => {
+    // ETHOS, agosto: R$ 1.951,33 de "Outras Receitas" sem grupo — no painel
+    // sim, no DRE não. Agora o DRE diz o valor e o subtotal reconcilia.
+    const dre = montarDRE(
+      [
+        linha({ grupo_dre: 'receita_bruta', natureza: 'receita', total: 10000 }),
+        linha({ grupo_dre: 'desp_operacional', natureza: 'despesa', total: 3000 }),
+        linha({ grupo_dre: null, natureza: 'receita', total: 1951.33, categoria_nome: 'Outras Receitas' }),
+        linha({ grupo_dre: null, natureza: 'despesa', total: 500, categoria_nome: 'Diversos' }),
+      ],
+      '2026-08',
+    );
+    expect(dre.resultadoLiquido).toBe(7000);
+    expect(semGrupoLiquido(dre)).toBeCloseTo(1451.33, 2);
+    expect(resultadoIncluindoSemGrupo(dre)).toBeCloseTo(8451.33, 2);
+  });
+
+  it('sem nada fora do grupo, a linha vale zero e o resultado incluindo é o próprio resultado', () => {
+    const dre = montarDRE([linha({ grupo_dre: 'receita_bruta', natureza: 'receita', total: 100 })], '2026-08');
+    expect(semGrupoLiquido(dre)).toBe(0);
+    expect(resultadoIncluindoSemGrupo(dre)).toBe(dre.resultadoLiquido);
+  });
+
+  it('para o painel: sem grupo OU sem categoria está fora do DRE; com grupo, dentro', () => {
+    expect(estaForaDoDRE({ categoria: { grupo_dre: null } })).toBe(true);
+    expect(estaForaDoDRE({ categoria: null })).toBe(true);
+    expect(estaForaDoDRE({})).toBe(true);
+    expect(estaForaDoDRE({ categoria: { grupo_dre: 'receita_bruta' } })).toBe(false);
   });
 });

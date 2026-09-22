@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
+import { estaForaDoDRE, montarDRE, type DRELinhaRaw, type DREResumo } from "@/lib/financeiro/dre";
 import { hojeLocal, somarDiasLocal, mesLocal, dataLocal } from "@/lib/financeiro/data-local";
 import { ehMovimentacao, ehTransferenciaEntreContasProprias } from "@/lib/financeiro/movimentacao";
 import { condicaoDeAtrasoNoBanco, diasDeAtraso, estaEmAtraso } from "@/lib/financeiro/atraso";
@@ -820,6 +820,12 @@ export type ResumoFinanceiro = {
   aPagar: number;
   aReceber: number;
   realizadoMes: number;
+  /**
+   * Quanto do "Resultado no mês" o DRE não enxerga: receita − despesa dos
+   * lançamentos sem grupo de DRE (ou sem categoria). O DRE mostra o mesmo
+   * valor na linha "Sem grupo no plano de contas" — é a ponte entre os dois.
+   */
+  foraDoDREMes: number;
   topDespesas: { nome: string; total: number }[];
   fluxo: { mes: string; entrada: number; saida: number; saldo: number }[];
 };
@@ -876,10 +882,13 @@ export function useResumoFinanceiro() {
       const aReceber = soma(titulos.filter((l) => l.tipo === "a_receber"));
       const baixados = lancs.filter((l) => l.status === "realizado" || l.status === "conciliado");
       const realizados = baixados.filter((l) => !ehMovimentacao(l));
-      const realizadoMes = realizados
-        .filter((l) => ((l.data_realizado || l.data_competencia) ?? "").startsWith(mesAtual))
-        // Movimentação já saiu acima; o que não é receita nem despesa não conta.
-        .reduce((s, l) => s + (l.natureza === "receita" ? 1 : l.natureza === "despesa" ? -1 : 0) * Number(l.valor ?? 0), 0);
+      const sinal = (l: LinhaResumo) => (l.natureza === "receita" ? 1 : l.natureza === "despesa" ? -1 : 0);
+      const realizadosDoMes = realizados.filter((l) => ((l.data_realizado || l.data_competencia) ?? "").startsWith(mesAtual));
+      // Movimentação já saiu acima; o que não é receita nem despesa não conta.
+      const realizadoMes = realizadosDoMes.reduce((s, l) => s + sinal(l) * Number(l.valor ?? 0), 0);
+      // A parte desse número que o DRE não soma (sem grupo, sem categoria) —
+      // dita ao lado do KPI, para painel e DRE concordarem à vista (21/09).
+      const foraDoDREMes = realizadosDoMes.filter(estaForaDoDRE).reduce((s, l) => s + sinal(l) * Number(l.valor ?? 0), 0);
 
       // Top 5 despesas realizadas (6 meses) por categoria — sem transferência,
       // aplicação nem imobilizado, que abriam a lista com R$ 7,26 mi (19/09).
@@ -919,7 +928,7 @@ export function useResumoFinanceiro() {
         saldo: v.entrada - v.saida,
       }));
 
-      return { saldoTotal, aPagar, aReceber, realizadoMes, topDespesas, fluxo };
+      return { saldoTotal, aPagar, aReceber, realizadoMes, foraDoDREMes, topDespesas, fluxo };
     },
   });
 }

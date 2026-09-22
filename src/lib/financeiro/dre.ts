@@ -66,6 +66,35 @@ export type DREResumo = {
   movimentacaoExcluida: { total: number; linhas: number };
 };
 
+// ─── O que não tem grupo, dito com o valor (21/09, defeito 3) ────────────────
+//
+// O painel soma qualquer lançamento com natureza receita/despesa; o DRE exige
+// grupo de DRE na categoria. ETHOS R$ 1.951,33, Santa Rosa R$ 65.270,38 e
+// BAQPLAST R$ 5.429,12 apareciam num e sumiam no outro — e as duas telas
+// discordavam sem dizer por quê. Dar grupo a "Outras Receitas" é decisão do
+// dono (aberta); o que o código faz é tornar a diferença VISÍVEL: uma linha
+// "Sem grupo no plano de contas" na tabela do DRE, com o valor, e o subtotal
+// que reconcilia com o painel. Quem lê vê os dois números e a ponte entre eles.
+
+/** Receita − despesa das categorias sem grupo de DRE: o que o painel soma e o resultado não. */
+export function semGrupoLiquido(r: Pick<DREResumo, "semClassificacao">): number {
+  return r.semClassificacao.receita - r.semClassificacao.despesa;
+}
+
+/** O resultado como o painel o vê: resultado líquido + o que não tem grupo. */
+export function resultadoIncluindoSemGrupo(r: Pick<DREResumo, "resultadoLiquido" | "semClassificacao">): number {
+  return r.resultadoLiquido + semGrupoLiquido(r);
+}
+
+/**
+ * Para os painéis que somam LANÇAMENTOS: a linha fica fora do DRE quando a
+ * categoria não tem grupo — ou quando nem categoria tem (a view do DRE faz
+ * JOIN interno com as categorias, e lançamento sem categoria nem chega a ela).
+ */
+export function estaForaDoDRE(l: { categoria?: { grupo_dre?: string | null } | null }): boolean {
+  return !l.categoria?.grupo_dre;
+}
+
 /** Os valores que `financeiro_categorias.grupo_dre` realmente assume. */
 export const ROTULO_GRUPO_DRE: Record<string, string> = {
   receita_bruta: "Receita bruta",

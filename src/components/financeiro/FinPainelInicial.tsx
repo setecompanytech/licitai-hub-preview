@@ -106,7 +106,12 @@ export default function FinPainelInicial({ onNavigate }: Props) {
     },
     {
       rotulo: 'Resultado no mês', valor: resumo?.realizadoMes ?? 0,
-      sub: 'Realizado até hoje', tom: (resumo?.realizadoMes ?? 0) >= 0 ? 'success' as const : 'destructive' as const,
+      // O que o DRE não soma (sem grupo no plano de contas) vai dito aqui,
+      // com o valor: é a ponte entre este número e o do DRE (21/09).
+      sub: (resumo?.foraDoDREMes ?? 0) !== 0
+        ? `Inclui ${formatBRL(resumo!.foraDoDREMes)} sem grupo no DRE`
+        : 'Realizado até hoje',
+      tom: (resumo?.realizadoMes ?? 0) >= 0 ? 'success' as const : 'destructive' as const,
     },
     {
       rotulo: 'Em atraso', valor: emAtraso,

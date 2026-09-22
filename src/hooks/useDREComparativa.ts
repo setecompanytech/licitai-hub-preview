@@ -1,6 +1,7 @@
 // Hook utilitário que combina o useDRE existente para comparações temporais (AH).
 // Não cria dependência de backend nova: reaproveita a materialized view via useDRE.
 import { useDRE, type DREResumo } from "@/hooks/useFinanceiro";
+import { resultadoIncluindoSemGrupo, semGrupoLiquido } from "@/lib/financeiro/dre";
 
 function shiftCompetencia(competencia: string, deltaMeses: number): string {
   // competencia formato "YYYY-MM"
@@ -167,6 +168,33 @@ export function useDREComparativa(competencia: string, modo: ModoComparacao): DR
             RL
           ),
         },
+        // O que não tem grupo de DRE, dito com o valor — fora do resultado,
+        // mas na tabela (e no CSV), para o DRE e o painel concordarem à vista
+        // (21/09, defeito 3). A decisão de dar grupo às categorias é do dono.
+        {
+          chave: "sem_grupo",
+          label: "Sem grupo no plano de contas (fora do resultado)",
+          sinal: "±",
+          nivel: 1,
+          subtotal: false,
+          valor: calcCell(semGrupoLiquido(atual), comparado ? semGrupoLiquido(comparado) : null, RL),
+        },
+        ...(semGrupoLiquido(atual) !== 0 || (comparado && semGrupoLiquido(comparado) !== 0)
+          ? [
+              {
+                chave: "resultado_com_sem_grupo",
+                label: "Resultado + sem grupo (o que o painel soma)",
+                sinal: "=" as const,
+                nivel: 0 as const,
+                subtotal: true,
+                valor: calcCell(
+                  resultadoIncluindoSemGrupo(atual),
+                  comparado ? resultadoIncluindoSemGrupo(comparado) : null,
+                  RL
+                ),
+              },
+            ]
+          : []),
       ]
     : [];
 
