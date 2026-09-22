@@ -59,6 +59,7 @@ import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
 import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
 import ComprasDoPedidoDialog from './ComprasDoPedidoDialog';
 import { fraseDaCobertura, ROTULO_SITUACAO, situacaoDoCusto, type SituacaoDoCusto } from '@/lib/contratos/cobertura-de-custo';
+import { unidadeLegivel } from '@/lib/texto/unidade';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
 import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
@@ -3942,10 +3943,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               const cx = editingPedido ? custosPedidos[editingPedido.id] : undefined;
               const c = { declarado: q * cu, pago: Number(cx?.comprovado_pago) || 0, aberto: Number(cx?.comprovado_aberto) || 0 };
               const s = cx?.situacao ?? situacaoDoCusto(c);
-              // "null" chegou como texto num item importado (print de 22/09):
-              // unidade vazia, nula ou "null" vira a palavra, nunca o literal.
-              const unidadeCrua = String(itens.find(i => i.id === editForm.contrato_item_id)?.unidade ?? '').trim();
-              const unidade = unidadeCrua && !/^(null|undefined|-)$/i.test(unidadeCrua) ? unidadeCrua : 'unidade';
+              // "null" chegou como texto num item importado (print de 22/09).
+              const unidade = unidadeLegivel(itens.find(i => i.id === editForm.contrato_item_id)?.unidade, 'unidade');
               return (
                 <div className="space-y-3 rounded-lg border border-border bg-secondary p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">

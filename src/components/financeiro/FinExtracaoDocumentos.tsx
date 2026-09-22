@@ -4,6 +4,7 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
+import { numeroDaNota } from "@/lib/financeiro/recebimento-da-nota";
 import { vencimentoDoTitulo } from "@/lib/financeiro/vencimento-do-titulo";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -352,6 +353,100 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     );
   };
 
+  /**
+   * A nota já é de um pedido do contrato? (22/09, decisão do dono)
+   *
+   * O fluxo da ETHOS é o Comercial registrar o pedido antes de a DANFE
+   * chegar ao Financeiro. Se a Extração criasse outro pedido pela nota, o
+   * contrato consumiria o saldo duas vezes — 725 a 730 já existem, quitados
+   * pela TED de 27/05. Pedido com a mesma nota → o PDF vai para o recebimento
+   * dele: o título próprio, ou o recebimento que o pagou por rateio (a nota
+   * entra como PARTE dele). Sem recebimento nenhum, nasce só o título, ligado
+   * ao pedido que já existe. Nunca um pedido novo.
+   *
+   * Devolve true quando resolveu; false quando não há pedido com a nota.
+   */
+  const anexarAoPedidoExistente = async (item: DocItem, contratoId: string): Promise<boolean> => {
+    const d = item.dados ?? {};
+    const numero = numeroDaNota(d.numero_documento);
+    if (!numero) return false;
+    const { data: pedidos } = await supabase
+      .from("contrato_pedidos")
+      .select("id, numero_pedido, nota_fiscal, contrato_item_id")
+      .eq("contrato_id", contratoId)
+      .neq("status", "cancelado")
+      .not("nota_fiscal", "is", null)
+      .limit(500);
+    type PedidoComNota = { id: string; numero_pedido: string; nota_fiscal: string | null; contrato_item_id: string | null };
+    const pedido = ((pedidos ?? []) as PedidoComNota[]).find((p) => numeroDaNota(p.nota_fiscal) === numero);
+    if (!pedido) return false;
+    const rotulo = `NF ${d.numero_documento ?? numero}`;
+    const marcar = (lancamentoId: string) => {
+      setDocs((prev) => prev.map((x) => (x.id === item.id ? { ...x, lancamentoId } : x)));
+      invalidarFinanceiro();
+    };
+
+    // 1. Título próprio do pedido: o PDF vai para ele, com o número e a chave.
+    const { data: titulos } = await supabase
+      .from("financeiro_lancamentos")
+      .select("id, numero_documento, chave_acesso_nfe, status")
+      .eq("contrato_pedido_id", pedido.id)
+      .eq("tipo", "a_receber")
+      .neq("status", "cancelado")
+      .limit(5);
+    const titulo = ((titulos ?? []) as Array<{ id: string; numero_documento: string | null; chave_acesso_nfe: string | null; status: string }>)[0];
+    if (titulo) {
+      await supabase
+        .from("financeiro_lancamentos")
+        .update({
+          numero_documento: titulo.numero_documento ?? d.numero_documento ?? null,
+          chave_acesso_nfe: titulo.chave_acesso_nfe ?? normalizarChaveNfe(d.chave_nfe) ?? null,
+        } as never)
+        .eq("id", titulo.id);
+      if (item.documentoId) await vincularLancamento(item.documentoId, titulo.id);
+      marcar(titulo.id);
+      toast.success(`${rotulo}: já é o pedido ${pedido.numero_pedido} deste contrato. O PDF foi anexado ao recebimento dele; nenhum pedido ou título novo.`, { duration: 10000 });
+      return true;
+    }
+
+    // 2. Pago por rateio: o PDF vai como parte do recebimento que pagou o pedido.
+    const { data: rateios } = await supabase
+      .from("financeiro_lancamento_rateios" as never)
+      .select("lancamento_id, valor")
+      .eq("contrato_pedido_id", pedido.id)
+      .limit(5);
+    const rateio = ((rateios ?? []) as unknown as Array<{ lancamento_id: string; valor: number }>)[0];
+    if (rateio) {
+      if (item.documentoId) await vincularLancamento(item.documentoId, rateio.lancamento_id);
+      marcar(rateio.lancamento_id);
+      toast.success(`${rotulo}: o pedido ${pedido.numero_pedido} foi pago por rateio. O PDF foi anexado como parte do recebimento que o pagou (${fmt(Number(rateio.valor))}); nenhum pedido ou título novo.`, { duration: 10000 });
+      return true;
+    }
+
+    // 3. Pedido sem recebimento: nasce só o título, ligado ao pedido que já existe.
+    const r = await upsert.mutateAsync({
+      tipo: "a_receber",
+      natureza: "receita",
+      status: "previsto",
+      descricao: d.descricao || `NF-e ${d.numero_documento ?? numero} · pedido ${pedido.numero_pedido}`,
+      valor: numeroBr(d.valor_total),
+      data_competencia: d.data_emissao ?? hojeLocal(),
+      data_vencimento: d.data_vencimento ?? d.data_emissao ?? null,
+      data_emissao: d.data_emissao ?? null,
+      tipo_documento: (d.tipo_documento ?? "outro") as never,
+      numero_documento: d.numero_documento ?? null,
+      chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
+      contrato_id: contratoId,
+      contrato_pedido_id: pedido.id,
+      contrato_item_id: pedido.contrato_item_id ?? null,
+    } as never);
+    const novoId = (r as { id?: string } | null)?.id ?? null;
+    if (item.documentoId && novoId) await vincularLancamento(item.documentoId, novoId);
+    marcar(novoId ?? "ok");
+    toast.success(`${rotulo}: o pedido ${pedido.numero_pedido} já existia sem recebimento. O título nasceu ligado a ele; nenhum pedido novo.`, { duration: 10000 });
+    return true;
+  };
+
   const lancarRapido = async (item: DocItem) => {
     const d = item.dados ?? {};
     if (!d.valor_total) {
@@ -363,6 +458,15 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       const temVinculo = !!v?.contrato_id;
 
       if (temVinculo) {
+        // A nota que já é de um pedido do contrato não vira pedido novo (22/09).
+        if (tipo === "a_receber" && d.numero_documento) {
+          try {
+            if (await anexarAoPedidoExistente(item, v!.contrato_id)) return;
+          } catch (e) {
+            toast.error("Não foi possível conferir se a nota já é de um pedido do contrato — nada foi criado.", { description: mensagemDeErro(e) });
+            return;
+          }
+        }
         // Caminho com vínculo: cria pedido + lançamento via RPC (recalcula saldo do contrato/ATA)
         const valorTotal = numeroBr(d.valor_total);
 

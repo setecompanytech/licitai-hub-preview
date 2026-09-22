@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { unidadeLegivel } from "@/lib/texto/unidade";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -407,7 +408,7 @@ export default function VinculoContratoSelector({
         alerts.push({
           level: "error",
           titulo: "Quantidade excede o saldo do item",
-          detalhe: `Documento: ${qtd.toLocaleString("pt-BR")} ${itemSel.unidade ?? ""} · Saldo: ${saldoQtd.toLocaleString("pt-BR")} ${itemSel.unidade ?? ""} · Excedente: ${(qtd - saldoQtd).toLocaleString("pt-BR")}.`,
+          detalhe: `Documento: ${qtd.toLocaleString("pt-BR")} ${unidadeLegivel(itemSel.unidade)} · Saldo: ${saldoQtd.toLocaleString("pt-BR")} ${unidadeLegivel(itemSel.unidade)} · Excedente: ${(qtd - saldoQtd).toLocaleString("pt-BR")}.`,
         });
       }
 
@@ -824,7 +825,7 @@ export default function VinculoContratoSelector({
                             <span>
                               Saldo qtd:{" "}
                               <b>
-                                {saldoQtd.toLocaleString("pt-BR")} {i.unidade ?? ""}
+                                {saldoQtd.toLocaleString("pt-BR")} {unidadeLegivel(i.unidade)}
                               </b>
                             </span>
                           )}
