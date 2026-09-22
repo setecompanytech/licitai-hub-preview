@@ -16,14 +16,62 @@ export type AnexoOrdenavel = {
   created_at?: string | null;
 };
 
-/** O número da nota do anexo: o gravado; senão, o primeiro número do nome do arquivo ("NFe N° 000.000.725 …" → 725). */
+/**
+ * O número da NOTA escrito no nome do arquivo — só quando o nome diz que é
+ * nota: "NFe N° 000.000.725 - SEDUC.pdf", "NF-e_725", "DANFE 725", "nfe725",
+ * "Nota Fiscal 725", a chave de acesso de 44 dígitos (o número está nas
+ * posições 26 a 34) ou um nome que é só o número ("000000725.pdf").
+ *
+ * "comprovante-27-05.pdf" NÃO tem número de nota: o primeiro número que
+ * aparece num nome qualquer virava número gravado, e a aba Pedidos — que acha
+ * a DANFE pelo número — ligaria o comprovante da TED ao pedido 27.
+ */
+export function numeroDaNotaNoNome(nome: string | null | undefined): number | null {
+  // Só extensão de verdade (começa por letra): "NFe 000.000.728" sem extensão não perde o ".728".
+  const semExtensao = String(nome ?? '').replace(/\.[a-z][a-z0-9]{0,4}$/i, '');
+  if (!semExtensao) return null;
+  const chave = semExtensao.match(/(?<!\d)\d{44}(?!\d)/);
+  if (chave) return Number(chave[0].slice(25, 34)) || null;
+  const rotulo = semExtensao.match(/(?:^|[^a-z])(?:danfe|nfs-?e|nf-?e|nf|nota(?:[\s_-]*fiscal)?)[\s_-]*(?:n[º°o.]?|n[uú]mero)?[\s_\-:.#]*(\d[\d.]*)/i);
+  if (rotulo) {
+    const digitos = rotulo[1].replace(/\D/g, '').replace(/^0+/, '');
+    return digitos ? Number(digitos) : null;
+  }
+  if (/^[\d._\s-]+$/.test(semExtensao)) {
+    const digitos = semExtensao.replace(/\D/g, '').replace(/^0+/, '');
+    // Até nove dígitos (o nNF da NF-e) e nada com cara de data ("20260527").
+    if (digitos && digitos.length <= 9 && !/^(19|20)\d{6}$/.test(digitos)) return Number(digitos);
+  }
+  return null;
+}
+
+/** O número da nota do anexo: o gravado; senão, o que o nome do arquivo diz ("NFe N° 000.000.725 …" → 725). */
 export function numeroDoAnexo(a: Pick<AnexoOrdenavel, 'numero' | 'arquivo_nome'>): number | null {
   const gravado = numeroDaNota(a.numero);
   if (gravado) return Number(gravado);
-  const m = (a.arquivo_nome ?? '').match(/\d[\d.]*\d|\d/);
-  if (!m) return null;
-  const digitos = m[0].replace(/\D/g, '').replace(/^0+/, '');
-  return digitos ? Number(digitos) : null;
+  return numeroDaNotaNoNome(a.arquivo_nome);
+}
+
+/**
+ * O número a GRAVAR num documento que se anexa a um lançamento (22/09):
+ *
+ * 1. o nome do arquivo diz qual nota é → esse número, sempre. A TED de 27/05
+ *    tinha "727" como número do título e carimbou três DANFEs 728 como 727 —
+ *    e o PDF único, que junta um anexo por número, mostrava cinco notas;
+ * 2. o nome não diz → o número do lançamento, quando ele é de UMA nota;
+ * 3. lançamento rateado (várias notas) sem número no nome → sem número. O
+ *    comprovante da TED não é a nota 727.
+ */
+export function numeroParaGuardar(dados: {
+  nomeDoArquivo: string | null | undefined;
+  numeroDoLancamento?: string | null;
+  rateado?: boolean;
+}): string | null {
+  const daNota = numeroDaNotaNoNome(dados.nomeDoArquivo);
+  if (daNota !== null) return String(daNota);
+  if (dados.rateado) return null;
+  const doLancamento = String(dados.numeroDoLancamento ?? '').trim();
+  return doLancamento || null;
 }
 
 export function ordenarAnexos<T extends AnexoOrdenavel>(anexos: T[]): T[] {

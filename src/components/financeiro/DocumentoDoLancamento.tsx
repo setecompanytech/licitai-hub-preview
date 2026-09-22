@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deduplicarAnexos, descricaoDaOrdem, numeroDoAnexo, type AnexoOrdenavel } from '@/lib/financeiro/ordem-dos-anexos';
+import { deduplicarAnexos, descricaoDaOrdem, numeroParaGuardar, type AnexoOrdenavel } from '@/lib/financeiro/ordem-dos-anexos';
 import { juntarEmUmPdf } from '@/lib/financeiro/juntar-pdfs';
 
 /**
@@ -61,10 +61,16 @@ type Props = {
   valorTotal?: number | null;
   /** A nota EXIGE documento? NF-e e NFS-e sim; tarifa bancária não. */
   exigeDocumento?: boolean;
+  /**
+   * Recebimento rateado entre vários pedidos (22/09): o número do título não é
+   * o de nota nenhuma, e um anexo sem número no nome fica sem número — em vez
+   * de herdar o do título, como as três DANFEs 728 que viraram "727".
+   */
+  rateado?: boolean;
 };
 
 export default function DocumentoDoLancamento({
-  lancamentoId, tipoDocumento, numeroDocumento, dataEmissao, valorTotal, exigeDocumento,
+  lancamentoId, tipoDocumento, numeroDocumento, dataEmissao, valorTotal, exigeDocumento, rateado,
 }: Props) {
   const { data: mapa } = useDocumentosPorLancamento();
   const { abrirArquivo, guardarArquivo } = useDocumentoFiscal();
@@ -96,12 +102,13 @@ export default function DocumentoDoLancamento({
     }
     setEnviando(true);
     const ehXml = /\.xml$/i.test(file.name);
-    // Lançamento sem número próprio (a TED que pagou várias notas): o número
-    // vem do nome do arquivo — é por ele que a aba Pedidos acha a DANFE.
-    const doNome = numeroDoAnexo({ numero: null, arquivo_nome: file.name });
+    // O número do anexo: o que o nome do arquivo diz ("NFe N° 000.000.728");
+    // senão o do título, quando ele é de uma nota só. É por esse número que a
+    // aba Pedidos acha a DANFE — e que o clipe junta um anexo por nota.
+    const numero = numeroParaGuardar({ nomeDoArquivo: file.name, numeroDoLancamento: numeroDocumento, rateado });
     const salvo = await guardarArquivo(file, {
       tipo: tipoDocumento ?? 'outro',
-      numero: numeroDocumento ?? (doNome !== null ? String(doNome) : null),
+      numero,
       data_emissao: dataEmissao ?? null,
       valor_total: valorTotal ?? 0,
       lancamento_id: lancamentoId,
@@ -114,7 +121,11 @@ export default function DocumentoDoLancamento({
       });
       return;
     }
-    toast.success('Documento guardado e vinculado ao lançamento.');
+    toast.success('Documento guardado e vinculado ao lançamento.', {
+      description: numero
+        ? `Guardado como nota ${numero}.`
+        : 'Sem número de nota no nome do arquivo — não aparece na aba Pedidos.',
+    });
     void qc.invalidateQueries({ queryKey: ['fin-documentos-por-lancamento'] });
     void qc.invalidateQueries({ queryKey: ['fin-conferencia'] });
   };

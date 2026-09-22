@@ -3,7 +3,7 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { supabase } from "@/integrations/supabase/client";
 import { casarDanfesComAsPartes, fraseDaSoma, reais, type DocumentoAnexado, type ParteDoRateio } from "@/lib/financeiro/partes-do-rateio";
 import { formatarNumeroNfe } from "@/lib/financeiro/chave-nfe";
-import { numeroDoAnexo } from "@/lib/financeiro/ordem-dos-anexos";
+import { numeroParaGuardar } from "@/lib/financeiro/ordem-dos-anexos";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { parseNFeXML } from "@/lib/parseNFe";
@@ -932,14 +932,15 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
     const xmlTexto = arquivoXml ? await arquivoXml.text().catch(() => null) : null;
     // O PDF ou a foto é o que se abre; sem eles, o próprio XML ocupa o lugar.
     const paraGuardar = arquivoPdf ?? arquivoXml;
-    // O número do documento anexado (22/09): num recebimento que pagou várias
-    // notas (rateado), o número do título não é o da nota — a TED de 27/05
-    // carimbou duas DANFEs 728 como "727". Nesse caso, e quando o campo está
-    // vazio, o número vem do nome do arquivo; é por ele que a aba Pedidos acha a nota.
-    const numeroDoArquivo = numeroDoAnexo({ numero: null, arquivo_nome: paraGuardar!.name });
-    const numeroDoDocumento = partesDoRateio.length > 0 || !numeroDocumento.trim()
-      ? (numeroDoArquivo !== null ? String(numeroDoArquivo) : (numeroDocumento.trim() || null))
-      : numeroDocumento.trim();
+    // O número do documento anexado (22/09): o que o nome do arquivo diz
+    // ("NFe N° 000.000.728") manda; senão o do título, quando ele é de uma
+    // nota só. A TED de 27/05, rateada em seis notas e com "727" no título,
+    // carimbou três DANFEs 728 como 727 — regra única em `numeroParaGuardar`.
+    const numeroDoDocumento = numeroParaGuardar({
+      nomeDoArquivo: paraGuardar!.name,
+      numeroDoLancamento: numeroDocumento,
+      rateado: partesDoRateio.length > 0,
+    });
     const salvo = await guardarArquivo(paraGuardar!, {
       tipo: tipoDocumento || "outro",
       numero: numeroDoDocumento,

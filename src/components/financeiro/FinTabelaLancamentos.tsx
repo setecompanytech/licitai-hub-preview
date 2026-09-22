@@ -508,6 +508,7 @@ export default function FinTabelaLancamentos({ tipo }: Props) {
                             // no dia em que alguém acrescentar um tipo e lembrar
                             // de uma das duas cópias.
                             exigeDocumento={exigeDocumento(l.tipo_documento)}
+                            rateado={rateios.length > 0}
                           />
                           {/* Nota guardada e nenhum pedido: é a população que
                               nasce do preenchimento manual e fica invisível

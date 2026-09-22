@@ -29,37 +29,58 @@ export function useVinculosDeContrato() {
     enabled: !!empresaAtiva?.id,
     staleTime: 60_000,
     queryFn: async (): Promise<Record<string, VinculoDeContrato>> => {
-      const { data, error } = await supabase
-        .from('financeiro_lancamentos')
-        .select('id, contrato_id, contrato:contratos(numero_contrato), pedido:contrato_pedidos(numero_pedido)')
-        .eq('empresa_id', empresaAtiva!.id)
-        .not('contrato_id', 'is', null);
+      const empresaId = empresaAtiva!.id;
+      // O número do contrato vem numa consulta própria, casada em memória.
+      // `financeiro_lancamentos.contrato_id` NÃO tem chave estrangeira para
+      // `contratos`: o embed `contrato:contratos(...)` que vivia aqui era
+      // recusado pelo PostgREST (PGRST200, "could not find a relationship"),
+      // o erro era engolido e a lista inteira ficava sem selo — e o
+      // recebimento rateado de 27/05, "sem vínculo" (descoberto em 22/09).
+      const [lancamentos, contratos] = await Promise.all([
+        supabase
+          .from('financeiro_lancamentos')
+          .select('id, contrato_id, pedido:contrato_pedidos(numero_pedido)')
+          .eq('empresa_id', empresaId)
+          .not('contrato_id', 'is', null),
+        supabase
+          .from('contratos')
+          .select('id, numero_contrato')
+          .eq('empresa_id', empresaId),
+      ]);
       // Falha aqui não pode derrubar a conciliação: o selo é informação
-      // adicional, e conciliar sem ele continua sendo possível.
-      if (error) return {};
+      // adicional, e conciliar sem ele continua sendo possível. Mas deixa
+      // rastro — foi o silêncio que escondeu o embed recusado por três semanas.
+      if (lancamentos.error) {
+        console.error('[vinculos-de-contrato] lançamentos:', lancamentos.error.message);
+        return {};
+      }
+      if (contratos.error) console.error('[vinculos-de-contrato] contratos:', contratos.error.message);
+      const numeroDoContrato = new Map<string, string | null>(
+        ((contratos.data ?? []) as Array<{ id: string; numero_contrato: string | null }>).map((c) => [c.id, c.numero_contrato]),
+      );
       const mapa: Record<string, VinculoDeContrato> = {};
       type Linha = {
         id: string; contrato_id: string;
-        contrato: { numero_contrato: string | null } | null;
         pedido: { numero_pedido: string | null } | null;
       };
-      for (const l of (data ?? []) as unknown as Linha[]) {
+      for (const l of (lancamentos.data ?? []) as unknown as Linha[]) {
         mapa[l.id] = {
           contrato_id: l.contrato_id,
-          numero_contrato: l.contrato?.numero_contrato ?? null,
+          numero_contrato: numeroDoContrato.get(l.contrato_id) ?? null,
           numero_pedido: l.pedido?.numero_pedido ?? null,
         };
       }
 
       // Os rateios. A tabela vem de migration colada à mão: ausente, o mapa
-      // segue só com os vínculos diretos.
-      const { data: rateios } = await supabase
+      // segue só com os vínculos diretos — com o motivo no console.
+      const { data: rateios, error: erroRateios } = await supabase
         .from('financeiro_lancamento_rateios' as never)
-        .select('lancamento_id, contrato_pedido_id, valor, pedido:contrato_pedidos(numero_pedido, nota_fiscal, contrato_id, contrato:contratos(numero_contrato))')
-        .eq('empresa_id', empresaAtiva!.id);
+        .select('lancamento_id, contrato_pedido_id, valor, pedido:contrato_pedidos(numero_pedido, nota_fiscal, contrato_id)')
+        .eq('empresa_id', empresaId);
+      if (erroRateios) console.error('[vinculos-de-contrato] rateios:', erroRateios.message);
       type LinhaRateio = {
         lancamento_id: string; contrato_pedido_id: string; valor: number;
-        pedido: { numero_pedido: string | null; nota_fiscal: string | null; contrato_id: string; contrato: { numero_contrato: string | null } | null } | null;
+        pedido: { numero_pedido: string | null; nota_fiscal: string | null; contrato_id: string } | null;
       };
       const linhas = ((rateios ?? []) as unknown as LinhaRateio[]).filter((r) => !!r.pedido);
       if (linhas.length === 0) return mapa;
@@ -91,7 +112,7 @@ export function useVinculosDeContrato() {
         if (!mapa[r.lancamento_id]) {
           mapa[r.lancamento_id] = {
             contrato_id: r.pedido!.contrato_id,
-            numero_contrato: r.pedido!.contrato?.numero_contrato ?? null,
+            numero_contrato: numeroDoContrato.get(r.pedido!.contrato_id) ?? null,
             numero_pedido: null,
           };
         }
