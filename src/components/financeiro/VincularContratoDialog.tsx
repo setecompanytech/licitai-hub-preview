@@ -57,6 +57,8 @@ type ItemDoContrato = {
 type PedidoExistente = {
   id: string; numero_pedido: string; descricao: string | null;
   valor_total: number; data_pedido: string | null;
+  /** Já recebido (título próprio ou rateio): não aceita outro título — a nota anexa-se ao recebimento. */
+  nf_quitada?: boolean | null;
 };
 
 type Props = {
@@ -196,7 +198,7 @@ export default function VincularContratoDialog({
     (async () => {
       const [ped, its, ctr] = await Promise.all([
         supabase.from('contrato_pedidos')
-          .select('id, numero_pedido, descricao, valor_total, data_pedido')
+          .select('id, numero_pedido, descricao, valor_total, data_pedido, nf_quitada')
           .eq('contrato_id', contratoId).order('data_pedido', { ascending: false }).limit(200),
         supabase.from('contrato_itens')
           .select('id, descricao, codigo_item, quantidade_contratada, quantidade_consumida, saldo_quantitativo, valor_unitario, cota')
@@ -500,14 +502,23 @@ export default function VincularContratoDialog({
                 {pedidos.map(p => (
                   <button key={p.id} type="button" onClick={() => setPedidoEscolhido(p.id)}
                     aria-pressed={pedidoEscolhido === p.id}
+                    // Pedido já recebido (22/09): outro título duplicaria o
+                    // recebimento e tiraria a quitação. O banco recusa; a tela
+                    // avisa antes.
+                    disabled={!!p.nf_quitada}
+                    title={p.nf_quitada ? 'Pedido já recebido. A nota dele anexa-se ao recebimento que o pagou: Contas a Receber › Extração de documentos.' : undefined}
                     className={cn(
                       'w-full rounded-md border p-3 text-left text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       pedidoEscolhido === p.id
                         ? 'border-primary bg-primary-tint'
                         : 'border-input bg-card hover:bg-muted',
+                      p.nf_quitada && 'cursor-not-allowed opacity-60',
                     )}>
                     <div className="flex justify-between gap-2">
-                      <span className="font-medium text-foreground">{p.numero_pedido}</span>
+                      <span className="font-medium text-foreground">
+                        {p.numero_pedido}
+                        {p.nf_quitada && <span className="ml-2 text-xs font-normal text-success-ink">já recebido</span>}
+                      </span>
                       <span className="tabular-nums">{brl(Number(p.valor_total) || 0)}</span>
                     </div>
                     <p className="truncate text-xs text-muted-foreground" title={p.descricao}>{p.descricao}</p>
