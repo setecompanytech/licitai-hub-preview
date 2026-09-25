@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, Re
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
-import type { PlanSlug } from '@/data/plan-features';
+import { planHierarchy, type PlanSlug } from '@/data/plan-features';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { queryClient, invalidatePermissionCaches } from '@/lib/query-client';
 import { registrarEventoSessao } from '@/lib/auditoria/trilha';
@@ -35,6 +35,18 @@ function productIdToPlanSlug(productId: string | null): PlanSlug | null {
     if (config.product_id === productId) return slug as PlanSlug;
   }
   return null;
+}
+
+/**
+ * O plano da assinatura (25/09): `plan_slug` que a função lê do nome do
+ * produto no Stripe (ou da assinatura registrada no banco); o `product_id`
+ * gravado no código é só reserva — produto recriado no painel não tem mais
+ * aquele id, e o assinante apareceria sem plano nenhum.
+ */
+function planoDaResposta(data: { plan_slug?: string | null; product_id?: string | null }): PlanSlug | null {
+  const slug = data.plan_slug ?? null;
+  if (slug && (planHierarchy as string[]).includes(slug)) return slug as PlanSlug;
+  return productIdToPlanSlug(data.product_id ?? null);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -76,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.ok && data) {
         setSubscription({
           subscribed: data.subscribed ?? false,
-          planSlug: productIdToPlanSlug(data.product_id ?? null),
+          planSlug: planoDaResposta(data),
           subscriptionEnd: data.subscription_end ?? null,
           loading: false,
         });

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { slugDoProduto, type ProdutoStripe } from "../_shared/precos-stripe.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,12 +16,22 @@ const logStep = (step: string, details?: any) => {
 
 const ENTERPRISE_PRODUCT_ID = "prod_UFFzoFGvapTwRU";
 
-/** Espelho de src/data/stripe-config.ts — assinatura do banco vira plano no front. */
+/**
+ * Espelho de src/data/stripe-config.ts — assinatura do banco vira plano no front.
+ *
+ * Desde 25/09 a resposta leva também `plan_slug`: o plano lido do NOME do
+ * produto no Stripe (`slugDoProduto`) ou da assinatura do banco. Os ids de
+ * produto abaixo são reserva — produto recriado no painel não tem mais o id
+ * de março, e o assinante apareceria sem plano nenhum.
+ */
 const PRODUCT_POR_SLUG: Record<string, string> = {
   basico: "prod_UFFzXlzGK8OfWy",
   profissional: "prod_UFFziPdCfP3rTw",
   enterprise: ENTERPRISE_PRODUCT_ID,
 };
+const SLUG_POR_PRODUCT: Record<string, string> = Object.fromEntries(
+  Object.entries(PRODUCT_POR_SLUG).map(([slug, id]) => [id, slug]),
+);
 
 /**
  * Assinatura registrada no banco — teste ou liberação manual — para a empresa
@@ -57,6 +68,7 @@ const assinaturaDoBanco = async (adminClient: any, userId: string) => {
 
   return {
     productId,
+    planSlug: (melhor.planos?.slug as string) ?? null,
     subscriptionEnd: melhor.data_fim ?? null,
     status: melhor.status as string,
   };
@@ -77,7 +89,8 @@ const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): 
 
 const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscription>) => {
   const hasActiveSub = subscriptions.data.length > 0;
-  let productId = null;
+  let productId: string | null = null;
+  let planSlug: string | null = null;
   let subscriptionEnd = null;
 
   if (hasActiveSub) {
@@ -98,18 +111,25 @@ const extractSubscriptionInfo = (subscriptions: Stripe.ApiList<Stripe.Subscripti
       logStep("Warning: could not parse period end, continuing without it");
     }
 
-    productId = sub.items.data[0]?.price?.product ?? null;
-    logStep("Subscription details", { productId, subscriptionEnd });
+    // O produto vem expandido (`expand: data.items.data.price.product`): o
+    // plano é lido do nome dele; o id gravado no código é só reserva.
+    const produto = sub.items.data[0]?.price?.product as string | Stripe.Product | Stripe.DeletedProduct | null | undefined;
+    productId = typeof produto === "string" ? produto : (produto?.id ?? null);
+    const produtoVivo = produto && typeof produto === "object" && !("deleted" in produto && produto.deleted)
+      ? (produto as unknown as ProdutoStripe)
+      : null;
+    planSlug = slugDoProduto(produtoVivo) ?? (productId ? SLUG_POR_PRODUCT[productId] ?? null : null);
+    logStep("Subscription details", { productId, planSlug, subscriptionEnd });
   }
 
-  return { hasActiveSub, productId, subscriptionEnd };
+  return { hasActiveSub, productId, planSlug, subscriptionEnd };
 };
 
 const getActiveSubscriptionByEmail = async (stripe: Stripe, email: string) => {
   const customers = await withTimeout(stripe.customers.list({ email, limit: 1 }), 5000, "Stripe customers.list");
   if (customers.data.length === 0) {
     logStep("No Stripe customer found for email", { email });
-    return { customers, hasActiveSub: false, productId: null, subscriptionEnd: null };
+    return { customers, hasActiveSub: false, productId: null, planSlug: null, subscriptionEnd: null };
   }
 
   const customerId = customers.data[0].id;
@@ -120,6 +140,7 @@ const getActiveSubscriptionByEmail = async (stripe: Stripe, email: string) => {
       customer: customerId,
       status: "active",
       limit: 1,
+      expand: ["data.items.data.price.product"],
     }),
     5000,
     "Stripe subscriptions.list",
@@ -141,7 +162,7 @@ serve(async (req) => {
   // corpo previsível — "não assinante" — para o app seguir renderizando.
   const semSessao = (motivo: string) =>
     new Response(
-      JSON.stringify({ subscribed: false, product_id: null, subscription_end: null, inherited_from: null, reason: motivo }),
+      JSON.stringify({ subscribed: false, product_id: null, plan_slug: null, subscription_end: null, inherited_from: null, reason: motivo }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 },
     );
 
@@ -185,7 +206,7 @@ serve(async (req) => {
     if ((systemRoles?.length ?? 0) > 0) {
       logStep("Admin bypass granted", { userId: user.id, systemAdmin: true });
       return new Response(
-        JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "admin_bypass" }),
+        JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, plan_slug: "enterprise", subscription_end: null, inherited_from: "admin_bypass" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
@@ -199,6 +220,7 @@ serve(async (req) => {
         JSON.stringify({
           subscribed: true,
           product_id: doBanco.productId,
+          plan_slug: doBanco.planSlug,
           subscription_end: doBanco.subscriptionEnd,
           inherited_from: doBanco.status === "trial" ? "trial" : "assinatura_registrada",
         }),
@@ -220,7 +242,7 @@ serve(async (req) => {
 
     if (directSubscription.hasActiveSub) {
       return new Response(
-        JSON.stringify({ subscribed: true, product_id: directSubscription.productId, subscription_end: directSubscription.subscriptionEnd, inherited_from: null }),
+        JSON.stringify({ subscribed: true, product_id: directSubscription.productId, plan_slug: directSubscription.planSlug, subscription_end: directSubscription.subscriptionEnd, inherited_from: null }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
@@ -255,7 +277,7 @@ serve(async (req) => {
           if ((ownerSystemRole?.length ?? 0) > 0) {
             logStep("Inheriting access from empresa owner bypass", { empresa_id: membership.empresa_id, owner: empresa.created_by });
             return new Response(
-              JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, subscription_end: null, inherited_from: "empresa_owner_bypass" }),
+              JSON.stringify({ subscribed: true, product_id: ENTERPRISE_PRODUCT_ID, plan_slug: "enterprise", subscription_end: null, inherited_from: "empresa_owner_bypass" }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
             );
           }
@@ -269,7 +291,7 @@ serve(async (req) => {
 
             if (inheritedSubscription.hasActiveSub) {
               return new Response(
-                JSON.stringify({ subscribed: true, product_id: inheritedSubscription.productId, subscription_end: inheritedSubscription.subscriptionEnd, inherited_from: inheritedFrom }),
+                JSON.stringify({ subscribed: true, product_id: inheritedSubscription.productId, plan_slug: inheritedSubscription.planSlug, subscription_end: inheritedSubscription.subscriptionEnd, inherited_from: inheritedFrom }),
                 { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
               );
             }
@@ -279,7 +301,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ subscribed: false, product_id: null, subscription_end: null, inherited_from: inheritedFrom }),
+      JSON.stringify({ subscribed: false, product_id: null, plan_slug: null, subscription_end: null, inherited_from: inheritedFrom }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {

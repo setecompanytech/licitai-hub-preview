@@ -8,11 +8,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   CheckCircle2, XCircle, Loader2, Play, Shield, Database,
   Bot, Search, FileText, Bell, Kanban, Users, Zap, Scale,
-  Calculator, Globe, BarChart3
+  Calculator, Globe, BarChart3, CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/hooks/useUserRole';
+import { descreverFalha } from '@/lib/erro-edge-function';
 
 type TestStatus = 'idle' | 'running' | 'pass' | 'fail';
+
+/** Um teste responde sim/não — ou sim/não com o que viu, para quem precisa ler o detalhe. */
+type ResultadoDoTeste = boolean | { ok: boolean; detalhe?: string };
 
 interface TestCase {
   id: string;
@@ -20,10 +25,58 @@ interface TestCase {
   description: string;
   icon: typeof Shield;
   plans: string[]; // slugs where this feature should be available
-  test: () => Promise<boolean>;
+  test: () => Promise<ResultadoDoTeste>;
 }
 
-const createTests = (userId: string): TestCase[] => [
+type DiagnosticoStripe = {
+  configurado: boolean;
+  modo: 'producao' | 'teste' | 'desconhecido';
+  conta: { id: string; nome: string | null; email: string | null; pais: string | null } | null;
+  erro_conta: string | null;
+  resolucao: Array<{ plano: string; ciclo: string; esperado: string; price_id: string | null; motivo: string }>;
+  faltam: number;
+};
+
+const MODO: Record<DiagnosticoStripe['modo'], string> = {
+  producao: 'produção', teste: 'TESTE', desconhecido: 'chave de tipo desconhecido',
+};
+
+/**
+ * A conta Stripe que o servidor usa (25/09) — só para o administrador do
+ * sistema. A chave vive nos secrets e não sai de lá; a função
+ * `stripe-diagnostico` responde de dentro: qual conta, em que modo, e se há um
+ * preço ativo para cada plano × ciclo. Foi a falta desse olhar que deixou o
+ * botão Assinar dizendo "o plano não existe mais" sem ninguém saber por quê.
+ */
+const testeDoStripe: TestCase = {
+  id: 'pagamento-stripe',
+  name: 'Pagamento (Stripe)',
+  description: 'Conta Stripe do servidor e um preço ativo para cada plano e ciclo',
+  icon: CreditCard,
+  plans: ['basico', 'profissional', 'enterprise'],
+  test: async () => {
+    const { data, error } = await supabase.functions.invoke('stripe-diagnostico');
+    if (error) {
+      const motivo = await descreverFalha(error);
+      return { ok: false, detalhe: motivo ?? 'A função stripe-diagnostico não respondeu — ainda não foi implantada?' };
+    }
+    const d = data as DiagnosticoStripe;
+    if (!d.configurado) return { ok: false, detalhe: 'STRIPE_SECRET_KEY não está configurada no servidor.' };
+    if (!d.conta) return { ok: false, detalhe: `O Stripe recusou a chave do servidor (${MODO[d.modo]}): ${d.erro_conta ?? 'sem detalhe'}.` };
+    const conta = `Conta ${d.conta.nome ?? d.conta.id} (${d.conta.id}), modo ${MODO[d.modo]}, e-mail ${d.conta.email ?? 'não informado'}.`;
+    const faltam = d.resolucao.filter((l) => !l.price_id);
+    if (faltam.length === 0) {
+      return { ok: true, detalhe: `${conta} ${d.resolucao.length} preços encontrados, um para cada plano e ciclo.` };
+    }
+    return {
+      ok: false,
+      detalhe: `${conta} Faltam ${faltam.length} de ${d.resolucao.length} preços: ${faltam.map((l) => `${l.plano} ${l.ciclo} (${l.esperado})`).join('; ')}.`,
+    };
+  },
+};
+
+const createTests = (userId: string, adminDoSistema: boolean): TestCase[] => [
+  ...(adminDoSistema ? [testeDoStripe] : []),
   {
     id: 'auth',
     name: 'Autenticação',
@@ -212,11 +265,13 @@ const planLabels: Record<string, { name: string }> = {
 
 export default function PlanoVerificacao() {
   const { user } = useAuth();
+  const { isSystemAdmin } = useUserRole();
   const [results, setResults] = useState<Record<string, TestStatus>>({});
+  const [detalhes, setDetalhes] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('profissional');
 
-  const tests = user ? createTests(user.id) : [];
+  const tests = user ? createTests(user.id, isSystemAdmin) : [];
   const planTests = tests.filter(t => t.plans.includes(selectedPlan));
   const passCount = planTests.filter(t => results[t.id] === 'pass').length;
   const failCount = planTests.filter(t => results[t.id] === 'fail').length;
@@ -226,22 +281,28 @@ export default function PlanoVerificacao() {
     if (!user) return;
     setRunning(true);
     const newResults: Record<string, TestStatus> = {};
+    const novosDetalhes: Record<string, string> = {};
 
     // Set all to running
     for (const t of planTests) {
       newResults[t.id] = 'running';
     }
     setResults({ ...newResults });
+    setDetalhes({});
 
     // Run sequentially with visual feedback
     for (const t of planTests) {
       try {
-        const passed = await t.test();
-        newResults[t.id] = passed ? 'pass' : 'fail';
-      } catch {
+        const resultado = await t.test();
+        const ok = typeof resultado === 'boolean' ? resultado : resultado.ok;
+        if (typeof resultado === 'object' && resultado.detalhe) novosDetalhes[t.id] = resultado.detalhe;
+        newResults[t.id] = ok ? 'pass' : 'fail';
+      } catch (e) {
         newResults[t.id] = 'fail';
+        novosDetalhes[t.id] = e instanceof Error ? e.message : String(e);
       }
       setResults({ ...newResults });
+      setDetalhes({ ...novosDetalhes });
       // Small delay for visual effect
       await new Promise(r => setTimeout(r, 300));
     }
@@ -310,6 +371,9 @@ export default function PlanoVerificacao() {
               <div className="min-w-0 flex-1">
                 <p className="text-base font-medium text-foreground">{t.name}</p>
                 <p className="text-sm text-muted-foreground">{t.description}</p>
+                {detalhes[t.id] && (
+                  <p className="mt-1 text-sm text-foreground" data-testid={`detalhe-${t.id}`}>{detalhes[t.id]}</p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <div className="hidden gap-1 sm:flex">

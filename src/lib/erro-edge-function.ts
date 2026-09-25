@@ -69,8 +69,9 @@ export function explicarMotivo(motivo: string | null): string | null {
          + 'Isso é configuração do sistema, não da sua conta — tentar de novo não resolve.';
   }
   if (/No such price|resource_missing/i.test(motivo)) {
-    return 'O plano selecionado não existe mais no Stripe. Os preços foram recriados '
-         + 'e o cadastro do sistema aponta para os antigos.';
+    return 'O preço configurado não existe mais no Stripe. Desde 25/09 o sistema acha o preço '
+         + 'pelo valor e pelo ciclo; se esta mensagem continua, a função create-checkout ainda '
+         + 'não foi reimplantada.';
   }
   if (/Usuário não autenticado|Authorization header/i.test(motivo)) {
     return 'Sua sessão expirou. Saia e entre de novo antes de assinar.';

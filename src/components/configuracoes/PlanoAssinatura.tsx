@@ -33,7 +33,7 @@ export default function PlanoAssinatura() {
   const [loading, setLoading] = useState(true);
   const [highlight, setHighlight] = useState(false);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<{ subscribed: boolean; product_id?: string; subscription_end?: string } | null>(null);
+  const [subscription, setSubscription] = useState<{ subscribed: boolean; product_id?: string; plan_slug?: string | null; subscription_end?: string } | null>(null);
   const [managingPortal, setManagingPortal] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,8 +129,10 @@ export default function PlanoAssinatura() {
         return;
       }
 
+      // Plano e ciclo, não id de preço (25/09): a função acha o preço ativo
+      // do Stripe pelo valor que esta tela mostra. Id gravado envelhecia.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: stripeConfig.prices[cycle] },
+        body: { plano: slug, ciclo: cycle },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -196,7 +198,10 @@ export default function PlanoAssinatura() {
   };
 
   const getActivePlanSlug = (): string | null => {
-    if (!subscription?.subscribed || !subscription.product_id) return null;
+    if (!subscription?.subscribed) return null;
+    // O plano vem do nome do produto (`plan_slug`); o `product_id` gravado é reserva.
+    if (subscription.plan_slug && subscription.plan_slug in stripePlans) return subscription.plan_slug;
+    if (!subscription.product_id) return null;
     for (const [slug, config] of Object.entries(stripePlans)) {
       if (config.product_id === subscription.product_id) return slug;
     }

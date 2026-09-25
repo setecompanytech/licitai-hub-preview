@@ -316,6 +316,33 @@ medida que os documentos chegam. Regras que valem no código (migration
 - Recebimento MAIOR que a nota do pedido é caso de RATEIO (22/09, manhã),
   não de parte: a tela aponta o Ratear.
 
+## Assinatura × Stripe — o preço se acha pelo valor e pelo ciclo (25/09/2026)
+
+Os doze ids `price_…` gravados em `src/data/stripe-config.ts` (março, pelo
+Lovable) sumiram do Stripe e o botão Assinar dizia "o plano selecionado não
+existe mais". Regras que valem no código:
+
+- **Nenhum id de preço gravado.** `create-checkout` recebe `{ plano, ciclo }`,
+  lê `planos.preco_mensal` (a mesma tabela que a tela mostra) e escolhe, entre
+  os preços ATIVOS da conta Stripe, o do mesmo ciclo e do mesmo valor
+  (`functions/_shared/precos-stripe.ts`, testado pelo vitest em
+  `src/lib/assinatura/__tests__/`). Valor diferente do site é recusado com a
+  diferença dita — nunca se cobra o que a tela não mostrou. Os descontos por
+  ciclo (10/15/20%) vivem em `src/data/pricing-config.ts` e no espelho
+  `CICLOS` do módulo compartilhado; mudam juntos.
+- **O plano de uma assinatura vem do nome do produto** (`slugDoProduto`:
+  "Praefectus Profissional" → profissional; `metadata.slug` manda). O
+  `product_id` gravado é só reserva. `check-subscription` devolve `plan_slug`
+  e o front lê esse campo antes do id.
+- **Conferir a conta é pela tela, não por fora.** Configurações › Verificação
+  de Funcionalidades › "Pagamento (Stripe)" (só admin do sistema) chama
+  `stripe-diagnostico`: conta, modo (produção × teste), produtos, preços e a
+  tabela plano × ciclo com o que falta. A Management API mostra só o digest
+  dos secrets — a chave nunca sai do Supabase, e nem deve.
+- **Assinatura registrada à mão vence.** `assinaturas.data_fim` manda; vencida,
+  o acesso cai para o Stripe. As quatro de 18/08 (ETHOS, Santa Rosa, Multimix,
+  O S) venceram em 25/09; prorrogar é decisão do dono, por SQL.
+
 ## Portal da Transparência — a API federal por uma porta só (22/09/2026)
 
 Mapa das 106 rotas × funções do produto em `~/Downloads/Mapa-API-Portal-
