@@ -63,7 +63,8 @@ type DadosContrato = {
   // Campos quando é aditivo
   aditivo?: {
     numero_aditivo?: string | null;
-    tipo_aditivo?: "valor" | "quantidade" | "valor_quantidade" | "prazo" | "escopo" | null;
+    tipo_aditivo?: "valor" | "quantidade" | "valor_quantidade" | "prazo" | "escopo"
+      | "reequilibrio" | "reajuste" | "repactuacao" | "renovacao" | "representante" | null;
     valor_acrescimo?: number | string | null;
     valor_supressao?: number | string | null;
     quantidade_acrescimo?: number | string | null;
@@ -72,7 +73,26 @@ type DadosContrato = {
     contrato_referencia?: string | null;
     ata_referencia?: string | null;
     justificativa?: string | null;
+    // 26/09: o que o termo muda em CADA item — a tabela "item × valor atual ×
+    // valor reajustado" do reequilíbrio, ou a tabela completa da renovação.
+    itens_alterados?: ItemAlterado[] | null;
+    periodo_inicio?: string | null;
+    periodo_fim?: string | null;
+    valor_periodo?: number | string | null;
+    fundamento_citado?: string | null;
+    representante_novo?: string | null;
   } | null;
+};
+
+type ItemAlterado = {
+  numero_item?: string | number | null;
+  numero_lote?: string | null;
+  descricao?: string | null;
+  unidade?: string | null;
+  quantidade?: number | string | null;
+  valor_atual?: number | string | null;
+  valor_novo?: number | string | null;
+  valor_total?: number | string | null;
 };
 
 function cleanString(value: unknown): string | null {
@@ -177,6 +197,26 @@ function normalizeContrato(data: DadosContrato) {
         contrato_referencia: cleanString(data.aditivo.contrato_referencia),
         ata_referencia: cleanString(data.aditivo.ata_referencia),
         justificativa: cleanString(data.aditivo.justificativa),
+        // As linhas por item, como o documento as escreve. Número do item é
+        // texto (o casamento com o cadastro é do front); números pela mesma
+        // régua dos itens ("100.800" é cem mil e oitocentos).
+        itens_alterados: Array.isArray(data.aditivo.itens_alterados)
+          ? data.aditivo.itens_alterados.map((l) => ({
+              numero_item: l?.numero_item == null ? null : String(l.numero_item).trim() || null,
+              numero_lote: cleanString(l?.numero_lote),
+              descricao: cleanString(l?.descricao),
+              unidade: cleanString(l?.unidade),
+              quantidade: parseNumber(l?.quantidade),
+              valor_atual: parseNumber(l?.valor_atual),
+              valor_novo: parseNumber(l?.valor_novo),
+              valor_total: parseNumber(l?.valor_total),
+            })).filter((l) => l.descricao || l.numero_item)
+          : [],
+        periodo_inicio: normalizeDate(data.aditivo.periodo_inicio),
+        periodo_fim: normalizeDate(data.aditivo.periodo_fim),
+        valor_periodo: parseNumber(data.aditivo.valor_periodo),
+        fundamento_citado: cleanString(data.aditivo.fundamento_citado),
+        representante_novo: cleanString(data.aditivo.representante_novo),
       }
     : null;
 
@@ -458,7 +498,7 @@ serve(async (req) => {
 
     const model = hasImages && !hasText ? "gpt-4o" : "gpt-4o-mini";
     const systemPrompt = "Você é um extrator técnico de documentos públicos brasileiros (Contratos Administrativos, ATAs de Registro de Preços e Termos Aditivos). Extraia SOMENTE informações que aparecem literalmente no documento. Não invente, não estime, não complete lacunas. Se um campo não estiver explícito, retorne null. Preserve a descrição real dos itens exatamente como no documento. SEMPRE classifique o tipo de documento em tipo_documento_detectado: 'ata_srp', 'contrato', 'aditivo' ou 'outro'. SEMPRE classifique também a estrutura em tipo_estrutura_detectado: 'lotes' (quando o documento agrupa itens sob marcadores tipo 'LOTE 01', 'LOTE 02', 'GRUPO A', 'CATEGORIA') ou 'itens' (quando os itens são listados individualmente sem agrupamento). Forneça tipo_estrutura_confianca de 0.0 a 1.0 e uma justificativa curta. Quando o documento for aditivo, preencha 'aditivo' com os campos correspondentes.";
-    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- PRAZO DE PAGAMENTO: procure a clausula "DO PAGAMENTO", "DAS CONDICOES DE PAGAMENTO" ou equivalente — e o art. 92, V e VI da Lei 14.133/2021 a torna obrigatoria (condicoes de pagamento; prazo para liquidacao e pagamento), entao ela existe. Extraia em quantos dias a Administracao paga, se sao uteis ou corridos, e sobretudo DE ONDE o prazo e contado: do ateste, da emissao da nota fiscal, do protocolo da nota no orgao, ou da entrega. Nao suponha o marco — contratos usam os quatro, e trocar um pelo outro desloca a previsao de entrada em semanas. Sempre com a frase literal.\n- FORMA DE FORNECIMENTO: na mesma cláusula de entrega/execução, o documento costuma dizer se a entrega é ÚNICA (integral, imediata, em parcela única — comum em dispensa de licitação) ou PARCELADA/CONTÍNUA (sob demanda, conforme requisição ou ordem de fornecimento). Preencha forma_fornecimento com 'unico' ou 'continuo' SOMENTE quando o documento disser isso com todas as letras; sem menção explícita, devolva null — a tela pergunta ao usuário, e uma suposição sua viraria regra de alerta que ninguém pactuou.\n- CLÁUSULA DE REAJUSTE: procure "DO REAJUSTE", "DO REAJUSTAMENTO", "DA ATUALIZAÇÃO DOS PREÇOS" ou equivalente — o art. 25, §7º da Lei 14.133/2021 (e o art. 92, V) obriga o CONTRATO a trazer o índice de reajustamento, então a cláusula costuma existir. Extraia (a) a SIGLA do índice (IPCA, IGP-M, INPC…), (b) a DATA-BASE de onde conta o interregno de 1 ano (a cláusula costuma dizer "contado da data da apresentação da proposta" ou "do orçamento estimado" — extraia a DATA se o documento a der; se a cláusula só nomear o marco sem data, devolva null na data), e (c) a FRASE LITERAL. Índice ou data inventados disparariam alerta de reajuste no dia errado — na dúvida, null.\n- ASSINATURAS: procure o bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por" ou "Documento assinado digitalmente". Preencha DOIS campos separados: assinatura_orgao com quem assinou pela ADMINISTRACAO (secretario, comandante, ordenador de despesa) e assinatura_contratada com quem assinou pela EMPRESA (socio, representante legal; costuma vir rotulado "Contratado", "Contratada" ou "Fornecedor"). O rotulo ao lado do nome diz de que lado ele esta — leia o rotulo, nao adivinhe pela ordem em que aparecem. Deixe null o lado que nao tiver assinatura. Nao classifique nada: so liste quem assinou de cada lado.\n- IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma. Uma observação vertida para o inglês foi parar no registro oficial de um empenho (08/09); objeto, cláusulas e observações saem como o documento escreve.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
+    const promptText = `Arquivo: ${nome_arquivo || "documento"}\nDica do usuário sobre o tipo: ${tipo_arquivo || "desconhecido"}\nEstrutura informada pelo usuário: ${tipo_estrutura === "lotes" ? "LOTES" : tipo_estrutura === "itens" ? "ITENS" : "AUTO (não informada — você decide)"}\n\nClassifique o tipo do documento, classifique a estrutura (itens vs lotes) e extraia os dados pertinentes:\n\n1) Se for ATA SRP → preencha numero_ata, objeto, orgao, valor_global, validade_ata_meses, vigência, itens.\n2) Se for Contrato → preencha numero_contrato, objeto, valor_global, vigência, itens.\n3) Se for Aditivo → preencha 'aditivo' com tipo, valores, datas e referências — e itens_alterados com TODA linha da tabela de itens do termo (número do item como está na coluna ITEM, valor atual e valor novo; na renovação, quantidade e valor unitário). Termo de reequilíbrio que altera 12 dos 18 itens tem 12 linhas em itens_alterados, nem uma a mais. Não calcule porcentagem: a coluna de porcentagem do documento pode estar errada e o sistema calcula a sua. Renovação: periodo_inicio, periodo_fim e valor_periodo vêm da cláusula ('contados a partir do dia X até o dia Y', 'valor total ... para o período de 12 meses'). Cite em fundamento_citado o dispositivo legal que o termo invoca, literal.\n\nPara CADA item: se a estrutura for 'lotes', preencha 'numero_lote' e 'descricao_lote'. Itens do mesmo lote compartilham o mesmo numero_lote.\n\nREGRAS CRÍTICAS:\n- NÚMEROS SÃO TRANSCRITOS COMO TEXTO, exatamente como o documento os escreve: "100.800" (cem mil e oitocentos, ponto de milhar brasileiro), "15,80", "1.234.567,89". NUNCA os converta para número JSON — o literal 100.800 em JSON vale cem vírgula oito, e foi assim que uma quantidade de cem mil quilos virou cem.\n- O texto vem delimitado por '===== PÁGINA N ====='. Use os delimitadores para se orientar: a ata-alvo é um bloco CONTÍGUO de páginas; dados de páginas distantes entre si provavelmente pertencem a atas diferentes.\n- O documento pode ser um PROCESSO com ATAS DE VÁRIOS FORNECEDORES. Extraia SOMENTE a ata do fornecedor indicado no nome do arquivo: os itens do quadro OBJETO dela e o VALOR TOTAL dela. NUNCA use o total do processo, de outro fornecedor ou de um resumo geral como valor_global.\n- valor_global TEM de ser o VALOR TOTAL do quadro OBJETO desta ata — e tem de bater com a soma dos valor_total dos itens que você extraiu. Se os números que encontrou não fecham entre si, você pegou o total errado.\n- PRAZO E LOCAL DE ENTREGA: todo contrato e toda ata trazem, em cláusula própria (procure por "DA ENTREGA", "DO PRAZO DE ENTREGA", "DO LOCAL DE ENTREGA", "DO RECEBIMENTO", "DA EXECUÇÃO"), (a) em quantos dias entregar depois do pedido, (b) onde entregar, (c) em quantos dias o órgão recebe e atesta. Extraia os três, sempre com a FRASE LITERAL na cláusula correspondente — o número sozinho não pode ser conferido, e ele vai disparar aviso de prazo na tela de Pedidos. Distinga "dias úteis" de "dias corridos": não são a mesma coisa e a diferença passa de uma semana em dezembro. Se a cláusula não existir no documento, devolva null nos três — prazo inventado vira obrigação que ninguém pactuou.\n- PRAZO DE PAGAMENTO: procure a clausula "DO PAGAMENTO", "DAS CONDICOES DE PAGAMENTO" ou equivalente — e o art. 92, V e VI da Lei 14.133/2021 a torna obrigatoria (condicoes de pagamento; prazo para liquidacao e pagamento), entao ela existe. Extraia em quantos dias a Administracao paga, se sao uteis ou corridos, e sobretudo DE ONDE o prazo e contado: do ateste, da emissao da nota fiscal, do protocolo da nota no orgao, ou da entrega. Nao suponha o marco — contratos usam os quatro, e trocar um pelo outro desloca a previsao de entrada em semanas. Sempre com a frase literal.\n- FORMA DE FORNECIMENTO: na mesma cláusula de entrega/execução, o documento costuma dizer se a entrega é ÚNICA (integral, imediata, em parcela única — comum em dispensa de licitação) ou PARCELADA/CONTÍNUA (sob demanda, conforme requisição ou ordem de fornecimento). Preencha forma_fornecimento com 'unico' ou 'continuo' SOMENTE quando o documento disser isso com todas as letras; sem menção explícita, devolva null — a tela pergunta ao usuário, e uma suposição sua viraria regra de alerta que ninguém pactuou.\n- CLÁUSULA DE REAJUSTE: procure "DO REAJUSTE", "DO REAJUSTAMENTO", "DA ATUALIZAÇÃO DOS PREÇOS" ou equivalente — o art. 25, §7º da Lei 14.133/2021 (e o art. 92, V) obriga o CONTRATO a trazer o índice de reajustamento, então a cláusula costuma existir. Extraia (a) a SIGLA do índice (IPCA, IGP-M, INPC…), (b) a DATA-BASE de onde conta o interregno de 1 ano (a cláusula costuma dizer "contado da data da apresentação da proposta" ou "do orçamento estimado" — extraia a DATA se o documento a der; se a cláusula só nomear o marco sem data, devolva null na data), e (c) a FRASE LITERAL. Índice ou data inventados disparariam alerta de reajuste no dia errado — na dúvida, null.\n- ASSINATURAS: procure o bloco de assinaturas no fim, carimbos, certificados ICP-Brasil e frases como "Assinado eletronicamente por" ou "Documento assinado digitalmente". Preencha DOIS campos separados: assinatura_orgao com quem assinou pela ADMINISTRACAO (secretario, comandante, ordenador de despesa) e assinatura_contratada com quem assinou pela EMPRESA (socio, representante legal; costuma vir rotulado "Contratado", "Contratada" ou "Fornecedor"). O rotulo ao lado do nome diz de que lado ele esta — leia o rotulo, nao adivinhe pela ordem em que aparecem. Deixe null o lado que nao tiver assinatura. Nao classifique nada: so liste quem assinou de cada lado.\n- IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma. Uma observação vertida para o inglês foi parar no registro oficial de um empenho (08/09); objeto, cláusulas e observações saem como o documento escreve.\n- NUNCA invente itens. Se a tabela nao estiver legivel no texto recebido, devolva itens: [] e diga isso em observacoes. Uma lista plausivel de produtos ("Arroz", "Feijao", "Acucar") e MUITO PIOR que uma lista vazia: quem cadastra nao tem como desconfiar dela.
 - A soma dos valor_total dos itens TEM de bater com o valor_global do documento. Se nao bater, voce leu errado — confira antes de responder.
 - Liste TODOS os itens da tabela, um por linha do documento. Não resuma, não agrupe, não pare no meio: uma ATA SRP costuma ter dezenas de itens e a tabela inteira é a parte que mais importa.\n- NÃO invente campos\n- NÃO reescreva descrições com sinônimos\n- Use null quando o campo não existir\n- Datas no formato DD/MM/AAAA ou YYYY-MM-DD`;
 
@@ -589,7 +629,34 @@ serve(async (req) => {
                     description: "Dados do termo aditivo, quando aplicável",
                     properties: {
                       numero_aditivo: { type: "string", description: "Ex: 1º Termo Aditivo" },
-                      tipo_aditivo: { type: "string", enum: ["valor", "quantidade", "valor_quantidade", "prazo", "escopo"] },
+                      tipo_aditivo: {
+                        type: "string",
+                        enum: ["valor", "quantidade", "valor_quantidade", "prazo", "escopo", "reequilibrio", "reajuste", "repactuacao", "renovacao", "representante"],
+                        description: "'reequilibrio' = revisão/recomposição de preços por fato superveniente (art. 124, II, d), com tabela item × valor atual × valor reajustado; 'reajuste' = índice do contrato (IPCA, INPC…); 'repactuacao' = planilha de mão de obra; 'renovacao' = prorrogação de fornecimento/serviço contínuo por novo período (art. 107), normalmente com a tabela completa de itens e o valor do período; 'representante' = só troca de representante legal ou razão social; 'prazo' = prorrogação sem novo período de fornecimento; 'quantidade'/'valor'/'valor_quantidade' = acréscimo ou supressão do art. 124, I, b. Quando o termo faz mais de uma coisa (renovação + troca de representante), escolha a que altera números.",
+                      },
+                      itens_alterados: {
+                        type: "array",
+                        description: "TODA linha da tabela de itens do termo, uma por item, exatamente como o documento escreve. Reequilíbrio/reajuste/repactuação: colunas 'valor atual/contratado' → valor_atual e 'valor reajustado/reequilibrado/novo' → valor_novo. Renovação e alteração quantitativa: quantidade e valor unitário do período (valor unitário → valor_novo). NUNCA calcule porcentagem nem valor: transcreva. Item que o termo não cita não entra.",
+                        items: {
+                          type: "object",
+                          properties: {
+                            numero_item: { type: ["string", "number"], description: "O número do item COMO ESTÁ NA TABELA do termo (coluna ITEM). Não renumere." },
+                            numero_lote: { type: "string", description: "Lote ao qual o item pertence, se o termo o indicar." },
+                            descricao: { type: "string", description: "Descrição do item, transcrita." },
+                            unidade: { type: "string" },
+                            quantidade: { type: ["string", "number"], description: "Transcreva EXATAMENTE como no documento, como texto (ex.: \"4822\", \"2.411\")" },
+                            valor_atual: { type: ["string", "number"], description: "Valor unitário ANTES do termo, como texto (ex.: \"5,04\")" },
+                            valor_novo: { type: ["string", "number"], description: "Valor unitário DEPOIS do termo, como texto (ex.: \"6,81\")" },
+                            valor_total: { type: ["string", "number"], description: "Valor total da linha, se o termo trouxer, como texto" },
+                          },
+                          additionalProperties: false,
+                        },
+                      },
+                      periodo_inicio: { type: "string", description: "Renovação: primeiro dia do novo período ('contados a partir do dia 11 de junho de 2025')" },
+                      periodo_fim: { type: "string", description: "Renovação: último dia do novo período ('até o dia 11 de junho de 2026')" },
+                      valor_periodo: { type: ["string", "number"], description: "Renovação: valor total do novo período, como texto (ex.: \"578.929,32\")" },
+                      fundamento_citado: { type: "string", description: "O dispositivo legal que o próprio termo cita, literal (ex.: 'art. 124, inc. II, alínea d da Lei nº 14.133/2021')" },
+                      representante_novo: { type: "string", description: "Nome do novo representante legal, quando o termo o altera" },
                       valor_acrescimo: { type: ["string", "number"], description: "Transcreva EXATAMENTE como no documento, como texto (ex.: \"100.800\", \"15,80\", \"1.234.567,89\")" },
                       valor_supressao: { type: ["string", "number"], description: "Transcreva EXATAMENTE como no documento, como texto (ex.: \"100.800\", \"15,80\", \"1.234.567,89\")" },
                       quantidade_acrescimo: { type: ["string", "number"], description: "Transcreva EXATAMENTE como no documento, como texto (ex.: \"100.800\", \"15,80\", \"1.234.567,89\")" },

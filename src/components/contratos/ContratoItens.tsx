@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UNIDADES } from '@/lib/unidades';
+import { trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,18 @@ type ContratoItem = {
   ata_item_id: string | null; quantidade_ata_consumida: number | null;
   custo_unitario?: number | null; custo_total?: number | null;
   numero_lote?: string | null; descricao_lote?: string | null;
+  /** Preço da contratação, guardado na primeira vez que um termo muda o vigente (26/09). */
+  valor_unitario_original?: number | null;
+};
+
+/** O que um termo aplicado fez neste item (contrato_aditivo_itens). */
+type PassoDoTermo = {
+  rotulo: string;
+  data: string | null;
+  valor_anterior: number | null;
+  valor_novo: number | null;
+  quantidade_acrescimo: number;
+  quantidade_supressao: number;
 };
 
 type Aditivo = {
@@ -83,6 +96,8 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [itens, setItens] = useState<ContratoItem[]>([]);
   const [ataItens, setAtaItens] = useState<ContratoItem[]>([]);
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
+  /** Por item, os termos aplicados em ordem: é a trajetória do preço na coluna Situação. */
+  const [passosPorItem, setPassosPorItem] = useState<Record<string, PassoDoTermo[]>>({});
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -266,6 +281,32 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     setItens((itensRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
     setProdutos((produtosRes.data as any[]) || []);
+
+    // As linhas dos termos aplicadas a cada item (26/09). A tabela vem de
+    // migration colada à mão: ausente, a coluna Situação segue como antes.
+    const { data: linhasDosTermos } = await supabase
+      .from('contrato_aditivo_itens' as never)
+      .select('contrato_item_id, valor_unitario_anterior, valor_unitario_novo, quantidade_acrescimo, quantidade_supressao, aplicado_em, aditivo:contrato_aditivos(numero_aditivo, data_efeitos, data_assinatura)')
+      .eq('contrato_id', contratoId)
+      .not('aplicado_em', 'is', null)
+      .order('aplicado_em', { ascending: true });
+    type LinhaDoTermoLida = {
+      contrato_item_id: string; valor_unitario_anterior: number | null; valor_unitario_novo: number | null;
+      quantidade_acrescimo: number | null; quantidade_supressao: number | null;
+      aditivo: { numero_aditivo: string | null; data_efeitos: string | null; data_assinatura: string | null } | null;
+    };
+    const passos: Record<string, PassoDoTermo[]> = {};
+    for (const l of ((linhasDosTermos ?? []) as unknown as LinhaDoTermoLida[])) {
+      (passos[l.contrato_item_id] ??= []).push({
+        rotulo: l.aditivo?.numero_aditivo ?? 'Termo',
+        data: l.aditivo?.data_efeitos ?? l.aditivo?.data_assinatura ?? null,
+        valor_anterior: l.valor_unitario_anterior === null ? null : Number(l.valor_unitario_anterior),
+        valor_novo: l.valor_unitario_novo === null ? null : Number(l.valor_unitario_novo),
+        quantidade_acrescimo: Number(l.quantidade_acrescimo) || 0,
+        quantidade_supressao: Number(l.quantidade_supressao) || 0,
+      });
+    }
+    setPassosPorItem(passos);
 
     if (m?.tipo_documento === 'contrato' && m.ata_srp_id) {
       const ataItensRes = await supabase.from('contrato_itens').select('*').eq('contrato_id', m.ata_srp_id).order('created_at', { ascending: true });
@@ -852,33 +893,68 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 const aditivoModificador = (item as ItemConsolidado)._aditivoModificador ?? null;
                 const original = (item as ItemConsolidado)._original ?? null;
 
+                // Os termos aplicados a este item (26/09): a trajetória do
+                // preço e das quantidades, termo a termo. Manda sobre as
+                // camadas antigas, que nenhum contrato usa.
+                const passosDoTermo = passosPorItem[item.id] ?? [];
+                const ultimoPasso = passosDoTermo.length > 0 ? passosDoTermo[passosDoTermo.length - 1] : null;
+                const precoOriginal = item.valor_unitario_original != null
+                  ? Number(item.valor_unitario_original)
+                  : (passosDoTermo.find((p) => p.valor_anterior !== null)?.valor_anterior ?? (Number(item.valor_unitario) || 0));
+                const trajetoria = ultimoPasso
+                  ? trajetoriaDoPreco(precoOriginal, passosDoTermo.filter((p) => p.valor_novo !== null).map((p) => ({ rotulo: p.rotulo, data: p.data, valor: p.valor_novo as number })))
+                  : [];
+
                 // Para visão plana (todos os registros), usa a lógica original
                 const origemLabel = camadaSel ? labelSituacao : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
-                  : foiModificado && aditivoModificador
-                    ? `Atualizado: ${aditivoModificador.numero_aditivo}`
-                    : foiAdicionado && aditivoModificador
-                      ? `Novo: ${aditivoModificador.numero_aditivo}`
-                      : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
+                  : ultimoPasso
+                    ? `Atualizado: ${ultimoPasso.rotulo}`
+                    : foiModificado && aditivoModificador
+                      ? `Atualizado: ${aditivoModificador.numero_aditivo}`
+                      : foiAdicionado && aditivoModificador
+                        ? `Novo: ${aditivoModificador.numero_aditivo}`
+                        : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
 
                 // Status em texto + ícone + cor, nunca só cor: o selo da casa
                 // substitui o badge que dependia de emoji (✏/✦) para dizer o
                 // que mudou — emoji não é lido por leitor de tela.
                 const tomSituacao = !consolidado
                   ? 'neutro'
-                  : foiModificado
+                  : ultimoPasso || foiModificado
                     ? 'atencao'
                     : foiAdicionado
                       ? 'sucesso'
                       : 'neutro';
-                const IconeSituacao = consolidado && foiModificado
+                const IconeSituacao = consolidado && (ultimoPasso || foiModificado)
                   ? Pencil
                   : consolidado && foiAdicionado
                     ? Plus
                     : undefined;
 
+                const dataCurta = (iso: string | null) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : null;
+
                 // Tooltip com histórico de versões (só na visão consolidada)
-                const tooltipContent = consolidado && foiModificado && original ? (
+                const tooltipContent = consolidado && ultimoPasso ? (
+                  <div className="g-meta space-y-1" data-testid={`trajetoria-${item.id}`}>
+                    <p className="font-semibold">Preço por termo:</p>
+                    {trajetoria.map((t, i) => (
+                      <p key={i} className={i === 0 ? 'text-muted-foreground' : undefined}>
+                        {t.rotulo}{t.data ? ` (${dataCurta(t.data)})` : ''}: {fmt(t.valor)}/un
+                        {t.variacaoPct !== null && (
+                          <span className={t.variacaoPct >= 0 ? ' text-success-ink' : ' text-destructive-ink'}>
+                            {' '}({t.variacaoPct >= 0 ? '+' : ''}{t.variacaoPct.toFixed(1)}%)
+                          </span>
+                        )}
+                      </p>
+                    ))}
+                    {passosDoTermo.filter((p) => p.quantidade_acrescimo > 0 || p.quantidade_supressao > 0).map((p, i) => (
+                      <p key={`q${i}`}>
+                        {p.rotulo}{p.data ? ` (${dataCurta(p.data)})` : ''}: {p.quantidade_acrescimo > 0 ? `+${p.quantidade_acrescimo}` : ''}{p.quantidade_supressao > 0 ? ` −${p.quantidade_supressao}` : ''} {item.unidade}
+                      </p>
+                    ))}
+                  </div>
+                ) : consolidado && foiModificado && original ? (
                   <div className="g-meta space-y-1">
                     <p className="font-semibold">Histórico de alterações:</p>
                     <p className="text-muted-foreground">
@@ -957,6 +1033,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {consolidado && foiModificado && original && original.valor_unitario !== item.valor_unitario && (
                         <span className="g-meta text-muted-foreground line-through">
                           {fmt(original.valor_unitario)}/un (original)
+                        </span>
+                      )}
+                      {consolidado && ultimoPasso && Math.abs(precoOriginal - (Number(item.valor_unitario) || 0)) >= 0.005 && (
+                        <span className="g-meta text-muted-foreground line-through" data-testid={`preco-original-${item.id}`}>
+                          {fmt(precoOriginal)}/un (contratação)
                         </span>
                       )}
                     </TableCell>

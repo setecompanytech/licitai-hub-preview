@@ -316,6 +316,48 @@ medida que os documentos chegam. Regras que valem no código (migration
 - Recebimento MAIOR que a nota do pedido é caso de RATEIO (22/09, manhã),
   não de parte: a tela aponta o Ratear.
 
+## Termo aditivo item a item — preço vigente, vigência e fundamento (26/09/2026)
+
+O 772/2024 (Barcarena, cesta básica, 18 itens num lote) tem quatro termos:
+reequilíbrio de 12 itens, duas renovações de 12 meses com as quantidades
+repostas aos preços reequilibrados (R$ 578.929,32 = 416.693,13 + 162.236,19,
+conferido item a item) e reequilíbrio de 4 itens. O registro só tinha o
+total do contrato e um par "custo atual × novo". Regras que valem no código
+(migration `20260926000001`, lib `lib/contratos/itens-do-termo.ts`):
+
+- **Uma linha física por item.** `contrato_itens.valor_unitario` é o preço
+  VIGENTE; `valor_unitario_original` guarda o da contratação. As camadas por
+  `origem_aditivo_id` continuam lidas, mas nenhum contrato as usa.
+- **O termo diz o que faz em cada item** em `contrato_aditivo_itens`: preço
+  anterior → novo, quantidade acrescida/suprimida, `origem` (leitura do anexo
+  ou digitação) e o valor LIDO preservado mesmo depois de corrigido à mão. A
+  tabela fica no formulário do aditivo (`ItensDoTermo.tsx`); toda célula é
+  editável; os totais do termo são a SOMA das linhas, com os campos travados.
+- **Aplicar é RPC** (`aplicar_itens_do_aditivo`): regrava o preço vigente, o
+  gatilho de histórico escreve a trilha e o motivo ganha o número do termo;
+  `reverter_itens_do_aditivo` devolve o anterior e recusa quando um termo
+  posterior mexeu nos mesmos itens; apagar o termo reverte antes. Saldo do
+  item = contratada + linhas exatas + rateio dos termos sem linhas − pedidos;
+  saldo financeiro = saldo × preço vigente.
+- **O reequilíbrio vale sobre o saldo** (Δ preço × quantidade a fornecer); a
+  renovação (art. 107) repõe quantidades pelo período, com `periodo_inicio`
+  e `periodo_fim`; `data_efeitos` é a vigência dos novos preços.
+- **A lei fala antes de gravar** (`avisosJuridicos`): reequilíbrio não leva
+  quantidade (art. 124, II, "d" × art. 124, I, "b"); efeitos mais de um mês
+  antes da assinatura pedem ressalva (art. 132); reajuste antes de 12 meses
+  da data-base pede ressalva (Lei 10.192/2001, art. 2º, § 1º; art. 92, V);
+  renovação além do teto decenal bloqueia (art. 107); acréscimo acima de 25%
+  pede ressalva (art. 125). Ressalva grava `com_ressalva`. O fundamento de
+  cada tipo vai em `fundamento_legal`, pelo mapa `fundamentoDoTipo`.
+- **A leitura preenche, não decide.** `extrair-contrato-pdf` devolve
+  `aditivo.itens_alterados` (número do item COMO ESTÁ na tabela do termo,
+  valor atual, valor novo, quantidade), `periodo_*`, `valor_periodo` e o
+  fundamento citado; o casamento com o cadastro é por lote + número do item
+  quando o código do item é numérico e pela descrição quando é elemento de
+  despesa ("3.3.90.32.03"); linha em disputa vai para a pessoa apontar. O
+  documento pode errar a própria coluna de porcentagem: o sistema calcula a
+  sua e nunca copia.
+
 ## Assinatura × Stripe — o preço se acha pelo valor e pelo ciclo (25/09/2026)
 
 Os doze ids `price_…` gravados em `src/data/stripe-config.ts` (março, pelo

@@ -23,7 +23,14 @@ import {
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
-import { extractContractDataFromFile, motivoDaUltimaFalha } from './utils/extractContractData';
+import { extractContractDataFromFile, mapDetectedToFileTipo, motivoDaUltimaFalha } from './utils/extractContractData';
+import ItensDoTermo from './ItensDoTermo';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  avisoBloqueia, avisoExigeRessalva, avisosJuridicos, casarLinhasLidas, errosDasLinhas, fundamentoDoTipo,
+  linhaDaLeitura, linhaSemMudanca, linhasParaGravar, modoDoTipo, resumoDoTermo,
+  type Aviso, type ItemDoContrato, type LinhaDoTermo, type LinhaLida,
+} from '@/lib/contratos/itens-do-termo';
 import { validateExtractedContract, buildParentUpdates, autoridadeDoArquivo } from './utils/validateExtractedContract';
 import ContratoIaAuditoriaPanel from './ContratoIaAuditoriaPanel';
 import { createLogger } from '@/services/logger';
@@ -223,8 +230,27 @@ const emptyAditivoForm = {
   quantidade_supressao: '',
   nova_data_fim: '',
   data_assinatura: '',
+  // 26/09: vigência dos novos preços/quantidades e o período da renovação.
+  data_efeitos: '',
+  periodo_inicio: '',
+  periodo_fim: '',
   justificativa: '',
   observacoes: '',
+};
+
+/** Como uma linha de contrato_aditivo_itens volta do banco. */
+type LinhaGravada = {
+  contrato_item_id: string;
+  valor_unitario_anterior: number | null;
+  valor_unitario_novo: number | null;
+  quantidade_acrescimo: number | null;
+  quantidade_supressao: number | null;
+  origem: 'leitura' | 'manual';
+  valor_lido: number | null;
+  quantidade_lida: number | null;
+  numero_item_lido: string | null;
+  descricao_lida: string | null;
+  aplicado_em: string | null;
 };
 
 /**
@@ -278,16 +304,26 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [detectionFileName, setDetectionFileName] = useState('');
   const [confrontoAta, setConfrontoAta] = useState<ConfrontoComAta | null>(null);
-  const [precificacaoMargem, setPrecificacaoMargem] = useState<number | null>(null);
-  const [calcCustoNovo, setCalcCustoNovo] = useState('');
-  const [calcCustoAtual, setCalcCustoAtual] = useState('');
+  // ── Itens do termo (26/09) ────────────────────────────────────────────────
+  // A tabela item a item do termo: o que a leitura do anexo trouxe, o que a
+  // pessoa corrigiu, e as linhas que a leitura não casou com item nenhum.
+  const [itensDoContrato, setItensDoContrato] = useState<ItemDoContrato[]>([]);
+  const [linhasDoTermo, setLinhasDoTermo] = useState<Record<string, LinhaDoTermo>>({});
+  const [linhasSemItem, setLinhasSemItem] = useState<LinhaLida[]>([]);
+  const [comRessalva, setComRessalva] = useState(false);
+  /** A última leitura de aditivo, guardada para recasar as linhas se o tipo mudar. */
+  const [leituraDoTermo, setLeituraDoTermo] = useState<any>(null);
+  const [editItens, setEditItens] = useState<ItemDoContrato[]>([]);
+  const [editLinhas, setEditLinhas] = useState<Record<string, LinhaDoTermo>>({});
+  const [editLinhasSemItem, setEditLinhasSemItem] = useState<LinhaLida[]>([]);
+  const [editComRessalva, setEditComRessalva] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     const [arqRes, adtRes, contratoRes] = await Promise.all([
       supabase.from('contrato_arquivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
       supabase.from('contrato_aditivos').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, numero_ata, objeto, orgao_contratante, modalidade, valor_global, valor_global_original, data_assinatura, data_inicio, data_fim, vigencia_meses, validade_ata_meses, empresa_id, licitacao_id').eq('id', contratoId).maybeSingle(),
+      supabase.from('contratos').select('id, tipo_documento, ata_srp_id, numero_contrato, numero_ata, objeto, orgao_contratante, modalidade, valor_global, valor_global_original, data_assinatura, data_inicio, data_fim, vigencia_meses, validade_ata_meses, empresa_id, licitacao_id, data_base_reajuste').eq('id', contratoId).maybeSingle(),
     ]);
     setArquivos((arqRes.data as any[]) || []);
     setAditivos((adtRes.data as any[]) || []);
@@ -360,27 +396,216 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     }
   }, [uploadTipo, aditivos.length]);
 
-  // Load pricing margin from catalog when semLimite type selected and contract has a licitação linked
+  // ── Itens do termo: carga, leitura, totais, avisos, gravação ─────────────
+
+  /** Os itens físicos do contrato, uma linha por item, para a tabela do termo. */
+  const carregarItensDoContrato = async (): Promise<ItemDoContrato[]> => {
+    const { data } = await supabase
+      .from('contrato_itens')
+      .select('id, codigo_item, descricao, unidade, valor_unitario, valor_unitario_original, quantidade_contratada, saldo_quantitativo, numero_lote' as never)
+      .eq('contrato_id', contratoId)
+      .is('origem_aditivo_id', null)
+      .order('created_at', { ascending: true });
+    const lista = ((data ?? []) as unknown as ItemDoContrato[]).map((i) => ({
+      ...i,
+      valor_unitario: Number(i.valor_unitario) || 0,
+      quantidade_contratada: Number(i.quantidade_contratada) || 0,
+      saldo_quantitativo: Number(i.saldo_quantitativo) || 0,
+    }));
+    setItensDoContrato(lista);
+    return lista;
+  };
+
   useEffect(() => {
-    const licitacaoId = parentContrato?.licitacao_id;
-    if (!TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) || !licitacaoId) {
-      setPrecificacaoMargem(null);
-      return;
+    if (modoDoTipo(uploadTipo)) void carregarItensDoContrato();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadTipo, contratoId]);
+
+  /**
+   * As linhas lidas do anexo viram linhas da tabela. Recasa sempre que o tipo
+   * muda (a pessoa pode ter escolhido "prazo" e a leitura dizer reequilíbrio)
+   * e quando os itens chegam. O que a pessoa já editou não é sobrescrito: a
+   * leitura só entra enquanto a tabela está vazia.
+   */
+  useEffect(() => {
+    const a = leituraDoTermo?.aditivo;
+    const modo = modoDoTipo(uploadTipo);
+    if (!a || !modo || itensDoContrato.length === 0) return;
+    if (Object.keys(linhasDoTermo).length > 0) return;
+    const lidas: LinhaLida[] = Array.isArray(a.itens_alterados) ? a.itens_alterados : [];
+    if (lidas.length === 0) return;
+    const r = casarLinhasLidas(lidas, itensDoContrato);
+    const novas: Record<string, LinhaDoTermo> = {};
+    for (const c of r.casadas) {
+      const it = itensDoContrato.find((i) => i.id === c.itemId);
+      if (it) novas[it.id] = linhaDaLeitura(it, c.linha, modo);
     }
-    supabase
-      .from('catalogo_itens_precificados')
-      .select('margem_lucro, bdi_percentual')
-      .eq('licitacao_id', licitacaoId)
-      .not('margem_lucro', 'is', null)
-      .limit(20)
-      .then(({ data }) => {
-        if (!data || data.length === 0) { setPrecificacaoMargem(null); return; }
-        const margens = data.map((r: any) => r.margem_lucro ?? r.bdi_percentual ?? 0).filter((v: number) => v > 0);
-        if (margens.length === 0) { setPrecificacaoMargem(null); return; }
-        const media = margens.reduce((s: number, v: number) => s + v, 0) / margens.length;
-        setPrecificacaoMargem(Math.round(media * 100) / 100);
+    setLinhasDoTermo(novas);
+    setLinhasSemItem(r.semItem);
+    toast.success(`Leitura do termo: ${lidas.length} linha(s) de item, ${r.casadas.length} casada(s) com o cadastro${r.semItem.length ? `, ${r.semItem.length} para você apontar` : ''}.`, {
+      description: 'Confira cada preço e quantidade antes de confirmar — o que a leitura errou, corrija na tabela.',
+      duration: 10000,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leituraDoTermo, uploadTipo, itensDoContrato]);
+
+  // Com linhas na tabela, os totais do termo são a SOMA delas — o campo não
+  // se digita por cima, porque dois números para a mesma coisa divergem.
+  useEffect(() => {
+    if (!modoDoTipo(uploadTipo)) return;
+    const r = resumoDoTermo(linhasDoTermo, itensDoContrato);
+    if (r.itensAlterados === 0) return;
+    setAditivoForm((f) => ({
+      ...f,
+      valor_acrescimo: String(r.valorAcrescimo),
+      valor_supressao: String(r.valorSupressao),
+      quantidade_acrescimo: String(r.quantidadeAcrescimo),
+      quantidade_supressao: String(r.quantidadeSupressao),
+    }));
+  }, [linhasDoTermo, itensDoContrato, uploadTipo]);
+
+  useEffect(() => {
+    if (!modoDoTipo(editTipo)) return;
+    const r = resumoDoTermo(editLinhas, editItens);
+    if (r.itensAlterados === 0) return;
+    setEditAditivoForm((f) => ({
+      ...f,
+      valor_acrescimo: String(r.valorAcrescimo),
+      valor_supressao: String(r.valorSupressao),
+      quantidade_acrescimo: String(r.quantidadeAcrescimo),
+      quantidade_supressao: String(r.quantidadeSupressao),
+    }));
+  }, [editLinhas, editItens, editTipo]);
+
+  const limparTermo = () => {
+    setLinhasDoTermo({});
+    setLinhasSemItem([]);
+    setComRessalva(false);
+    setLeituraDoTermo(null);
+  };
+
+  /** O que a lei diz deste termo, com as datas e os números que estão no formulário. */
+  const avisosDoTermo = (tipo: string, form: typeof emptyAditivoForm, linhas: Record<string, LinhaDoTermo>, itens: ItemDoContrato[]): Aviso[] => {
+    if (!isAditivoType(tipo)) return [];
+    const pc = parentContrato as { data_inicio?: string | null; data_fim?: string | null; valor_global?: number | null; valor_global_original?: number | null; data_base_reajuste?: string | null } | null;
+    return avisosJuridicos({
+      tipoArquivo: tipo,
+      dataAssinatura: form.data_assinatura || null,
+      dataEfeitos: form.data_efeitos || form.data_assinatura || null,
+      dataBaseReajuste: pc?.data_base_reajuste ?? null,
+      dataInicioContrato: pc?.data_inicio ?? null,
+      dataFimAtual: pc?.data_fim ?? null,
+      periodoInicio: form.periodo_inicio || null,
+      periodoFim: form.periodo_fim || form.nova_data_fim || null,
+      valorGlobalOriginal: Number(pc?.valor_global_original ?? pc?.valor_global) || null,
+      resumo: resumoDoTermo(linhas, itens),
+    });
+  };
+
+  /** O motivo de não salvar, ou null. */
+  const problemaDoTermo = (tipo: string, form: typeof emptyAditivoForm, linhas: Record<string, LinhaDoTermo>, itens: ItemDoContrato[], ressalva: boolean): string | null => {
+    const modo = modoDoTipo(tipo);
+    if (modo) {
+      const erros = errosDasLinhas(linhas, itens, modo);
+      if (erros.length > 0) return erros[0];
+    }
+    const avisos = avisosDoTermo(tipo, form, linhas, itens);
+    const bloqueio = avisos.find((a) => a.nivel === 'bloqueia');
+    if (bloqueio) return bloqueio.texto;
+    if (avisoExigeRessalva(avisos) && !ressalva) {
+      return 'Há aviso que exige registro com ressalva: marque "Registrado com ressalva" ou corrija os dados.';
+    }
+    return null;
+  };
+
+  /** O registro do termo, com os totais vindos das linhas quando elas existem. */
+  const montarPayloadDoTermo = (tipo: string, form: typeof emptyAditivoForm, linhas: Record<string, LinhaDoTermo>, itens: ItemDoContrato[], ressalva: boolean) => {
+    const tipoAditivo = TIPOS_ARQUIVO[tipo]?.tipoAditivo || 'valor';
+    const r = resumoDoTermo(linhas, itens);
+    const linhasMandam = r.itensAlterados > 0;
+    const ehRenovacao = tipo === 'prorrogacao_continuo';
+    const payload: any = {
+      contrato_id: contratoId,
+      user_id: user!.id,
+      numero_aditivo: form.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
+      tipo: tipoAditivo,
+      valor_acrescimo: linhasMandam ? r.valorAcrescimo : (showValueFields(tipo) ? (parseFloat(form.valor_acrescimo) || 0) : 0),
+      valor_supressao: linhasMandam ? r.valorSupressao : (showValueFields(tipo) ? (parseFloat(form.valor_supressao) || 0) : 0),
+      quantidade_acrescimo: linhasMandam ? r.quantidadeAcrescimo : (showQtyFields(tipo) ? (parseFloat(form.quantidade_acrescimo) || 0) : 0),
+      quantidade_supressao: linhasMandam ? r.quantidadeSupressao : (showQtyFields(tipo) ? (parseFloat(form.quantidade_supressao) || 0) : 0),
+      nova_data_fim: form.nova_data_fim || (ehRenovacao ? form.periodo_fim : '') || null,
+      data_assinatura: form.data_assinatura || null,
+      data_aditivo: form.data_assinatura || null,
+      data_efeitos: form.data_efeitos || form.data_assinatura || null,
+      periodo_inicio: ehRenovacao ? (form.periodo_inicio || null) : null,
+      periodo_fim: ehRenovacao ? (form.periodo_fim || form.nova_data_fim || null) : null,
+      fundamento_legal: fundamentoDoTipo(tipo),
+      com_ressalva: ressalva && avisoExigeRessalva(avisosDoTermo(tipo, form, linhas, itens)),
+      justificativa: form.justificativa || null,
+      observacoes: form.observacoes || null,
+      // Sem isto a coluna caía no DEFAULT 'contrato' e o guarda do banco
+      // barrava o aditivo de ATA: "Aditivo marcado como Contrato, mas o
+      // documento referenciado é uma ATA SRP". Quem grava sabe o alvo.
+      referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
+    };
+    payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+    return payload;
+  };
+
+  /**
+   * Grava as linhas do termo e as aplica aos itens (preço vigente, saldo).
+   * Ao editar, o que estava aplicado é revertido antes: o "preço anterior"
+   * das linhas novas tem de ser o preço de antes do termo.
+   */
+  const gravarLinhasDoTermo = async (aditivoId: string, linhas: Record<string, LinhaDoTermo>, itens: ItemDoContrato[], substituir: boolean): Promise<number> => {
+    if (substituir) {
+      const { error: erroRev } = await supabase.rpc('reverter_itens_do_aditivo' as never, { p_aditivo_id: aditivoId } as never);
+      if (erroRev) throw erroRev;
+      const { error: erroDel } = await supabase.from('contrato_aditivo_itens' as never).delete().eq('aditivo_id', aditivoId);
+      if (erroDel) throw erroDel;
+    }
+    const gravar = linhasParaGravar(linhas, itens);
+    if (gravar.length === 0) return 0;
+    const { error } = await supabase
+      .from('contrato_aditivo_itens' as never)
+      .insert(gravar.map((g) => ({ ...g, aditivo_id: aditivoId, contrato_id: contratoId })) as never);
+    if (error) throw error;
+    const { error: erroAplicar } = await supabase.rpc('aplicar_itens_do_aditivo' as never, { p_aditivo_id: aditivoId } as never);
+    if (erroAplicar) throw erroAplicar;
+    return gravar.length;
+  };
+
+  /** Preenche o formulário do aditivo com o que a leitura trouxe; as linhas entram pelo efeito acima. */
+  const preencherAditivoDaLeitura = (detected: any) => {
+    const a = detected?.aditivo;
+    if (!a) return;
+    const ehRenovacao = a.tipo_aditivo === 'renovacao';
+    setAditivoForm((f) => ({
+      ...f,
+      numero_aditivo: a.numero_aditivo || f.numero_aditivo,
+      valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : f.valor_acrescimo,
+      valor_supressao: a.valor_supressao ? String(a.valor_supressao) : f.valor_supressao,
+      quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : f.quantidade_acrescimo,
+      quantidade_supressao: a.quantidade_supressao ? String(a.quantidade_supressao) : f.quantidade_supressao,
+      nova_data_fim: a.periodo_fim || a.nova_data_fim || f.nova_data_fim,
+      data_assinatura: detected.data_assinatura || f.data_assinatura,
+      data_efeitos: f.data_efeitos || (ehRenovacao ? (a.periodo_inicio || '') : (detected.data_assinatura || '')),
+      periodo_inicio: a.periodo_inicio || f.periodo_inicio,
+      periodo_fim: a.periodo_fim || f.periodo_fim,
+      justificativa: f.justificativa || a.justificativa || a.fundamento_citado || '',
+    }));
+    setLeituraDoTermo(detected);
+    const tipoSugerido = mapDetectedToFileTipo('aditivo', a.tipo_aditivo);
+    if (tipoSugerido && tipoSugerido !== uploadTipo && tipoSugerido !== 'outro' && tiposDisponiveis[tipoSugerido]) {
+      toast.info(`A leitura classificou o documento como "${TIPOS_ARQUIVO[tipoSugerido]?.label}".`, {
+        description: `O tipo escolhido é "${TIPOS_ARQUIVO[uploadTipo]?.label}". Se a leitura estiver certa, troque — os itens lidos entram na tabela do tipo certo.`,
+        action: { label: 'Usar o tipo lido', onClick: () => { setLinhasDoTermo({}); setLinhasSemItem([]); setUploadTipo(tipoSugerido); } },
+        duration: 20000,
       });
-  }, [uploadTipo, parentContrato?.licitacao_id]);
+    } else if (!Array.isArray(a.itens_alterados) || a.itens_alterados.length === 0) {
+      toast.success('IA pré-preencheu os campos do aditivo. Revise antes de confirmar.');
+    }
+  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -585,23 +810,25 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   };
 
   const runIaPreFillForAditivo = async (file: File) => {
+    const TID = 'leitura-do-termo';
+    toast.loading('Lendo o termo aditivo… a tabela de itens vem preenchida para conferência.', { id: TID });
     try {
-      const detected = await extractContractDataFromFile(file, uploadTipo);
+      const detected = await extractContractDataFromFile(file, uploadTipo, (msg) => toast.loading(msg, { id: TID }));
+      toast.dismiss(TID);
       if (detected?.aditivo) {
-        const a = detected.aditivo;
-        setAditivoForm(f => ({
-          ...f,
-          numero_aditivo: a.numero_aditivo || f.numero_aditivo,
-          valor_acrescimo: a.valor_acrescimo ? String(a.valor_acrescimo) : f.valor_acrescimo,
-          valor_supressao: a.valor_supressao ? String(a.valor_supressao) : f.valor_supressao,
-          quantidade_acrescimo: a.quantidade_acrescimo ? String(a.quantidade_acrescimo) : f.quantidade_acrescimo,
-          quantidade_supressao: a.quantidade_supressao ? String(a.quantidade_supressao) : f.quantidade_supressao,
-          nova_data_fim: a.nova_data_fim || f.nova_data_fim,
-          justificativa: a.justificativa || f.justificativa,
-        }));
-        toast.success('IA pré-preencheu os campos do aditivo. Revise antes de confirmar.');
+        preencherAditivoDaLeitura(detected);
+      } else if (!detected) {
+        // Falha de leitura não é silenciosa: quem registra precisa saber que
+        // vai digitar tudo à mão (princípio 3).
+        toast.warning('Não foi possível ler o termo; preencha os campos e a tabela à mão.', {
+          description: motivoDaUltimaFalha() ?? undefined,
+          duration: 10000,
+        });
       }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      toast.dismiss(TID);
+      console.warn('[runIaPreFillForAditivo]', e);
+    }
   };
 
   const doUpload = async (file: File, tipo: string, aditivoData?: typeof emptyAditivoForm): Promise<{ id: string; nome: string } | null> => {
@@ -642,39 +869,26 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       }
 
       // If aditivo type, also create the aditivo record
+      let linhasGravadas = 0;
       if (aditivoData && isAditivoType(tipo)) {
-        const tipoAditivo = TIPOS_ARQUIVO[tipo]?.tipoAditivo || 'valor';
-        const payload: any = {
-          contrato_id: contratoId,
-          user_id: user.id,
-          numero_aditivo: aditivoData.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
-          tipo: tipoAditivo,
-          valor_acrescimo: showValueFields(tipo) ? (parseFloat(aditivoData.valor_acrescimo) || 0) : 0,
-          valor_supressao: showValueFields(tipo) ? (parseFloat(aditivoData.valor_supressao) || 0) : 0,
-          quantidade_acrescimo: showQtyFields(tipo) ? (parseFloat(aditivoData.quantidade_acrescimo) || 0) : 0,
-          quantidade_supressao: showQtyFields(tipo) ? (parseFloat(aditivoData.quantidade_supressao) || 0) : 0,
-          nova_data_fim: aditivoData.nova_data_fim || null,
-          data_assinatura: aditivoData.data_assinatura || null,
-          data_aditivo: aditivoData.data_assinatura || null,
-          justificativa: aditivoData.justificativa || null,
-          observacoes: aditivoData.observacoes || null,
-          // Sem isto a coluna caía no DEFAULT 'contrato' e o guarda do banco
-          // barrava o aditivo de ATA: "Aditivo marcado como Contrato, mas o
-          // documento referenciado é uma ATA SRP". Quem grava sabe o alvo.
-          referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
-          // O elo com o PDF que originou o registro: sem ele, o cartão do
-          // aditivo não tinha como dizer de que documento nasceu.
-          arquivo_id: inserted?.id ?? null,
-        };
-        payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+        const payload = montarPayloadDoTermo(tipo, aditivoData, linhasDoTermo, itensDoContrato, comRessalva);
+        // O elo com o PDF que originou o registro: sem ele, o cartão do
+        // aditivo não tinha como dizer de que documento nasceu.
+        payload.arquivo_id = inserted?.id ?? null;
 
-        const { error: adtError } = await supabase.from('contrato_aditivos').insert(payload);
+        const { data: termo, error: adtError } = await supabase.from('contrato_aditivos').insert(payload).select('id').single();
         if (adtError) throw adtError;
+        if (modoDoTipo(tipo) && termo?.id) {
+          linhasGravadas = await gravarLinhasDoTermo(termo.id, linhasDoTermo, itensDoContrato, false);
+        }
       }
 
-      toast.success('Documento registrado com sucesso!');
+      toast.success(linhasGravadas > 0
+        ? `Documento registrado; ${linhasGravadas} item(ns) atualizado(s) pelo termo.`
+        : 'Documento registrado com sucesso!');
       setPendingFile(null);
       setAditivoForm(emptyAditivoForm);
+      limparTermo();
       loadData();
       return inserted ? { id: (inserted as any).id, nome: (inserted as any).nome_arquivo } : null;
     } catch (err: any) {
@@ -688,6 +902,13 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   };
 
   const handleConfirmAditivo = () => {
+    // A lei fala antes de gravar: linha inválida, bloqueio ou ressalva sem
+    // a caixa marcada param aqui, com o motivo dito.
+    const problema = problemaDoTermo(uploadTipo, aditivoForm, linhasDoTermo, itensDoContrato, comRessalva);
+    if (problema) {
+      toast.error('O termo não pode ser registrado assim.', { description: problema, duration: 12000 });
+      return;
+    }
     if (pendingFile) {
       doUpload(pendingFile, uploadTipo, aditivoForm);
     } else {
@@ -701,31 +922,20 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     if (!user) return;
     setUploading(true);
     try {
-      const tipoAditivo = TIPOS_ARQUIVO[uploadTipo]?.tipoAditivo || 'valor';
-      const payload: any = {
-        contrato_id: contratoId,
-        user_id: user.id,
-        numero_aditivo: aditivoForm.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
-        tipo: tipoAditivo,
-        valor_acrescimo: showValueFields(uploadTipo) ? (parseFloat(aditivoForm.valor_acrescimo) || 0) : 0,
-        valor_supressao: showValueFields(uploadTipo) ? (parseFloat(aditivoForm.valor_supressao) || 0) : 0,
-        quantidade_acrescimo: showQtyFields(uploadTipo) ? (parseFloat(aditivoForm.quantidade_acrescimo) || 0) : 0,
-        quantidade_supressao: showQtyFields(uploadTipo) ? (parseFloat(aditivoForm.quantidade_supressao) || 0) : 0,
-        nova_data_fim: aditivoForm.nova_data_fim || null,
-        data_assinatura: aditivoForm.data_assinatura || null,
-        data_aditivo: aditivoForm.data_assinatura || null,
-        justificativa: aditivoForm.justificativa || null,
-        observacoes: aditivoForm.observacoes || null,
-        referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
-      };
-      payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
-
-      const { error } = await supabase.from('contrato_aditivos').insert(payload);
+      const payload = montarPayloadDoTermo(uploadTipo, aditivoForm, linhasDoTermo, itensDoContrato, comRessalva);
+      const { data: termo, error } = await supabase.from('contrato_aditivos').insert(payload).select('id').single();
       if (error) throw error;
+      let linhasGravadas = 0;
+      if (modoDoTipo(uploadTipo) && termo?.id) {
+        linhasGravadas = await gravarLinhasDoTermo(termo.id, linhasDoTermo, itensDoContrato, false);
+      }
 
-      toast.success('Aditivo registrado com sucesso!');
+      toast.success(linhasGravadas > 0
+        ? `Aditivo registrado; ${linhasGravadas} item(ns) atualizado(s) pelo termo.`
+        : 'Aditivo registrado com sucesso!');
       setAditivoForm(emptyAditivoForm);
       setPendingFile(null);
+      limparTermo();
       loadData();
     } catch (err: any) {
       toast.error('Erro ao registrar aditivo', { description: err.message });
@@ -988,12 +1198,19 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     setEditFile(null);
 
     // If file is aditivo type, find linked aditivo and populate fields
+    setEditItens([]);
+    setEditLinhas({});
+    setEditLinhasSemItem([]);
+    setEditComRessalva(false);
     if (isAditivoType(arquivo.tipo)) {
-      // Try to find aditivo linked by matching tipo and creation time proximity
+      // O elo certo é o arquivo_id gravado no termo; o tipo é só o
+      // desempate para registros antigos, que nasceram sem o elo.
       const tipoAditivo = TIPOS_ARQUIVO[arquivo.tipo]?.tipoAditivo || 'valor';
-      const linked = aditivos.find((a: any) => a.tipo === tipoAditivo);
+      const linked = aditivos.find((a: any) => a.arquivo_id === arquivo.id)
+        ?? aditivos.find((a: any) => a.tipo === tipoAditivo);
       if (linked) {
         setEditLinkedAditivoId(linked.id);
+        setEditComRessalva(!!linked.com_ressalva);
         setEditAditivoForm({
           numero_aditivo: linked.numero_aditivo || '',
           valor_acrescimo: linked.valor_acrescimo?.toString() || '',
@@ -1002,17 +1219,64 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           quantidade_supressao: linked.quantidade_supressao?.toString() || '',
           nova_data_fim: linked.nova_data_fim || '',
           data_assinatura: linked.data_assinatura || linked.data_aditivo || '',
+          data_efeitos: linked.data_efeitos || '',
+          periodo_inicio: linked.periodo_inicio || '',
+          periodo_fim: linked.periodo_fim || '',
           justificativa: linked.justificativa || '',
           observacoes: linked.observacoes || '',
         });
+        if (modoDoTipo(arquivo.tipo)) void carregarLinhasParaEdicao(linked.id);
       } else {
         setEditLinkedAditivoId(null);
         setEditAditivoForm({ ...emptyAditivoForm, numero_aditivo: `${aditivos.length + 1}º Aditivo` });
+        if (modoDoTipo(arquivo.tipo)) void carregarItensDoContrato().then(setEditItens);
       }
     } else {
       setEditLinkedAditivoId(null);
       setEditAditivoForm(emptyAditivoForm);
     }
+  };
+
+  /**
+   * As linhas de um termo já gravado, para edição. A tabela mostra o preço
+   * de ANTES do termo como vigente (senão a linha aplicada pareceria "sem
+   * mudança" e sumiria ao salvar), e o saldo sem o acréscimo dele.
+   */
+  const carregarLinhasParaEdicao = async (aditivoId: string) => {
+    const itens = await carregarItensDoContrato();
+    const { data } = await supabase
+      .from('contrato_aditivo_itens' as never)
+      .select('contrato_item_id, valor_unitario_anterior, valor_unitario_novo, quantidade_acrescimo, quantidade_supressao, origem, valor_lido, quantidade_lida, numero_item_lido, descricao_lida, aplicado_em')
+      .eq('aditivo_id', aditivoId);
+    const gravadas = ((data ?? []) as unknown as LinhaGravada[]);
+    const porItem = new Map(gravadas.map((g) => [g.contrato_item_id, g]));
+    const itensDeAntes = itens.map((it) => {
+      const g = porItem.get(it.id);
+      if (!g || !g.aplicado_em) return it;
+      return {
+        ...it,
+        valor_unitario: g.valor_unitario_novo !== null && g.valor_unitario_anterior !== null ? Number(g.valor_unitario_anterior) : it.valor_unitario,
+        saldo_quantitativo: it.saldo_quantitativo - (Number(g.quantidade_acrescimo) || 0) + (Number(g.quantidade_supressao) || 0),
+      };
+    });
+    const linhas: Record<string, LinhaDoTermo> = {};
+    for (const it of itensDeAntes) {
+      const g = porItem.get(it.id);
+      if (!g) continue;
+      linhas[it.id] = {
+        ...linhaSemMudanca(it),
+        valor_novo: g.valor_unitario_novo !== null ? Number(g.valor_unitario_novo) : it.valor_unitario,
+        quantidade_acrescimo: Number(g.quantidade_acrescimo) || 0,
+        quantidade_supressao: Number(g.quantidade_supressao) || 0,
+        origem: g.origem,
+        valor_lido: g.valor_lido,
+        quantidade_lida: g.quantidade_lida,
+        numero_item_lido: g.numero_item_lido,
+        descricao_lida: g.descricao_lida,
+      };
+    }
+    setEditItens(itensDeAntes);
+    setEditLinhas(linhas);
   };
 
   const handleSaveEdit = async () => {
@@ -1045,29 +1309,22 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
 
       // Sync aditivo record if type is aditivo
       if (isAditivoType(editTipo)) {
-        const tipoAditivo = TIPOS_ARQUIVO[editTipo]?.tipoAditivo || 'valor';
-        const payload: any = {
-          contrato_id: contratoId,
-          user_id: user.id,
-          numero_aditivo: editAditivoForm.numero_aditivo || `${aditivos.length + 1}º Aditivo`,
-          tipo: tipoAditivo,
-          valor_acrescimo: showValueFields(editTipo) ? (parseFloat(editAditivoForm.valor_acrescimo) || 0) : 0,
-          valor_supressao: showValueFields(editTipo) ? (parseFloat(editAditivoForm.valor_supressao) || 0) : 0,
-          quantidade_acrescimo: showQtyFields(editTipo) ? (parseFloat(editAditivoForm.quantidade_acrescimo) || 0) : 0,
-          quantidade_supressao: showQtyFields(editTipo) ? (parseFloat(editAditivoForm.quantidade_supressao) || 0) : 0,
-          nova_data_fim: editAditivoForm.nova_data_fim || null,
-          data_assinatura: editAditivoForm.data_assinatura || null,
-          data_aditivo: editAditivoForm.data_assinatura || null,
-          justificativa: editAditivoForm.justificativa || null,
-          observacoes: editAditivoForm.observacoes || null,
-          referencia_tipo: parentTipoDocumento === 'ata_srp' ? 'ata_srp' : 'contrato',
-        };
-        payload.valor_aditivo = payload.valor_acrescimo - payload.valor_supressao;
+        const problema = problemaDoTermo(editTipo, editAditivoForm, editLinhas, editItens, editComRessalva);
+        if (problema) throw new Error(problema);
+        const payload = montarPayloadDoTermo(editTipo, editAditivoForm, editLinhas, editItens, editComRessalva);
+        payload.arquivo_id = editDialog.arquivo.id;
 
+        let aditivoId = editLinkedAditivoId;
         if (editLinkedAditivoId) {
-          await supabase.from('contrato_aditivos').update(payload).eq('id', editLinkedAditivoId);
+          const { error: erroUpd } = await supabase.from('contrato_aditivos').update(payload).eq('id', editLinkedAditivoId);
+          if (erroUpd) throw erroUpd;
         } else {
-          await supabase.from('contrato_aditivos').insert(payload);
+          const { data: termo, error: erroIns } = await supabase.from('contrato_aditivos').insert(payload).select('id').single();
+          if (erroIns) throw erroIns;
+          aditivoId = termo?.id ?? null;
+        }
+        if (modoDoTipo(editTipo) && aditivoId) {
+          await gravarLinhasDoTermo(aditivoId, editLinhas, editItens, !!editLinkedAditivoId);
         }
       }
 
@@ -1098,6 +1355,73 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     prazo_quantidade: Calendar,
     escopo: FilePlus2,
   };
+
+  // Com linhas na tabela do termo, os totais vêm delas (campos travados) e a
+  // lei é lida sobre o que está no formulário, a cada render.
+  const linhasMandamUpload = resumoDoTermo(linhasDoTermo, itensDoContrato).itensAlterados > 0;
+  const avisosUpload = avisosDoTermo(uploadTipo, aditivoForm, linhasDoTermo, itensDoContrato);
+  const linhasMandamEdit = resumoDoTermo(editLinhas, editItens).itensAlterados > 0;
+  const avisosEdit = avisosDoTermo(editTipo, editAditivoForm, editLinhas, editItens);
+
+  /** Assinatura, efeitos, período da renovação e o fundamento — iguais no envio e na edição. */
+  const camposDeVigencia = (
+    tipo: string,
+    form: typeof emptyAditivoForm,
+    setForm: (atualiza: (f: typeof emptyAditivoForm) => typeof emptyAditivoForm) => void,
+  ) => (
+    <>
+      <div className="space-y-1.5">
+        <Label>Data Assinatura</Label>
+        <Input type="date" value={form.data_assinatura}
+          onChange={(e) => setForm((f) => ({ ...f, data_assinatura: e.target.value, data_efeitos: f.data_efeitos || e.target.value }))} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Efeitos a partir de</Label>
+        <Input type="date" value={form.data_efeitos} onChange={(e) => setForm((f) => ({ ...f, data_efeitos: e.target.value }))} />
+        <p className="g-meta text-muted-foreground">Dia em que os novos preços ou quantidades passam a valer. Antecipação além de um mês exige formalização (art. 132).</p>
+      </div>
+      {tipo === 'prorrogacao_continuo' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Início do novo período</Label>
+            <Input type="date" value={form.periodo_inicio} onChange={(e) => setForm((f) => ({ ...f, periodo_inicio: e.target.value, data_efeitos: f.data_efeitos || e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Fim do novo período</Label>
+            <Input type="date" value={form.periodo_fim} onChange={(e) => setForm((f) => ({ ...f, periodo_fim: e.target.value, nova_data_fim: e.target.value }))} />
+            <p className="g-meta text-muted-foreground">A renovação repõe as quantidades pelo período: informe-as na tabela de itens (art. 107).</p>
+          </div>
+        </>
+      )}
+      {fundamentoDoTipo(tipo) && (
+        <p className="g-meta text-muted-foreground sm:col-span-2" data-testid="fundamento-legal">
+          <span className="font-medium text-foreground">Fundamento:</span> {fundamentoDoTipo(tipo)}
+        </p>
+      )}
+    </>
+  );
+
+  /** Os avisos jurídicos e a caixa de ressalva, iguais no envio e na edição. */
+  const blocoDeAvisos = (avisos: Aviso[], ressalva: boolean, setRessalva: (v: boolean) => void) => avisos.length === 0 ? null : (
+    <div className="space-y-2" data-testid="avisos-do-termo">
+      <ul className="space-y-1">
+        {avisos.map((a, i) => (
+          <li key={i} className={`rounded-md border px-3 py-2 text-sm ${
+            a.nivel === 'bloqueia' ? 'border-destructive-line bg-destructive-tint text-destructive-ink'
+            : a.nivel === 'ressalva' ? 'border-warning-line bg-warning-tint text-warning-ink'
+            : 'border-border bg-muted text-muted-foreground'}`}>
+            {a.texto}
+          </li>
+        ))}
+      </ul>
+      {avisoExigeRessalva(avisos) && (
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <Checkbox checked={ressalva} onCheckedChange={(v) => setRessalva(v === true)} className="mt-0.5" />
+          <span>Registrado com ressalva: o termo entra assim mesmo, e o aviso fica gravado no registro.</span>
+        </label>
+      )}
+    </div>
+  );
 
   // ── Detection Dialog handlers ──────────────────────────────────────────
   const handleDetectionIgnore = () => {
@@ -1315,6 +1639,20 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     target: 'contrato' | 'ata_srp';
   }) => {
     if (!user || !pendingFile) return;
+    // Termo que muda preço ou repõe quantidades (reequilíbrio, reajuste,
+    // repactuação, renovação), ou que trouxe linhas de item, não cabe no
+    // registro resumido: vai para o formulário com a tabela item a item.
+    const a = detection?.aditivo as { tipo_aditivo?: string | null; itens_alterados?: unknown[] | null } | undefined;
+    const tipoLido = a?.tipo_aditivo ? mapDetectedToFileTipo('aditivo', a.tipo_aditivo) : null;
+    if (tipoLido && tipoLido !== 'outro' && (modoDoTipo(tipoLido) || (a?.itens_alterados?.length ?? 0) > 0) && tiposDisponiveis[tipoLido]) {
+      setDetectionOpen(false);
+      setUploadTipo(tipoLido);
+      setShowAditivoFields(true);
+      setAditivoForm((f) => ({ ...f, numero_aditivo: form.numero_aditivo || f.numero_aditivo, nova_data_fim: form.nova_data_fim || f.nova_data_fim, justificativa: form.justificativa || f.justificativa }));
+      preencherAditivoDaLeitura(detection);
+      toast.info('Confira a tabela de itens do termo e confirme o registro.', { duration: 8000 });
+      return;
+    }
     try {
       const ext = pendingFile.name.split('.').pop() || 'pdf';
       const path = `${user.id}/${contratoId}/${crypto.randomUUID()}.${ext}`;
@@ -1476,68 +1814,21 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
               <Label>Nº/Identificação</Label>
               <Input value={aditivoForm.numero_aditivo} onChange={(e) => setAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Data Assinatura</Label>
-              <Input type="date" value={aditivoForm.data_assinatura} onChange={(e) => setAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
-            </div>
+            {camposDeVigencia(uploadTipo, aditivoForm, setAditivoForm)}
 
+            {/* A "Calculadora de Reequilíbrio" (um par custo atual × novo para
+                o contrato inteiro) saiu em 26/09: doze itens reequilibrados
+                não cabem num par. A tabela de itens abaixo faz a conta
+                exata, e os totais vêm dela. */}
             {showValueFields(uploadTipo) && (
               <>
-                {/* Calculator for reequilíbrio types */}
-                {TIPOS_ARQUIVO_SEM_LIMITE.includes(uploadTipo) && (
-                  <div className="space-y-3 rounded-lg border border-warning-line bg-warning-tint p-4 sm:col-span-2">
-                    <p className="g-meta font-semibold text-warning-ink flex items-center gap-1">
-                      <RefreshCw aria-hidden="true" className="h-3 w-3 shrink-0" /> Calculadora de Reequilíbrio
-                    </p>
-                    {precificacaoMargem !== null && (
-                      <p className="g-meta text-warning-ink">
-                        Margem média da precificação vinculada: <strong>{precificacaoMargem}%</strong>
-                      </p>
-                    )}
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label>Custo atual (R$/un)</Label>
-                        <MoneyInput value={parseFloat(calcCustoAtual) || 0} onValueChange={v => setCalcCustoAtual(String(v))} placeholder="R$ 0,00" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Novo custo (R$/un)</Label>
-                        <MoneyInput value={parseFloat(calcCustoNovo) || 0} onValueChange={v => setCalcCustoNovo(String(v))} placeholder="R$ 0,00" />
-                      </div>
-                    </div>
-                    {calcCustoAtual && calcCustoNovo && (() => {
-                      const margem = precificacaoMargem ?? 0;
-                      const markup = 1 + margem / 100;
-                      const precoAtual = (parseFloat(calcCustoAtual) || 0) * markup;
-                      const precoNovo = (parseFloat(calcCustoNovo) || 0) * markup;
-                      const diferenca = precoNovo - precoAtual;
-                      return (
-                        <div className="flex flex-wrap items-center gap-3 text-xs">
-                          <span className="text-muted-foreground">Preço atual: <strong>{fmt(precoAtual)}</strong></span>
-                          <span className="text-muted-foreground">Novo preço: <strong>{fmt(precoNovo)}</strong></span>
-                          <span className={diferenca >= 0 ? 'text-success-ink font-semibold' : 'text-destructive-ink font-semibold'}>
-                            Diferença unitária: {diferenca >= 0 ? '+' : ''}{fmt(diferenca)}
-                          </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="text-primary"
-                            onClick={() => setAditivoForm(f => ({ ...f, valor_acrescimo: diferenca > 0 ? String(diferenca) : '0', valor_supressao: diferenca < 0 ? String(Math.abs(diferenca)) : '0' }))}
-                          >
-                            Aplicar
-                          </Button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
                 <div className="space-y-1.5">
-                  <Label>Valor Acréscimo (R$)</Label>
-                  <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
+                  <Label>Valor Acréscimo (R$){linhasMandamUpload && <span className="g-meta text-muted-foreground"> · soma das linhas</span>}</Label>
+                  <MoneyInput value={parseFloat(aditivoForm.valor_acrescimo) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" disabled={linhasMandamUpload} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Valor Supressão (R$)</Label>
-                  <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
+                  <MoneyInput value={parseFloat(aditivoForm.valor_supressao) || 0} onValueChange={v => setAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" disabled={linhasMandamUpload} />
                 </div>
               </>
             )}
@@ -1545,12 +1836,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             {showQtyFields(uploadTipo) && (
               <>
                 <div className="space-y-1.5">
-                  <Label>Qtde Acréscimo</Label>
-                  <Input type="number" step="1" value={aditivoForm.quantidade_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
+                  <Label>Qtde Acréscimo{linhasMandamUpload && <span className="g-meta text-muted-foreground"> · soma das linhas</span>}</Label>
+                  <Input type="number" step="1" value={aditivoForm.quantidade_acrescimo} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" disabled={linhasMandamUpload} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Qtde Supressão</Label>
-                  <Input type="number" step="1" value={aditivoForm.quantidade_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
+                  <Input type="number" step="1" value={aditivoForm.quantidade_supressao} onChange={(e) => setAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" disabled={linhasMandamUpload} />
                 </div>
               </>
             )}
@@ -1572,6 +1863,19 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             </div>
           </div>
 
+          {modoDoTipo(uploadTipo) && (
+            <ItensDoTermo
+              itens={itensDoContrato}
+              modo={modoDoTipo(uploadTipo)!}
+              linhas={linhasDoTermo}
+              onChange={setLinhasDoTermo}
+              semItem={linhasSemItem}
+              onSemItemChange={setLinhasSemItem}
+              disabled={uploading}
+            />
+          )}
+          {blocoDeAvisos(avisosUpload, comRessalva, setComRessalva)}
+
           {/* Live preview */}
           {(showValueFields(uploadTipo) || showQtyFields(uploadTipo)) && (
             <Card className="bg-secondary p-3 shadow-none">
@@ -1592,10 +1896,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" className="g-controle" onClick={() => { setShowAditivoFields(false); setPendingFile(null); setAditivoForm(emptyAditivoForm); setUploadTipo('contrato_original'); }}>
+            <Button variant="outline" size="sm" className="g-controle" onClick={() => { setShowAditivoFields(false); setPendingFile(null); setAditivoForm(emptyAditivoForm); limparTermo(); setUploadTipo('contrato_original'); }}>
               Cancelar
             </Button>
-            <Button size="sm" className="g-controle" onClick={handleConfirmAditivo} disabled={uploading}>
+            <Button size="sm" className="g-controle" onClick={handleConfirmAditivo} disabled={uploading || avisoBloqueia(avisosUpload)}>
               {uploading && <Loader2 aria-hidden="true" className="animate-spin" />}
               {pendingFile ? 'Enviar e Registrar Aditivo' : 'Registrar Aditivo (sem arquivo)'}
             </Button>
@@ -2173,20 +2477,17 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     <Label>Nº/Identificação</Label>
                     <Input value={editAditivoForm.numero_aditivo} onChange={(e) => setEditAditivoForm(f => ({ ...f, numero_aditivo: e.target.value }))} placeholder="1º Aditivo" />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Data Assinatura</Label>
-                    <Input type="date" value={editAditivoForm.data_assinatura} onChange={(e) => setEditAditivoForm(f => ({ ...f, data_assinatura: e.target.value }))} />
-                  </div>
+                  {camposDeVigencia(editTipo, editAditivoForm, setEditAditivoForm)}
 
                   {showValueFields(editTipo) && (
                     <>
                       <div className="space-y-1.5">
-                        <Label>Valor Acréscimo (R$)</Label>
-                        <MoneyInput value={parseFloat(editAditivoForm.valor_acrescimo) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" />
+                        <Label>Valor Acréscimo (R$){linhasMandamEdit && <span className="g-meta text-muted-foreground"> · soma das linhas</span>}</Label>
+                        <MoneyInput value={parseFloat(editAditivoForm.valor_acrescimo) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_acrescimo: String(v) }))} placeholder="R$ 0,00" disabled={linhasMandamEdit} />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Valor Supressão (R$)</Label>
-                        <MoneyInput value={parseFloat(editAditivoForm.valor_supressao) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" />
+                        <MoneyInput value={parseFloat(editAditivoForm.valor_supressao) || 0} onValueChange={v => setEditAditivoForm(f => ({ ...f, valor_supressao: String(v) }))} placeholder="R$ 0,00" disabled={linhasMandamEdit} />
                       </div>
                     </>
                   )}
@@ -2194,12 +2495,12 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                   {showQtyFields(editTipo) && (
                     <>
                       <div className="space-y-1.5">
-                        <Label>Qtde Acréscimo</Label>
-                        <Input type="number" step="1" value={editAditivoForm.quantidade_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" />
+                        <Label>Qtde Acréscimo{linhasMandamEdit && <span className="g-meta text-muted-foreground"> · soma das linhas</span>}</Label>
+                        <Input type="number" step="1" value={editAditivoForm.quantidade_acrescimo} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_acrescimo: e.target.value }))} placeholder="0" disabled={linhasMandamEdit} />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Qtde Supressão</Label>
-                        <Input type="number" step="1" value={editAditivoForm.quantidade_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" />
+                        <Input type="number" step="1" value={editAditivoForm.quantidade_supressao} onChange={(e) => setEditAditivoForm(f => ({ ...f, quantidade_supressao: e.target.value }))} placeholder="0" disabled={linhasMandamEdit} />
                       </div>
                     </>
                   )}
@@ -2220,6 +2521,19 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                     <Textarea value={editAditivoForm.observacoes} onChange={(e) => setEditAditivoForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
                   </div>
                 </div>
+
+                {modoDoTipo(editTipo) && (
+                  <ItensDoTermo
+                    itens={editItens}
+                    modo={modoDoTipo(editTipo)!}
+                    linhas={editLinhas}
+                    onChange={setEditLinhas}
+                    semItem={editLinhasSemItem}
+                    onSemItemChange={setEditLinhasSemItem}
+                    disabled={saving}
+                  />
+                )}
+                {blocoDeAvisos(avisosEdit, editComRessalva, setEditComRessalva)}
 
                 {/* Preview */}
                 {(showValueFields(editTipo) || showQtyFields(editTipo)) && (

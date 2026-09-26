@@ -124,8 +124,27 @@ export function mapDetectedToFileTipo(detected: string | null | undefined, aditi
       case 'valor_quantidade': return 'aditivo_valor_quantidade';
       case 'prazo': return 'aditivo_prazo';
       case 'escopo': return 'aditivo_escopo';
+      // 26/09: os institutos que mudam preço ou repõem quantidades, cada um
+      // na sua opção do seletor (o artigo está no rótulo).
+      case 'reequilibrio': return 'aditivo_reequilibrio';
+      case 'reajuste': return 'aditivo_reajuste';
+      case 'repactuacao': return 'aditivo_repactuacao';
+      case 'renovacao': return 'prorrogacao_continuo';
+      case 'representante': return 'outro';
       default: return 'aditivo_valor';
     }
   }
   return null;
 }
+
+/** Uma linha de `aditivo.itens_alterados`, como a edge a devolve. */
+export type LinhaLidaDoTermo = {
+  numero_item: string | null;
+  numero_lote: string | null;
+  descricao: string | null;
+  unidade: string | null;
+  quantidade: number | null;
+  valor_atual: number | null;
+  valor_novo: number | null;
+  valor_total: number | null;
+};
