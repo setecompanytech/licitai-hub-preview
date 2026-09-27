@@ -20,6 +20,9 @@ import { indicesMaisRecentes } from '@/lib/indices/mais-recentes';
 import { montarDossieDoContrato, type AditivoDoDossie, type ContratoDoDossie, type Dossie } from '@/lib/juridico/dossie-do-contrato';
 import { temSerieOficial, type SerieOficial } from '@/lib/contratos/estudo-de-reajuste';
 import { hojeLocal } from '@/lib/financeiro/data-local';
+import { marcarNotasComoLinks, textoParaExportacao } from '@/lib/juridico/notas-de-origem';
+import NotaDeOrigem from './NotaDeOrigem';
+import DiligenciasDaPeca from './DiligenciasDaPeca';
 import ReactMarkdown from 'react-markdown';
 import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
@@ -727,10 +730,14 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     }
 
     let acumulado = '';
-    await streamAIChat({
+    // Claude com ferramentas sobre o caso (edge `juridico-redigir`); se a edge
+    // ainda não estiver no ar, o gerador padrão responde, sem notas de origem.
+    const chamar = (endpoint: 'juridico' | 'ai-chat') => streamAIChat({
       messages: [{ role: 'user', content: prompt }],
       action: 'gerador_juridico',
       context: fullContext,
+      endpoint,
+      extra: { modelo: { titulo: activeModelo.titulo, categoria: activeModelo.categoria, fundamentacao: activeModelo.fundamentacao }, contratoId: contratoId || null },
       onDelta: (text) => { acumulado += text; setResultado(prev => prev + text); },
       onDone: async () => {
         setGerando(false);
@@ -757,8 +764,19 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
           console.error('[ModelosTemplates] persist pedido falhou', e);
         }
       },
-      onError: (err) => { toast.error(err); setGerando(false); },
+      onError: (err) => {
+        if (endpoint === 'juridico' && /404|not found|n[aã]o encontrad/i.test(err)) {
+          toast.message('Redação com ferramentas ainda não implantada — usando o gerador padrão.');
+          acumulado = '';
+          setResultado('');
+          void chamar('ai-chat');
+          return;
+        }
+        toast.error(err);
+        setGerando(false);
+      },
     });
+    await chamar('juridico');
   };
 
   const copyToClipboard = () => {
@@ -808,7 +826,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
     if (pedidoAtivo) {
       salvarVersao(pedidoAtivo, resultado, `Revisão registrada — ${revisadoPor.trim()}`, 'revisao-humana').catch(() => undefined);
     }
-    return resultado + rodape;
+    return textoParaExportacao(resultado) + rodape;
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
@@ -1219,7 +1237,9 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
               </CabecalhoPagina>
 
               {/* Layout 2 colunas: formulário + preview live */}
-              <div className={`flex-1 grid grid-cols-1 overflow-hidden ${mostrarPreview ? 'lg:grid-cols-[minmax(0,420px)_1fr]' : ''}`}>
+              {/* Três zonas (27/09): o caso e as fontes à esquerda, a peça no
+                  centro, diligências e riscos à direita (a partir de xl). */}
+              <div className={`flex-1 grid grid-cols-1 overflow-hidden ${mostrarPreview ? 'lg:grid-cols-[minmax(0,420px)_1fr] xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)_18rem]' : 'xl:grid-cols-[minmax(0,1fr)_18rem]'}`}>
                 {/* Coluna esquerda: formulário com scroll. Sem preview, ocupa a
                     largura toda (centrado) — mais espaço para preencher o pedido. */}
                 <div className={`overflow-y-auto px-6 py-4 space-y-4 bg-secondary ${mostrarPreview ? 'border-r border-border' : 'w-full max-w-5xl mx-auto'}`}>
@@ -1515,9 +1535,22 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                 </div>
 
 
-                {/* Coluna direita: preview live ABNT — sob demanda */}
+                <aside className="hidden overflow-y-auto border-l border-border bg-secondary p-4 xl:order-3 xl:block" aria-label="Diligências e riscos da peça">
+                  <DiligenciasDaPeca
+                    categoria={activeModelo.categoria}
+                    titulo={activeModelo.titulo}
+                    dossie={dossie}
+                    contratoEscolhido={!!contratoId && !!dossie}
+                    fatos={fatosPeticao.length}
+                    resultado={resultado}
+                    revisaoOk={revisaoOk}
+                    pedido={pedidoAtivo ? { numero_formatado: pedidoAtivo.numero_formatado, status: String(pedidoAtivo.status) } : null}
+                  />
+                </aside>
+
+                {/* Coluna central: preview live ABNT — sob demanda */}
                 {mostrarPreview && (
-                <div className="flex flex-col overflow-hidden bg-card">
+                <div className="flex flex-col overflow-hidden bg-card xl:order-2">
                   <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border shrink-0 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0 flex-wrap">
                       <Eye className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -1678,7 +1711,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                       /* A "folha" da prévia é branca sobre a área rebaixada. */
                       <div className="mx-auto min-h-[297mm] max-w-[210mm] rounded-md border border-border bg-card p-6 shadow-md sm:p-12">
                         <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-                          <ReactMarkdown>{resultado || ''}</ReactMarkdown>
+                          <ReactMarkdown components={{ a: NotaDeOrigem }}>{marcarNotasComoLinks(resultado || '')}</ReactMarkdown>
                           {gerando && (
                             <span className="inline-block w-2 h-4 bg-foreground animate-pulse align-middle ml-0.5" aria-hidden="true" />
                           )}

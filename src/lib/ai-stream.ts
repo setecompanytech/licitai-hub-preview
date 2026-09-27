@@ -4,6 +4,8 @@ import { createLogger } from "@/services/logger";
 const logger = createLogger("AIStream");
 const AI_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 const AURELIA_TOOLS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aurelia-tools-search`;
+// Redação jurídica com Claude e ferramentas sobre o caso (27/09/2026).
+const JURIDICO_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/juridico-redigir`;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -24,6 +26,7 @@ export async function streamAIChat({
   onError,
   onToolEvent,
   endpoint,
+  extra,
 }: {
   messages: ChatMessage[];
   action?: string;
@@ -33,7 +36,9 @@ export async function streamAIChat({
   onError?: (error: string) => void;
   onToolEvent?: (evt: ToolEvent) => void;
   /** Quando "aurelia-tools" usa a edge function com tool calling sobre o cache */
-  endpoint?: "ai-chat" | "aurelia-tools";
+  endpoint?: "ai-chat" | "aurelia-tools" | "juridico";
+  /** Campos a mais no corpo (a edge jurídica recebe o modelo da peça e o contrato). */
+  extra?: Record<string, unknown>;
 }) {
   try {
     // Resolve user JWT via getUser() — auto-refreshes expired tokens internally
@@ -54,10 +59,12 @@ export async function streamAIChat({
       logger.warn("Falha ao obter sessão", error);
     }
 
-    const url = endpoint === "aurelia-tools" ? AURELIA_TOOLS_URL : AI_CHAT_URL;
+    const url = endpoint === "aurelia-tools" ? AURELIA_TOOLS_URL : endpoint === "juridico" ? JURIDICO_URL : AI_CHAT_URL;
     const body = endpoint === "aurelia-tools"
       ? JSON.stringify({ messages, context })
-      : JSON.stringify({ messages, action, context });
+      : endpoint === "juridico"
+        ? JSON.stringify({ messages, context, ...(extra ?? {}) })
+        : JSON.stringify({ messages, action, context });
 
     const resp = await fetch(url, {
       method: "POST",
