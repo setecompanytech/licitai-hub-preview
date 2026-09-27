@@ -105,6 +105,9 @@ vi.mock('@/hooks/useSituacaoDoEspelhoPNCP', () => ({
 }));
 
 // O bloco de contratos esperando decisão tem teste próprio; aqui só não consulta.
+vi.mock('@/hooks/useRadarJuridico', () => ({
+  useRadarJuridico: () => ({ data: [], isLoading: false, error: null }),
+}));
 vi.mock('@/hooks/useContratosAguardandoDecisao', () => ({
   useContratosAguardandoDecisao: () => ({ data: [], isLoading: false, error: null }),
 }));

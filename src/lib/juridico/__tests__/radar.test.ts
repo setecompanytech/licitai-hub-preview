@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eventosDoRadar, type ContratoDoRadar, type LicitacaoDoRadar } from '../radar';
+import { eventosDoRadar, rotaDoEvento, type ContratoDoRadar, type LicitacaoDoRadar } from '../radar';
 
 const base: ContratoDoRadar = {
   id: 'c1', numero_contrato: '772/2024', orgao_contratante: 'SEMAS Barcarena', tipo_documento: 'contrato', status: 'vigente',
@@ -66,5 +66,58 @@ describe('Radar Jurídico', () => {
     const ultimoCritico = ev.map((x) => x.gravidade).lastIndexOf('critico');
     const primeiroNaoCritico = ev.findIndex((x) => x.gravidade !== 'critico');
     expect(ultimoCritico).toBeLessThan(primeiroNaoCritico);
+  });
+});
+
+describe('Radar Jurídico — F2', () => {
+  it('convenção coletiva nova alcança só o contrato de serviço contínuo com mão de obra em vigor', () => {
+    const continuo = { ...base, id: 'c2', numero_contrato: '17/2025', especie_objeto: 'servico_continuo', data_base_reajuste: null, aditivos: [], publicacoes: [{ tipo: 'extrato_contrato' }] };
+    const fornecimento = { ...base, id: 'c3', especie_objeto: null, data_base_reajuste: null, aditivos: [], publicacoes: [{ tipo: 'extrato_contrato' }] };
+    const ev = eventosDoRadar({
+      contratos: [continuo, fornecimento], licitacoes: [], hoje: HOJE,
+      ccts: [{ id: 'k1', categoria_profissional: 'Asseio e conservação', vigencia_inicio: '2026-09-01', abrangencia_uf: 'PA' }],
+    });
+    const cct = ev.filter((x) => x.chave.startsWith('cct:'));
+    expect(cct).toHaveLength(1);
+    expect(cct[0].contratoId).toBe('c2');
+    expect(cct[0].modeloId).toBe('8');
+    expect(cct[0].fundamento).toContain('art. 135, II');
+  });
+  it('certidão vencida ou a 7 dias é crítica; a 30 dias é atenção; além disso não entra', () => {
+    const ev = eventosDoRadar({
+      contratos: [], licitacoes: [], hoje: HOJE,
+      documentos: [
+        { id: 'd1', nome: 'CND Federal', tipo: 'Regularidade Fiscal', validade: '2026-09-20' },
+        { id: 'd2', nome: 'CRF FGTS', tipo: 'Regularidade Fiscal', validade: '2026-10-02' },
+        { id: 'd3', nome: 'CNDT', tipo: 'Regularidade Fiscal', validade: '2026-10-20' },
+        { id: 'd4', nome: 'Contrato social', tipo: 'Habilitação Jurídica', validade: '2030-01-01' },
+      ],
+    });
+    expect(ev.find((x) => x.chave === 'documento:d1')).toMatchObject({ gravidade: 'critico', titulo: 'CND Federal — vencido há 7 dia(s)', rota: '/documentos' });
+    expect(ev.find((x) => x.chave === 'documento:d2')?.gravidade).toBe('critico');
+    expect(ev.find((x) => x.chave === 'documento:d3')?.gravidade).toBe('atencao');
+    expect(ev.find((x) => x.chave === 'documento:d4')).toBeUndefined();
+  });
+  it('aviso do robô de edital alterado vira impugnação com o link da disputa, só nos últimos 15 dias', () => {
+    const ev = eventosDoRadar({
+      contratos: [], licitacoes: [], hoje: HOJE,
+      alteracoesDeEdital: [
+        { id: 'h1', edital: '90029/2026', link: '/robo-lances?disputa=x', ocorreu_em: '2026-09-25T10:00:00Z' },
+        { id: 'h2', edital: '1/2026', link: null, ocorreu_em: '2026-08-01T10:00:00Z' },
+      ],
+    });
+    const e1 = ev.find((x) => x.chave === 'edital:h1');
+    expect(e1?.modeloId).toBe('2');
+    expect(e1?.rota).toBe('/robo-lances?disputa=x');
+    expect(ev.find((x) => x.chave === 'edital:h2')).toBeUndefined();
+  });
+});
+
+describe('a rota do evento', () => {
+  it('peça com contrato, peça com processo, ou a rota do caso', () => {
+    const ev = eventosDoRadar({ contratos: [base], licitacoes: [{ id: 'l1', numero: 'PE 1', orgao: null, status: 'Perdida', resultado: 'Desclassificada', updated_at: '2026-09-26' }], hoje: HOJE });
+    expect(rotaDoEvento(ev.find((x) => x.chave === 'reajuste:c1')!)).toBe('/apoio-juridico/redigir/7?contrato=c1');
+    expect(rotaDoEvento(ev.find((x) => x.chave === 'recurso:l1')!)).toBe('/apoio-juridico/redigir/3?licitacao=l1');
+    expect(rotaDoEvento(ev.find((x) => x.chave === 'publicacao:c1')!)).toBe('/gestao-contratos?contrato=c1');
   });
 });

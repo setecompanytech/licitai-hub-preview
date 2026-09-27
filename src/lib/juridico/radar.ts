@@ -33,9 +33,18 @@ export type ContratoDoRadar = {
   saldo_remanescente: number | null;
   valor_global: number | null;
   fiscal_nome: string | null;
+  /** 'servico_continuo' é o que a repactuação por CCT alcança. */
+  especie_objeto?: string | null;
   aditivos: AditivoDoRadar[];
   publicacoes: Array<{ tipo: string | null }>;
 };
+
+export type DocumentoDoRadar = { id: string; nome: string; tipo: string | null; validade: string | null };
+
+export type CctDoRadar = { id: string; categoria_profissional: string; vigencia_inicio: string | null; abrangencia_uf: string | null };
+
+/** Aviso do robô "a licitação mudou" (robo_historico), nos últimos dias. */
+export type AlteracaoDeEdital = { id: string; edital: string | null; link: string | null; ocorreu_em: string };
 
 export type LicitacaoDoRadar = {
   id: string;
@@ -78,7 +87,14 @@ function rotuloDoContrato(c: ContratoDoRadar): string {
   return `${tipo} ${c.numero_contrato ?? 'sem número'}${c.orgao_contratante ? ` · ${c.orgao_contratante}` : ''}`;
 }
 
-export function eventosDoRadar(e: { contratos: ContratoDoRadar[]; licitacoes: LicitacaoDoRadar[]; hoje: string }): EventoDoRadar[] {
+export function eventosDoRadar(e: {
+  contratos: ContratoDoRadar[];
+  licitacoes: LicitacaoDoRadar[];
+  documentos?: DocumentoDoRadar[];
+  ccts?: CctDoRadar[];
+  alteracoesDeEdital?: AlteracaoDeEdital[];
+  hoje: string;
+}): EventoDoRadar[] {
   const eventos: EventoDoRadar[] = [];
   const hojeDate = new Date(`${e.hoje}T12:00:00`);
 
@@ -207,5 +223,77 @@ export function eventosDoRadar(e: { contratos: ContratoDoRadar[]; licitacoes: Li
     }
   }
 
+  // ── CCT nova: repactuação dos contratos contínuos com mão de obra (art. 135, II) ──
+  const cctsRecentes = (e.ccts ?? []).filter((c) => c.vigencia_inicio && diasEntre(c.vigencia_inicio, e.hoje) <= 90 && diasEntre(c.vigencia_inicio, e.hoje) >= -30);
+  if (cctsRecentes.length > 0) {
+    for (const c of e.contratos) {
+      if (c.status === 'encerrado' || c.especie_objeto !== 'servico_continuo') continue;
+      if (situacaoDaVigencia(c.data_fim, hojeDate).vencido) continue;
+      for (const cct of cctsRecentes) {
+        eventos.push({
+          chave: `cct:${c.id}:${cct.id}`,
+          gravidade: 'atencao',
+          titulo: `Convenção coletiva nova — ${cct.categoria_profissional}${cct.abrangencia_uf ? ` (${cct.abrangencia_uf})` : ''}, vigente desde ${dataBr(cct.vigencia_inicio)}`,
+          detalhe: 'Serviço contínuo com mão de obra: a parcela de pessoal repactua-se pela nova convenção, com demonstração analítica da variação dos custos. Pedir na vigência; a repactuação não pedida preclui com a prorrogação.',
+          fundamento: 'Lei 14.133/2021, art. 92, § 4º, II, e art. 135, II; IN SEGES/MP 5/2017, art. 57',
+          caso: rotuloDoContrato(c),
+          contratoId: c.id,
+          modeloId: '8',
+          rotuloDaAcao: 'Redigir o pedido de repactuação',
+        });
+      }
+    }
+  }
+
+  // ── Certidões e documentos de habilitação vencendo (arts. 66 a 69) ─────
+  for (const d of e.documentos ?? []) {
+    if (!d.validade) continue;
+    const dias = -diasEntre(d.validade, e.hoje);
+    if (dias > 30) continue;
+    eventos.push({
+      chave: `documento:${d.id}`,
+      gravidade: dias < 0 ? 'critico' : dias <= 7 ? 'critico' : 'atencao',
+      titulo: dias < 0 ? `${d.nome} — vencido há ${-dias} dia(s)` : dias === 0 ? `${d.nome} — vence hoje` : `${d.nome} — vence em ${dias} dia(s)`,
+      detalhe: `${d.tipo ?? 'Documento de habilitação'}. Sem o documento válido a empresa não habilita nem recebe: renovar no órgão emissor e subir o PDF em Documentos — o sistema lê a validade nova.`,
+      fundamento: 'Lei 14.133/2021, arts. 66 a 69 (habilitação) e art. 92, XVI (manutenção das condições)',
+      caso: 'Habilitação da empresa',
+      modeloId: null,
+      rotuloDaAcao: 'Abrir Documentos',
+      rota: '/documentos',
+    });
+  }
+
+  // ── Edital alterado (aviso do robô): impugnar ou reprecificar em prazo ─
+  for (const a of e.alteracoesDeEdital ?? []) {
+    if (diasEntre(a.ocorreu_em.slice(0, 10), e.hoje) > 15) continue;
+    eventos.push({
+      chave: `edital:${a.id}`,
+      gravidade: 'atencao',
+      titulo: `Edital alterado — ${a.edital ?? 'processo'} (aviso do robô em ${dataBr(a.ocorreu_em.slice(0, 10))})`,
+      detalhe: 'Edital alterado muda itens, quantidades e prazos; a impugnação corre até 3 dias úteis antes da nova abertura, e a proposta pode precisar de nova precificação. Confira as alterações antes de decidir.',
+      fundamento: 'Lei 14.133/2021, art. 55, § 1º, e art. 164',
+      caso: `Processo ${a.edital ?? ''}`.trim(),
+      modeloId: '2',
+      rotuloDaAcao: 'Redigir a impugnação',
+      rota: a.link ?? undefined,
+    });
+  }
+
   return eventos.sort((a, b) => PESO[a.gravidade] - PESO[b.gravidade] || a.caso.localeCompare(b.caso, 'pt-BR'));
+}
+
+/** Dias de `de` até `ate` (positivo quando `ate` é depois). Datas ISO. */
+function diasEntre(deIso: string, ateIso: string): number {
+  const [a1, m1, d1] = deIso.slice(0, 10).split('-').map(Number);
+  const [a2, m2, d2] = ateIso.slice(0, 10).split('-').map(Number);
+  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86400000);
+}
+
+/** Para onde o evento leva: a peça com o caso montado, ou a rota do caso. */
+export function rotaDoEvento(e: EventoDoRadar): string | null {
+  if (e.modeloId) {
+    const q = e.contratoId ? `?contrato=${e.contratoId}` : e.licitacaoId ? `?licitacao=${e.licitacaoId}` : '';
+    return `/apoio-juridico/redigir/${e.modeloId}${q}`;
+  }
+  return e.rota ?? null;
 }

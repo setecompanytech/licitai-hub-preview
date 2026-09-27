@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PendenciasPrioritarias from '@/components/dashboard/PendenciasPrioritarias';
 import ContratosAguardandoDecisao from '@/components/dashboard/ContratosAguardandoDecisao';
+import RadarJuridicoResumo from '@/components/dashboard/RadarJuridicoResumo';
 import QuickAccessGrid from '@/components/dashboard/QuickAccessGrid';
 import AtalhosPessoais from '@/components/dashboard/AtalhosPessoais';
 import ResumoOperacional from '@/components/dashboard/ResumoOperacional';
@@ -155,6 +156,9 @@ export default function Index() {
           {/* Contratos esperando a decisão de fim (decisão 4 do dono, 21/09):
               a pergunta continua no Resumo de cada contrato; aqui só a cobrança. */}
           <ContratosAguardandoDecisao />
+          {/* O Radar Jurídico (F2, 27/09): o que os dados apontam como peça a
+              redigir; a lista inteira mora no Apoio Jurídico. */}
+          <RadarJuridicoResumo />
         </section>
 
         {/* ── C. Suas ferramentas ──────────────────────────────────────── */}
