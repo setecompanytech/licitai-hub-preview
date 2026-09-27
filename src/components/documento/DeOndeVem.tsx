@@ -1,4 +1,5 @@
 import { Info } from 'lucide-react';
+import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
 export type Procedencia = {
   /** O número, com o nome exato que aparece na tela. */
@@ -13,6 +14,13 @@ type Props = {
   itens: Procedencia[];
   /** Fecha o bloco. O padrão serve para painel derivado de outra tela. */
   fecho?: string;
+  /**
+   * Com identidade, o bloco nasce recolhido e lembra quem o abriu (27/09: no
+   * Resumo do contrato o parágrafo ocupava uma dobra inteira em toda visita).
+   * No papel ele sai inteiro, recolhido ou não — é para quem não pode abrir
+   * o sistema que ele existe.
+   */
+  id?: string;
 };
 
 /**
@@ -34,16 +42,18 @@ type Props = {
 export default function DeOndeVem({
   itens,
   fecho = 'Edite sempre na origem — este painel acompanha sozinho.',
+  id,
 }: Props) {
   if (itens.length === 0) return null;
 
-  return (
-    <div className="rounded-lg border border-border bg-secondary p-4">
-      <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-        De onde vêm estes números
-      </h4>
-      <p className="text-xs leading-relaxed text-muted-foreground">
+  const titulo = (
+    <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+      De onde vêm estes números
+    </span>
+  );
+  const corpo = (
+    <p className="text-xs leading-relaxed text-muted-foreground">
         {itens.map((it, i) => (
           <span key={it.numero}>
             {i > 0 && <span className="mx-2 text-muted-foreground">•</span>}
@@ -54,7 +64,28 @@ export default function DeOndeVem({
           </span>
         ))}
         {fecho && <span className="mt-2 block">{fecho}</span>}
-      </p>
+    </p>
+  );
+
+  if (id) {
+    return (
+      <SecaoRecolhivel
+        id={id}
+        titulo={titulo}
+        recolhidaPorPadrao
+        manterNoPapel
+        className="rounded-lg border border-border bg-secondary p-4"
+        classNameIcone="text-muted-foreground"
+      >
+        <div className="mt-2">{corpo}</div>
+      </SecaoRecolhivel>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-secondary p-4">
+      <h4 className="mb-2">{titulo}</h4>
+      {corpo}
     </div>
   );
 }

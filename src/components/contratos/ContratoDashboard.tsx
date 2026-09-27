@@ -38,7 +38,7 @@ import { TIPOS_REAJUSTE } from '@/lib/contratos/instrumentos';
 import { coberturaDoContrato, ROTULO_SITUACAO, textoDoDesvio, type SituacaoDoCusto } from '@/lib/contratos/cobertura-de-custo';
 import ContratoEficacia from './ContratoEficacia';
 import FaixaIndicadores from '@/components/gestao/FaixaIndicadores';
-import SeloSituacao, { ValorIndisponivel, AvisoDeContexto } from '@/components/gestao/SeloSituacao';
+import SeloSituacao, { ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
 import TextoExpansivel from '@/components/gestao/TextoExpansivel';
 import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
@@ -544,10 +544,10 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
 
   // ── O que ainda falta fazer neste contrato ───────────────────────────────
   //
-  // Uma lista só alimenta as DUAS peças que a referência pede: o cartão
-  // "Próximas ações", que enumera tudo, e o aviso destacado logo abaixo dos
-  // cartões, que é o primeiro item dela. Derivar as duas do mesmo array é o
-  // que impede a tela de destacar uma pendência que a lista não menciona.
+  // Uma lista só alimenta o cartão "Próximas ações". Até 27/09 ela também
+  // alimentava um aviso destacado logo abaixo dos cartões, com o primeiro
+  // item repetido: o dono viu "Nenhuma despesa atribuída" duas vezes na
+  // mesma dobra e pediu um só — o cartão já traz a providência e o botão.
   //
   // Nenhuma regra nova: cada entrada reaproveita um sinal que o painel já
   // calculava e já exibia em "Alertas" — aqui ele ganha a providência e o
@@ -754,7 +754,6 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
       ),
     });
   }
-  const pendenciaEmDestaque = pendencias[0] ?? null;
 
   return (
     <div className="documento impressao-em-coluna flex min-w-0 flex-col gap-4">
@@ -1009,18 +1008,6 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   )}
                 </Card>
               </div>
-
-              {/* O aviso destacado da referência: a pendência mais grave da
-                  lista acima, repetida com a ação à mão. */}
-              {pendenciaEmDestaque && (
-                <AvisoDeContexto
-                  className="nao-imprime"
-                  titulo={pendenciaEmDestaque.titulo}
-                  acao={pendenciaEmDestaque.acao}
-                >
-                  {pendenciaEmDestaque.detalhe}
-                </AvisoDeContexto>
-              )}
 
               {/* ── ATA SRP: a segunda linha fala a língua da ata ─────────────
                   Faturamento/custos/lucro são dos CONTRATOS que aderiram aos
@@ -1280,6 +1267,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               )}
 
               <DeOndeVem
+                id={`contrato-de-onde-vem-${contratoId}`}
                 itens={isAtaSrp ? [
                   { numero: 'Valor global', origem: 'valor registrado na ata' },
                   { numero: 'Consumido', origem: 'soma das contratações derivadas (sem os reequilíbrios/reajustes delas, que não sacam a ata) e dos empenhos diretos de entrega única' },
@@ -1455,6 +1443,20 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
               </div>
             </SecaoRecolhivel>
           </SecaoDoDocumento>
+
+          {/* ── Seção 5: Condições de entrega ──────────────────────────────
+              Os dois cartões que a referência chama de "condições de entrega"
+              e "reajuste", lado a lado. Moravam no painel lateral, e o painel
+              ficou duas telas mais alto que a coluna principal: "Reajuste por
+              índice" e "Links de contexto" terminavam no rodapé enquanto a
+              esquerda sobrava em branco (27/09). Aqui os dois cabem na dobra
+              e o painel volta a ser só a ficha do contrato. */}
+          <SecaoDoDocumento numero="5" titulo="Condições de entrega">
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <ContratoEntrega contratoId={contratoId} />
+              <ContratoReajuste contratoId={contratoId} />
+            </div>
+          </SecaoDoDocumento>
         </div>
 
         {/* ── Painel de contexto ───────────────────────────────────────────── */}
@@ -1493,7 +1495,7 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                 um lápis — dado de identificação do contrato, não medida de
                 execução. O número da seção continua o mesmo, porque é ele que
                 o ofício cita. */}
-            <SecaoDoDocumento numero="5" titulo="Vigência">
+            <SecaoDoDocumento numero="6" titulo="Vigência">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="flex items-center gap-1.5 text-base font-semibold leading-6 text-foreground">
                   <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Vigência
@@ -1579,17 +1581,6 @@ export default function ContratoDashboard({ contratoId }: { contratoId: string }
                   },
                 ]}
               />
-            </SecaoDoDocumento>
-
-            {/* ── Seção 6: Condições de entrega ──────────────────────────────
-                Os dois cartões que a referência chama de "condições de entrega"
-                e "reajuste". Continuam inteiros, com os mesmos editores — só
-                deixaram de ocupar a largura toda no fim de uma página longa. */}
-            <SecaoDoDocumento numero="6" titulo="Condições de entrega">
-              <div className="flex flex-col gap-3">
-                <ContratoEntrega contratoId={contratoId} />
-                <ContratoReajuste contratoId={contratoId} />
-              </div>
             </SecaoDoDocumento>
           </Card>
 

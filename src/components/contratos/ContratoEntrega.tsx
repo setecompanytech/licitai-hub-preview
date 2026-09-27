@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import BotaoReanalisar from '@/components/contratos/BotaoReanalisar';
 import { toast } from 'sonner';
 import { Truck, Pencil, Check, X, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 import { ROTULO_DO_MARCO, clausulaFalaDePrazo } from '@/lib/contratos/prazo-de-entrega';
 
 type Entrega = {
@@ -366,15 +367,27 @@ export default function ContratoEntrega({ contratoId }: { contratoId: string }) 
           {/* A frase de onde cada número saiu, com o nome do campo na frente.
               Sem ela o prazo é um número que ninguém consegue contestar — e
               prazo errado só se descobre no dia em que já era. */}
+          {/* As cláusulas nascem recolhidas (27/09): quatro citações inteiras
+              ocupavam meia coluna em toda visita. No papel saem sempre — é a
+              prova de onde cada prazo veio. */}
           {evidencias.length > 0 && (
-            <div className="space-y-1 border-t border-border pt-2">
-              <p className="text-xs text-muted-foreground">Conforme o documento:</p>
-              {evidencias.map(([rotulo, texto]) => (
-                <p key={rotulo} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
-                  <span className="font-medium">{rotulo}:</span> <span className="italic">“{texto}”</span>
-                </p>
-              ))}
-            </div>
+            <SecaoRecolhivel
+              id={`contrato-entrega-clausulas-${contratoId}`}
+              recolhidaPorPadrao
+              manterNoPapel
+              className="border-t border-border pt-2"
+              classNameTitulo="text-xs text-muted-foreground"
+              classNameIcone="text-muted-foreground"
+              titulo={<>Conforme o documento ({evidencias.length} cláusula{evidencias.length > 1 ? 's' : ''})</>}
+            >
+              <div className="mt-1 space-y-1">
+                {evidencias.map(([rotulo, texto]) => (
+                  <p key={rotulo} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
+                    <span className="font-medium">{rotulo}:</span> <span className="italic">“{texto}”</span>
+                  </p>
+                ))}
+              </div>
+            </SecaoRecolhivel>
           )}
         </div>
       )}
