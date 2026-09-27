@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { streamAIChat } from '@/lib/ai-stream';
+import { indicesMaisRecentes } from '@/lib/indices/mais-recentes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresa } from '@/contexts/EmpresaContext';
@@ -183,7 +184,7 @@ export default function ReequilibrioIA() {
       supabase.from('indices_economicos').select('*').order('categoria').order('sigla'),
       supabase.from('convencoes_coletivas').select('*').eq('status', 'vigente').order('categoria_profissional'),
     ]);
-    setIndices((indicesRes.data as Indice[]) || []);
+    setIndices(indicesMaisRecentes((indicesRes.data as Indice[]) || []));
     setCcts((cctsRes.data as CCT[]) || []);
     setLoadingData(false);
   };

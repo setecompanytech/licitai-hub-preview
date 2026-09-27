@@ -15,6 +15,11 @@ import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
 import { toast } from 'sonner';
 import { streamAIChat } from '@/lib/ai-stream';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { indicesMaisRecentes } from '@/lib/indices/mais-recentes';
+import { montarDossieDoContrato, type AditivoDoDossie, type ContratoDoDossie, type Dossie } from '@/lib/juridico/dossie-do-contrato';
+import { temSerieOficial, type SerieOficial } from '@/lib/contratos/estudo-de-reajuste';
+import { hojeLocal } from '@/lib/financeiro/data-local';
 import ReactMarkdown from 'react-markdown';
 import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
 import { exportLegalPDF, exportLegalWord } from '@/lib/legal-document-export';
@@ -30,7 +35,7 @@ import {
   Calculator, Filter, X, TrendingUp, Users, ChevronDown, ChevronUp,
   Scale, SlidersHorizontal, ListChecks, Target, Shield, Info,
   Landmark, Award, Upload, CheckCircle, Building2, User, FolderOpen, Hash,
-  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw, ArrowLeft, FolderPlus,
+  Eye, FileCode, AArrowDown, AArrowUp, RotateCcw, ArrowLeft, FolderPlus, AlertTriangle, ClipboardCheck,
 } from 'lucide-react';
 import { MODALIDADES, type ModalidadeLicitacao } from '@/data/modalidades-licitacao';
 import { useJuridicoPedidos, type JuridicoPedido } from '@/hooks/useJuridicoPedidos';
@@ -58,8 +63,8 @@ const modelos: Modelo[] = [
   { id: '4', titulo: 'Contrarrazões de Recurso', categoria: 'Recursos', descricao: 'Resposta ao recurso interposto por outro licitante', icon: ArrowUpDown, fundamentacao: 'Art. 165, §3º da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
   { id: '5', titulo: 'Pedido de Reconsideração', categoria: 'Recursos', descricao: 'Reconsideração de penalidades aplicadas', icon: ShieldQuestion, fundamentacao: 'Art. 166 da Lei 14.133/2021', requisitosFiltro: [] },
   { id: '6', titulo: 'Recurso Hierárquico', categoria: 'Recursos', descricao: 'Recurso à autoridade superior quando pedido de reconsideração indeferido', icon: ArrowUpDown, fundamentacao: 'Art. 167 da Lei 14.133/2021', requisitosFiltro: ['base_juridica'] },
-  { id: '7', titulo: 'Reajuste Contratual (Índice)', categoria: 'Reequilíbrio', descricao: 'Aplicação de índice de preços previsto no contrato para recomposição inflacionária', icon: TrendingUp, fundamentacao: 'Art. 92, §3º e Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['indices', 'contrato', 'base_juridica'] },
-  { id: '8', titulo: 'Repactuação (MO/CCT)', categoria: 'Reequilíbrio', descricao: 'Revisão de custos de mão de obra por dissídio coletivo', icon: Users, fundamentacao: 'Art. 135, I da Lei 14.133/2021', requisitosFiltro: ['ccts', 'indices', 'contrato', 'base_juridica'] },
+  { id: '7', titulo: 'Reajuste Contratual (Índice)', categoria: 'Reequilíbrio', descricao: 'Aplicação de índice de preços previsto no contrato para recomposição inflacionária', icon: TrendingUp, fundamentacao: 'Art. 92, §3º e §4º, I, e Art. 136, I da Lei 14.133/2021', requisitosFiltro: ['indices', 'contrato', 'base_juridica'] },
+  { id: '8', titulo: 'Repactuação (MO/CCT)', categoria: 'Reequilíbrio', descricao: 'Revisão de custos de mão de obra por dissídio coletivo', icon: Users, fundamentacao: 'Art. 92, §4º, II, e Art. 135 da Lei 14.133/2021', requisitosFiltro: ['ccts', 'indices', 'contrato', 'base_juridica'] },
   { id: '9', titulo: 'Revisão / Reequilíbrio Stricto Sensu', categoria: 'Reequilíbrio', descricao: 'Reequilíbrio por fatos imprevisíveis (caso fortuito, força maior, fato do príncipe)', icon: Scale, fundamentacao: 'Art. 124, II, "d" da Lei 14.133/2021', requisitosFiltro: ['indices', 'contrato', 'base_juridica'] },
   { id: '10', titulo: 'Planilha de Composição de Custos', categoria: 'Propostas', descricao: 'Modelo de planilha analítica de custos e formação de preços', icon: Calculator, fundamentacao: 'Art. 58 da Lei 14.133/2021', requisitosFiltro: ['indices'] },
   { id: '11', titulo: 'Declaração de ME/EPP', categoria: 'Declarações', descricao: 'Declaração de enquadramento como microempresa ou EPP', icon: FileText, fundamentacao: 'LC 123/2006, Art. 3º', requisitosFiltro: [] },
@@ -151,6 +156,15 @@ export default function ModelosTemplatesTab() {
   }, [routeModeloId]);
   const [contexto, setContexto] = useState('');
   const [editalNum, setEditalNum] = useState('');
+  // ── O caso vem do sistema (27/09): contrato escolhido → dossiê montado ──
+  const { empresaAtiva } = useEmpresa();
+  const [contratosDaEmpresa, setContratosDaEmpresa] = useState<Array<{ id: string; numero_contrato: string | null; orgao_contratante: string | null; tipo_documento: string | null }>>([]);
+  const [contratoId, setContratoId] = useState<string>(() => new URLSearchParams(window.location.search).get('contrato') ?? '');
+  const [dossie, setDossie] = useState<Dossie | null>(null);
+  const [carregandoDossie, setCarregandoDossie] = useState(false);
+  // ── Revisão humana antes de exportar (decisão do dono, 27/09) ──
+  const [revisadoPor, setRevisadoPor] = useState('');
+  const [revisadoOk, setRevisadoOk] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<string[]>([]);
   const [selectedCCTs, setSelectedCCTs] = useState<string[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
@@ -196,6 +210,49 @@ export default function ModelosTemplatesTab() {
   const maxScaleForViewport = viewportWidth < 480 ? 1 : viewportWidth < 640 ? 1.15 : viewportWidth < 768 ? 1.3 : 1.45;
   const filterFontScale = Math.min(FILTER_FONT_SCALES[filterFontStep], maxScaleForViewport);
   const isFontCapped = FILTER_FONT_SCALES[filterFontStep] > maxScaleForViewport;
+
+  useEffect(() => {
+    if (!empresaAtiva?.id) { setContratosDaEmpresa([]); return; }
+    supabase.from('contratos')
+      .select('id, numero_contrato, orgao_contratante, tipo_documento')
+      .eq('empresa_id', empresaAtiva.id).is('excluido_em', null)
+      .order('numero_contrato')
+      .then(({ data }) => setContratosDaEmpresa((data ?? []) as typeof contratosDaEmpresa));
+  }, [empresaAtiva?.id]);
+
+  // O dossiê: contrato, termos, itens e — quando há data-base e o índice tem
+  // série no SGS — a série oficial exata entre o marco e o aniversário.
+  useEffect(() => {
+    if (!contratoId) { setDossie(null); return; }
+    let vivo = true;
+    setCarregandoDossie(true);
+    (async () => {
+      const [c, a, i] = await Promise.all([
+        supabase.from('contratos').select('numero_contrato, orgao_contratante, objeto, modalidade, tipo_documento, status, data_assinatura, data_inicio, data_fim, valor_global, valor_global_original, saldo_remanescente, valor_consumido, indice_reajuste, data_base_reajuste, reajuste_clausula, fiscal_nome, prazo_pagamento_dias, prazo_entrega_dias, forma_fornecimento').eq('id', contratoId).maybeSingle(),
+        supabase.from('contrato_aditivos').select('numero_aditivo, tipo, data_assinatura, data_base_reajuste, valor_aditivo, nova_data_fim, fundamento_legal').eq('contrato_id', contratoId).order('data_assinatura'),
+        supabase.from('contrato_itens').select('valor_total').eq('contrato_id', contratoId),
+      ]);
+      if (!vivo) return;
+      if (c.error || !c.data) { setDossie(null); setCarregandoDossie(false); toast.error('Não foi possível ler o contrato.'); return; }
+      const contrato = c.data as unknown as ContratoDoDossie;
+      const aditivos = ((a.data ?? []) as unknown as AditivoDoDossie[]);
+      const itensLidos = ((i.data ?? []) as Array<{ valor_total: number | null }>);
+      const itens = { quantidade: itensLidos.length, valorTotal: itensLidos.reduce((t, x) => t + (Number(x.valor_total) || 0), 0) };
+      const hoje = hojeLocal();
+      let d = montarDossieDoContrato({ contrato, aditivos, itens, hoje });
+      if (d.reajuste?.devido && contrato.indice_reajuste && temSerieOficial(contrato.indice_reajuste)) {
+        const { data } = await supabase.functions.invoke('indices-economicos', {
+          body: { action: 'calculo_reajuste', indice: contrato.indice_reajuste, data_base: d.reajuste.marco, data_alvo: d.reajuste.aniversario },
+        });
+        if (!vivo) return;
+        if (data?.success) d = montarDossieDoContrato({ contrato, aditivos, itens, serie: data as SerieOficial, hoje });
+      }
+      setDossie(d);
+      setEditalNum((atual) => atual || d.numero);
+      setCarregandoDossie(false);
+    })();
+    return () => { vivo = false; };
+  }, [contratoId]);
 
   // Pré-preenchimento a partir do processo ativo (vinculação automática)
   useEffect(() => {
@@ -351,7 +408,7 @@ ${truncated}`
       supabase.from('convencoes_coletivas').select('id, categoria_profissional, piso_salarial, reajuste_percentual, indice_reajuste, vigencia_inicio, vigencia_fim, sindicato_laboral, abrangencia_uf').eq('status', 'vigente'),
       supabase.from('base_juridica').select('id, titulo, tipo, ementa, texto_integral').order('created_at', { ascending: false }).limit(50),
     ]).then(([indRes, cctRes, docRes]) => {
-      setIndices((indRes.data as Indice[]) || []);
+      setIndices(indicesMaisRecentes((indRes.data as Indice[]) || []));
       setCcts((cctRes.data as CCT[]) || []);
       setDocsBase((docRes.data as DocRef[]) || []);
       setLoadingData(false);
@@ -386,7 +443,9 @@ ${truncated}`
     'Mandado de Segurança Licitatório': 'Mandado de Segurança',
     'Parecer Jurídico': 'Parecer Jurídico',
   };
-  const peticaoConfigKey = activeModelo ? MODELO_PETICAO_MAP[activeModelo.titulo] : null;
+  // Todo modelo aceita documentos do caso (27/09): os não mapeados usam a
+  // extração genérica de fatos.
+  const peticaoConfigKey = activeModelo ? (MODELO_PETICAO_MAP[activeModelo.titulo] ?? 'Documentos do Caso') : null;
   const isPeticaoType = !!peticaoConfigKey;
 
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
@@ -491,6 +550,14 @@ ${truncated}`
       }
     }
 
+    // O caso montado pelo sistema: fatos conferíveis, antes de tudo.
+    if (dossie) {
+      fullContext += `\n\n--- DADOS DO CASO (LIDOS DO SISTEMA) ---\n${dossie.texto}\n`;
+    }
+    if (activeModelo.categoria === 'Judicial') {
+      fullContext += '\n\nATENÇÃO: esta é uma MINUTA para advogado inscrito na OAB. Não afirme protocolo nem assinatura; deixe os campos de advogado, OAB e comarca para preenchimento.';
+    }
+
     // Attach selected indices
     if (selectedIndices.length > 0) {
       fullContext += '\n\n--- ÍNDICES ECONÔMICOS SELECIONADOS ---\n';
@@ -534,9 +601,9 @@ ${truncated}`
     let instrucao = '';
     if (activeModelo.categoria === 'Reequilíbrio') {
       if (activeModelo.id === '7') {
-        instrucao = 'Gere pedido de REAJUSTE CONTRATUAL por índice (Art. 92, §3º e Art. 135, I da Lei 14.133/2021). Automático, anual, por apostilamento. Demonstre cálculo com índice selecionado.';
+        instrucao = 'Gere pedido de REAJUSTE CONTRATUAL em sentido estrito, por índice (Lei 14.133/2021, art. 92, §3º e §4º, I; registro por apostila, art. 136, I; interregno anual da Lei 10.192/2001, art. 2º, §1º, e art. 3º, §1º). Demonstre o cálculo com a série oficial e a data-base do caso; NÃO cite o art. 135, que é repactuação.';
       } else if (activeModelo.id === '8') {
-        instrucao = 'Gere pedido de REPACTUAÇÃO por dissídio/CCT (Art. 135, I da Lei 14.133/2021). Exclusivo para serviços com dedicação exclusiva de MO. Demonstre variação via planilha de custos (antes/depois).';
+        instrucao = 'Gere pedido de REPACTUAÇÃO (Lei 14.133/2021, art. 92, §4º, II, e art. 135: custos de mercado com data vinculada à proposta, inciso I; mão de obra vinculada à convenção, acordo ou dissídio coletivo, inciso II). Exclusivo para serviços contínuos com dedicação exclusiva ou predominância de mão de obra. Demonstre a variação por planilha analítica de custos (antes/depois).';
       } else if (activeModelo.id === '9') {
         instrucao = 'Gere pedido de REVISÃO/REEQUILÍBRIO STRICTO SENSU (Art. 124, II, "d" da Lei 14.133/2021). Aplique Teoria da Imprevisão. Demonstre nexo causal e onerosidade excessiva.';
       }
@@ -725,6 +792,23 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
         } catch {}
       }
     }
+  };
+
+  // Exportar exige revisão humana registrada (27/09): nome de quem revisou e
+  // a declaração de leitura. O rodapé vai no documento e a versão fica no pedido.
+  const revisaoOk = revisadoOk && revisadoPor.trim().length >= 3;
+  const exigirRevisao = (): boolean => {
+    if (revisaoOk) return true;
+    toast.error('Registre quem revisou a peça antes de exportar', { description: 'Preencha "Revisado por" e marque "Li e revisei o texto".' });
+    return false;
+  };
+  const conteudoRevisado = (): string => {
+    const data = new Date().toLocaleDateString('pt-BR');
+    const rodape = `\n\n---\nRevisado por ${revisadoPor.trim()} em ${data}.`;
+    if (pedidoAtivo) {
+      salvarVersao(pedidoAtivo, resultado, `Revisão registrada — ${revisadoPor.trim()}`, 'revisao-humana').catch(() => undefined);
+    }
+    return resultado + rodape;
   };
 
   const handlePeticaoFinish = (fatos: FatoPeticao[], documentosTexto: string, numEdital: string) => {
@@ -1247,6 +1331,41 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
             )}
           </div>
 
+          {activeModelo.categoria === 'Judicial' && (
+            <Alert variant="warning">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription>
+                Peça judicial: o sistema prepara a MINUTA e o dossiê; a petição só vai a juízo assinada por advogado inscrito na OAB (Lei 8.906/1994, art. 1º, I). Registre o advogado revisor antes de exportar.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* ── O caso vem do sistema: escolher o contrato monta o dossiê ── */}
+          <div className="space-y-2 rounded-lg border border-border bg-secondary p-4">
+            <Label htmlFor="modelo-contrato">Contrato ou ata do sistema</Label>
+            <Select value={contratoId || '__nenhum__'} onValueChange={(v) => setContratoId(v === '__nenhum__' ? '' : v)}>
+              <SelectTrigger id="modelo-contrato"><SelectValue placeholder="Escolha o contrato para montar o caso" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__nenhum__">Sem contrato — descrever o caso à mão</SelectItem>
+                {contratosDaEmpresa.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.tipo_documento === 'ata_srp' ? 'Ata ' : 'Contrato '}{c.numero_contrato ?? 'sem número'}{c.orgao_contratante ? ` · ${c.orgao_contratante}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {carregandoDossie ? (
+              <p className="g-meta flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Lendo contrato, termos, itens e série oficial…</p>
+            ) : dossie ? (
+              <div className="space-y-1" data-testid="dossie-do-caso">
+                <p className="g-meta font-semibold text-foreground">Dados do caso lidos do sistema — a IA parte daqui; confirme e complete no contexto o que faltar.</p>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-card p-3 font-sans text-xs leading-relaxed text-foreground">{dossie.texto}</pre>
+              </div>
+            ) : (
+              <p className="g-meta text-muted-foreground">Com o contrato escolhido, o sistema monta o caso: partes, valores, termos, índice, data-base, série oficial e prazos. Sem contrato, descreva os fatos e anexe os documentos.</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="modelo-edital-num">Nº do Edital / Contrato</Label>
@@ -1430,6 +1549,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                             <Button
                               size="sm"
                               onClick={async () => {
+                                if (!exigirRevisao()) return;
                                 setArquivandoPeca(true);
                                 try {
                                   const meta = {
@@ -1442,7 +1562,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                                     rep_nome: selectedEmpresa?.rep_nome || undefined,
                                     rep_cpf: selectedEmpresa?.rep_cpf || undefined,
                                   };
-                                  const blob = await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta, 'pasta');
+                                  const blob = await exportLegalPDF(conteudoRevisado(), activeModelo?.titulo || 'Documento Jurídico', meta, 'pasta');
                                   if (!blob) { toast.error('Não foi possível gerar o PDF da peça.'); return; }
                                   const pasta = pastaDaPecaJuridica(activeModelo?.categoria);
                                   const rotulo = pasta === 'recursos' ? 'Recursos' : pasta === 'declaracoes' ? 'Declarações' : pasta === 'contrato' ? 'Contrato' : 'Outros';
@@ -1467,6 +1587,20 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                               Salvar na pasta do processo
                             </Button>
                           )}
+                          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-secondary px-2 py-1">
+                            <ClipboardCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            <Input
+                              aria-label="Revisado por"
+                              placeholder="Revisado por (nome)"
+                              value={revisadoPor}
+                              onChange={(e) => setRevisadoPor(e.target.value)}
+                              className="h-8 w-44"
+                            />
+                            <label className="flex items-center gap-1.5 text-xs text-foreground">
+                              <Checkbox checked={revisadoOk} onCheckedChange={(v) => setRevisadoOk(v === true)} aria-label="Li e revisei o texto" />
+                              Li e revisei o texto
+                            </label>
+                          </div>
                           <Button size="sm" variant="outline" onClick={copyToClipboard} className="shrink-0">
                             <Copy aria-hidden="true" /> Copiar
                           </Button>
@@ -1475,6 +1609,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                             variant="outline"
                             className="shrink-0"
                             onClick={async () => {
+                              if (!exigirRevisao()) return;
                               const meta = {
                                 empresa: selectedEmpresa?.razao_social,
                                 cnpj: selectedEmpresa?.cnpj,
@@ -1487,7 +1622,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                                 rep_nome: selectedEmpresa?.rep_nome || undefined,
                                 rep_cpf: selectedEmpresa?.rep_cpf || undefined,
                               };
-                              await exportLegalPDF(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                              await exportLegalPDF(conteudoRevisado(), activeModelo?.titulo || 'Documento Jurídico', meta);
                               toast.success('PDF ABNT gerado!');
                             }}
                           >
@@ -1498,6 +1633,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                             variant="outline"
                             className="shrink-0"
                             onClick={() => {
+                              if (!exigirRevisao()) return;
                               const meta = {
                                 empresa: selectedEmpresa?.razao_social,
                                 cnpj: selectedEmpresa?.cnpj,
@@ -1510,7 +1646,7 @@ Linguagem técnica, objetiva, impessoal e auditável. Cite fontes e períodos do
                                 rep_nome: selectedEmpresa?.rep_nome || undefined,
                                 rep_cpf: selectedEmpresa?.rep_cpf || undefined,
                               };
-                              exportLegalWord(resultado, activeModelo?.titulo || 'Documento Jurídico', meta);
+                              exportLegalWord(conteudoRevisado(), activeModelo?.titulo || 'Documento Jurídico', meta);
                               toast.success('Word ABNT gerado!');
                             }}
                           >

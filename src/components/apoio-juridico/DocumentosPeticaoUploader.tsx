@@ -47,6 +47,36 @@ const PETICAO_CONFIG: Record<string, {
   aiPrompt: string;
   categorias: string[];
 }> = {
+  // Qualquer peça aceita anexo (27/09): reajuste, aditivo, defesa e parecer
+  // ficavam só com campos manuais. O que a IA extrai aqui são FATOS com a
+  // página/trecho de origem — nunca conclusão jurídica sem documento.
+  'Documentos do Caso': {
+    label: 'Documentos do caso',
+    uploadLabel: 'Contrato, termos, ofícios, notificações, planilhas ou decisões',
+    uploadDesc: 'Anexe os documentos que sustentam a peça (contrato e aditivos, ofício ou notificação do órgão, planilha de custos, ata, decisão). O sistema lê e lista os fatos encontrados, com o trecho de origem, para você confirmar.',
+    uploadPlaceholder: 'Cole aqui o texto do documento (contrato, ofício, notificação, decisão)...',
+    aiPrompt: `Você é um advogado especialista em contratos administrativos (Lei 14.133/2021).
+
+Leia os DOCUMENTOS abaixo e extraia os FATOS relevantes para instruir uma peça jurídica: partes, números de contrato/edital/processo, datas (assinatura, vigência, data-base, notificação, prazo), valores, cláusulas citadas literalmente, obrigações descumpridas, pedidos e decisões do órgão.
+
+Para cada fato, retorne um JSON array (SEM markdown, APENAS JSON):
+[
+  {
+    "descricao": "O fato, com o trecho literal do documento entre aspas e a referência (cláusula, item, página) quando houver",
+    "fundamentacao": "Norma que rege o fato, SOMENTE se o próprio documento a cita ou se for a Lei 14.133/2021 em dispositivo certo; caso contrário escreva 'a confirmar'",
+    "gravidade": "alta|media|baixa",
+    "categoria": "categoria do fato"
+  }
+]
+
+CATEGORIAS: Identificação das partes · Objeto e valor · Vigência e prazos · Reajuste, repactuação ou reequilíbrio · Aditivos e apostilas · Pagamento e inadimplemento · Notificação ou sanção · Decisão do órgão · Cláusula relevante · Outro
+
+REGRAS:
+- Não invente número de artigo, acórdão ou valor que não esteja no documento.
+- Data e valor saem exatamente como escritos no documento.
+- Se o documento estiver ilegível ou incompleto, diga isso como um fato de gravidade alta.`,
+    categorias: ['Identificação das partes', 'Objeto e valor', 'Vigência e prazos', 'Reajuste, repactuação ou reequilíbrio', 'Aditivos e apostilas', 'Pagamento e inadimplemento', 'Notificação ou sanção', 'Decisão do órgão', 'Cláusula relevante', 'Outro'],
+  },
   'Recurso Administrativo': {
     label: 'Recurso Administrativo',
     uploadLabel: 'Decisão da CPL / Ata de Julgamento',

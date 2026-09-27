@@ -14,6 +14,7 @@ import SeloPraefectusIA from '@/components/shared/SeloPraefectusIA';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, BookOpen, Copy, TrendingUp, Download, FileText } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
+import { indicesMaisRecentes } from '@/lib/indices/mais-recentes';
 import ReactMarkdown from 'react-markdown';
 import IrregularidadesExtractor, { type Irregularidade } from './IrregularidadesExtractor';
 import DocumentosPeticaoUploader, { type FatoPeticao } from './DocumentosPeticaoUploader';
@@ -93,7 +94,7 @@ export default function GeradorIAComBase() {
         supabase.from('indices_economicos').select('id, nome, sigla, valor, variacao_mensal, acumulado_12m, periodo, fonte').order('sigla'),
         supabase.from('convencoes_coletivas').select('id, categoria_profissional, piso_salarial, reajuste_percentual, indice_reajuste, vigencia_inicio, vigencia_fim, sindicato_laboral, abrangencia_uf').eq('status', 'vigente'),
       ]).then(([indRes, cctRes]) => {
-        setIndices((indRes.data as Indice[]) || []);
+        setIndices(indicesMaisRecentes((indRes.data as Indice[]) || []));
         setCcts((cctRes.data as CCT[]) || []);
         setLoadingIndices(false);
       });

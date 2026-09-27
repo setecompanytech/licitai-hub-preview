@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Scale, BookOpen, FileText, Sparkles, TrendingUp,
-  Gavel, Database, Shield
+  Gavel, Database, Shield, Radar
 } from 'lucide-react';
 import ReequilibrioIA from '@/components/apoio-juridico/ReequilibrioIA';
 import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
 import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
 import ModelosTemplatesTab from '@/components/apoio-juridico/ModelosTemplatesTab';
+import RadarJuridico from '@/components/apoio-juridico/RadarJuridico';
 
 const LEGISLACAO_REFS = [
   { lei: 'Lei 14.133/2021', desc: 'Nova Lei de Licitações e Contratos Administrativos', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
@@ -35,7 +36,10 @@ const SUMULAS_TCU = [
   { num: '285', desc: 'Margem de preferência para bens e serviços nacionais' },
 ];
 
+// O módulo abre pelo Radar (decisão do dono, 27/09): primeiro o que o
+// sistema já sabe que precisa de peça; os modelos ficam ao lado.
 const ABAS = [
+  { v: 'radar', ic: Radar, r: 'Radar' },
   { v: 'modelos', ic: FileText, r: 'Modelos e Templates' },
   { v: 'gerador', ic: Sparkles, r: 'Gerador IA' },
   { v: 'reequilibrio', ic: TrendingUp, r: 'Reequilíbrio' },
@@ -44,7 +48,7 @@ const ABAS = [
 ];
 
 export default function ApoioJuridico() {
-  const [activeTab, setActiveTab] = useState('modelos');
+  const [activeTab, setActiveTab] = useState('radar');
   // Quando aberto via deep-link /apoio-juridico/redigir/:modeloId,
   // a página opera em modo "redação dedicada": ocultamos o cabeçalho
   // institucional e as abas (Modelos, Gerador, Reequilíbrio, Base, Legislação),
@@ -103,6 +107,11 @@ export default function ApoioJuridico() {
               </TabsTrigger>
             ))}
           </TabsList>
+
+          {/* Tab 0: Radar — eventos derivados dos dados, cada um com a peça */}
+          <TabsContent value="radar" className="space-y-4">
+            <RadarJuridico />
+          </TabsContent>
 
           {/* Tab 1: Modelos + Templates com Gerador Integrado */}
           <TabsContent value="modelos" className="space-y-4">
