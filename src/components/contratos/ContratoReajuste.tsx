@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,7 +85,9 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
   // Calculadora exata: série oficial entre a data-base (marco) e o aniversário.
   const [calculo, setCalculo] = useState<CalculoExato | null>(null);
   const [calculando, setCalculando] = useState(false);
-  const [baseCalculo, setBaseCalculo] = useState<string>('');
+  // Em reais; 0 = ainda não informada. O campo é o de moeda da casa (27/09:
+  // o dono viu "1236891,22" cru, sem R$ nem separador de milhar).
+  const [baseCalculo, setBaseCalculo] = useState<number>(0);
   const [memoriaAberta, setMemoriaAberta] = useState(false);
 
   useEffect(() => {
@@ -165,13 +168,6 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
     hoje: hojeLocal(),
   });
 
-  /** "84451,07" ou "84451.07" — os dois formatos entram. */
-  const parseBrl = (s: string): number => {
-    const t = s.trim();
-    if (!t) return NaN;
-    return t.includes(',') ? parseFloat(t.replace(/\./g, '').replace(',', '.')) : parseFloat(t);
-  };
-
   // O número do REQUERIMENTO: fator real da série oficial entre o marco e o
   // aniversário (razão dos números-índices). Determinístico — IA nenhuma.
   const calcularExato = async () => {
@@ -190,7 +186,7 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
       if (!res?.success) throw new Error(res?.error || 'Falha no cálculo');
       setCalculo(res as CalculoExato);
       if (!baseCalculo && dados.valor_global) {
-        setBaseCalculo(Number(dados.valor_global).toFixed(2).replace('.', ','));
+        setBaseCalculo(Number(dados.valor_global) || 0);
       }
     } catch (e) {
       toast.error('Não foi possível calcular', { description: e instanceof Error ? e.message : String(e) });
@@ -203,7 +199,7 @@ export default function ContratoReajuste({ contratoId }: { contratoId: string })
    *  oficial citada e fundamentação — pronto para instruir o requerimento. */
   const gerarEstudo = () => {
     if (!calculo || !situacao || !dados) return;
-    const base = parseBrl(baseCalculo);
+    const base = baseCalculo;
     const temBase = Number.isFinite(base) && base > 0;
     const num = (v: number, casas = 2) => v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
     const linhas = calculo.meses
@@ -428,11 +424,11 @@ Central do Brasil — apuração do índice pelo ${calculo.fonte.split('·')[0].
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="space-y-1.5">
                         <Label>Base de cálculo (R$) — use o saldo a executar</Label>
-                        <Input className="w-40 tabular-nums" value={baseCalculo}
-                          onChange={(e) => setBaseCalculo(e.target.value)} placeholder="0,00" />
+                        <MoneyInput className="w-44 tabular-nums" value={baseCalculo}
+                          onValueChange={setBaseCalculo} aria-label="Base de cálculo em reais" />
                       </div>
                       {(() => {
-                        const base = parseBrl(baseCalculo);
+                        const base = baseCalculo;
                         if (!Number.isFinite(base) || base <= 0) return null;
                         return (
                           <p className="pb-1.5">
