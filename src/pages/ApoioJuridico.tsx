@@ -16,6 +16,7 @@ import BaseJuridicaUpload from '@/components/apoio-juridico/BaseJuridicaUpload';
 import GeradorIAComBase from '@/components/apoio-juridico/GeradorIAComBase';
 import ModelosTemplatesTab from '@/components/apoio-juridico/ModelosTemplatesTab';
 import RadarJuridico from '@/components/apoio-juridico/RadarJuridico';
+import FontesOficiais from '@/components/apoio-juridico/FontesOficiais';
 
 const LEGISLACAO_REFS = [
   { lei: 'Lei 14.133/2021', desc: 'Nova Lei de Licitações e Contratos Administrativos', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
@@ -129,7 +130,8 @@ export default function ApoioJuridico() {
           </TabsContent>
 
           {/* Tab 4: Base Jurídica IA (upload e gestão) */}
-          <TabsContent value="base-juridica">
+          <TabsContent value="base-juridica" className="space-y-6">
+            <FontesOficiais />
             <BaseJuridicaUpload />
           </TabsContent>
 

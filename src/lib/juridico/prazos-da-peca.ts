@@ -8,7 +8,8 @@ export function prazoDaPeca(categoria: string, titulo: string): { prazo: string;
   if (categoria === 'Esclarecimentos' || categoria === 'Impugnações') return { prazo: 'Até 3 dias úteis antes da data de abertura do certame', fundamento: 'Lei 14.133/2021, art. 164' };
   if (categoria === 'Recursos') {
     if (t.includes('contrarraz')) return { prazo: '3 dias úteis, contados do fim do prazo do recorrente', fundamento: 'Lei 14.133/2021, art. 165' };
-    if (t.includes('reconsidera')) return { prazo: '3 dias úteis da intimação; contra impedimento ou inidoneidade, 15 dias úteis', fundamento: 'Lei 14.133/2021, art. 165, II, e art. 166' };
+    if (t.includes('reconsidera')) return { prazo: '3 dias úteis da intimação (ato sem recurso hierárquico); contra advertência, multa ou impedimento, o recurso é de 15 dias úteis', fundamento: 'Lei 14.133/2021, art. 165, II, e art. 166' };
+    if (t.includes('hier')) return { prazo: '3 dias úteis da intimação; contra sanção (advertência, multa, impedimento), 15 dias úteis', fundamento: 'Lei 14.133/2021, art. 165, I, e art. 166' };
     return { prazo: '3 dias úteis, contados da intimação ou da lavratura da ata', fundamento: 'Lei 14.133/2021, art. 165, I e § 1º' };
   }
   if (categoria === 'Defesas') return { prazo: '15 dias úteis da intimação (multa, impedimento, inidoneidade)', fundamento: 'Lei 14.133/2021, arts. 157 e 158' };

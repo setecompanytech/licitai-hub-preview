@@ -38,9 +38,10 @@ VOCÊ TEM FERRAMENTAS. Use-as ANTES de afirmar qualquer fato do caso:
 - serie_oficial: a variação exata de um índice (IPCA, INPC, IGP-M, IGP-DI, INCC-DI) entre duas datas, pela série do Banco Central.
 - buscar_base_juridica: documentos, acórdãos e pareceres que a empresa guardou na Base Jurídica.
 - normas_conferidas: a lista de dispositivos legais conferidos contra o texto oficial, com a síntese de cada um.
+- texto_da_norma: o artigo INTEIRO e literal de uma lei acompanhada (Lei 14.133/2021, 10.192/2001, LC 123/2006, 8.906/1994, 12.016/2009, 4.320/1964, Decreto 11.462/2023), lido do Planalto pela base normativa. Prefira-o a citar de memória.
 
 REGRA DE OURO — NOTAS DE ORIGEM. Toda afirmação de fato ou de direito leva um marcador ao fim da frase:
-- [[norma:Lei 14.133/2021, art. 136, I]] para dispositivo legal, súmula ou acórdão. Cite SOMENTE dispositivos que estejam em normas_conferidas ou que o documento anexado/base jurídica traga literalmente. Fora disso, escreva "(a confirmar)" e o marcador mesmo assim — o sistema o mostrará como não conferido.
+- [[norma:Lei 14.133/2021, art. 136, I]] para dispositivo legal, súmula ou acórdão. Cite SOMENTE dispositivos que estejam em normas_conferidas, que texto_da_norma tenha devolvido, ou que buscar_base_juridica / documento anexado traga literalmente (acórdão do TCU só com número, ano e colegiado vindos da base). Fora disso, escreva "(a confirmar)" e o marcador mesmo assim — o sistema o mostrará como não conferido.
 - [[fonte:sistema]] para dado lido pelas ferramentas ou pelos "dados do caso lidos do sistema".
 - [[fonte:anexo|nome do documento, página ou cláusula]] para fato tirado de documento anexado.
 - [[fonte:base|id|título]] para documento da Base Jurídica.
@@ -73,6 +74,15 @@ const TOOLS = [
     name: 'buscar_base_juridica',
     description: 'Busca na Base Jurídica da empresa (documentos que ela guardou) e na jurisprudência coletada, por termo no título ou na ementa.',
     input_schema: { type: 'object', properties: { termo: { type: 'string' } }, required: ['termo'] },
+  },
+  {
+    name: 'texto_da_norma',
+    description: 'Texto literal e vigente de um artigo de lei acompanhada, lido do Planalto pela base normativa. Ex.: identificador "Lei 14.133/2021", dispositivo "art. 92".',
+    input_schema: {
+      type: 'object',
+      properties: { identificador: { type: 'string', description: 'Diploma: "Lei 14.133/2021", "Lei 10.192/2001", "LC 123/2006"…' }, dispositivo: { type: 'string', description: '"art. 92" (sem parágrafo: o artigo inteiro vem com seus parágrafos e incisos)' } },
+      required: ['identificador', 'dispositivo'],
+    },
   },
   {
     name: 'normas_conferidas',
@@ -126,18 +136,29 @@ async function executarTool(nome: string, args: Record<string, unknown>, db: Db)
     const esperados = (aa - iniAno) * 12 + (ma - iniMes) + 1;
     return { indice: sigla, fonte: info.fonte, data_base: dataBase, data_alvo: dataAlvo, meses, meses_esperados: esperados, completo: meses.length >= esperados, fator, percentual: (fator - 1) * 100 };
   }
+  if (nome === 'texto_da_norma') {
+    const { data, error } = await db.rpc('texto_da_norma', { p_identificador: String(args.identificador ?? ''), p_dispositivo: String(args.dispositivo ?? '') });
+    if (error) return { erro: error.message };
+    const linhas = (data ?? []) as Array<{ identificador: string; dispositivo: string | null; texto: string; url: string | null; atualizado_em: string }>;
+    if (linhas.length === 0) return { erro: 'Dispositivo não está na base normativa: não o cite como certo. Verifique o número ou use normas_conferidas.' };
+    return { normas: linhas.map((l) => ({ ...l, texto: l.texto.slice(0, 12000) })) };
+  }
   if (nome === 'buscar_base_juridica') {
     const termo = String(args.termo ?? '').trim().slice(0, 80);
     if (!termo) return { erro: 'termo vazio' };
     const like = `%${termo.replace(/[%_,]/g, ' ')}%`;
-    const [b, j] = await Promise.all([
+    const [b, j, n] = await Promise.all([
       db.from('base_juridica').select('id, titulo, tipo, tribunal, numero_processo, data_documento, ementa').or(`titulo.ilike.${like},ementa.ilike.${like}`).limit(8),
       db.from('agent_jurisprudencia').select('id, fonte, numero, ementa, data_pub').or(`numero.ilike.${like},ementa.ilike.${like}`).limit(8),
+      db.rpc('buscar_base_normativa', { p_termo: termo, p_limite: 8 }),
     ]);
+    const normativa = (n.error ? [] : (n.data ?? [])) as Array<Record<string, unknown>>;
+    const total = (b.data ?? []).length + (j.data ?? []).length + normativa.length;
     return {
       base_juridica: (b.data ?? []).map((d) => ({ ...d, ementa: String(d.ementa ?? '').slice(0, 1200) })),
       jurisprudencia_coletada: (j.data ?? []).map((d) => ({ ...d, ementa: String(d.ementa ?? '').slice(0, 1200) })),
-      aviso: (b.data ?? []).length + (j.data ?? []).length === 0 ? 'Nada na base para este termo: não cite acórdão que não esteja aqui.' : undefined,
+      base_normativa: normativa.map((d) => ({ id: d.id, fonte: d.fonte, identificador: d.identificador, dispositivo: d.dispositivo, titulo: d.titulo, ementa: d.ementa, trecho: d.trecho, url: d.url, data_publicacao: d.data_publicacao })),
+      aviso: total === 0 ? 'Nada na base para este termo: não cite acórdão nem ato que não esteja aqui.' : undefined,
     };
   }
   return { erro: `ferramenta desconhecida: ${nome}` };

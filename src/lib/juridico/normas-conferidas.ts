@@ -1,8 +1,9 @@
 /**
  * As normas que o Apoio Jurídico pode citar como CONFERIDAS (27/09/2026).
  *
- * Conferidas contra o texto de 2021 da Lei 14.133 (auditoria de 31/08) e os
- * textos oficiais das demais. `texto` é a síntese fiel do dispositivo; onde
+ * Conferidas contra o texto COMPILADO do Planalto lido em 27/09/2026 (art.
+ * 25, § 7º, e art. 92, § 3º, literais dali; a auditoria de 31/08 valia para a
+ * redação de 2021) e os textos oficiais das demais. `texto` é a síntese fiel do dispositivo; onde
  * `literal` é true, é a redação exata. O que não está aqui a peça cita como
  * "a confirmar", nunca como certo — foi assim que "art. 65" e um acórdão
  * inexistente pararam de sair do gerador.
@@ -30,11 +31,11 @@ export const NORMAS_CONFERIDAS: NormaConferida[] = [
   { chave: '14.133|6|lix', diploma: 'Lei 14.133/2021', dispositivo: 'art. 6º, LIX', literal: true, url: PLANALTO_14133,
     texto: 'repactuação: forma de manutenção do equilíbrio econômico-financeiro de contrato utilizada para serviços contínuos com regime de dedicação exclusiva de mão de obra ou predominância de mão de obra, por meio da análise da variação dos custos contratuais, devendo estar prevista no edital com data vinculada à apresentação das propostas, para os custos decorrentes do mercado, e com data vinculada ao acordo, à convenção coletiva ou ao dissídio coletivo ao qual o orçamento esteja vinculado, para os custos decorrentes da mão de obra' },
   { chave: '14.133|25|7', diploma: 'Lei 14.133/2021', dispositivo: 'art. 25, § 7º', literal: true, url: PLANALTO_14133,
-    texto: 'Independentemente do prazo de duração, o contrato deverá conter cláusula que estabeleça o índice de reajustamento de preço, com data-base vinculada à data do orçamento estimado e com a possibilidade de ser estabelecido mais de um índice específico ou setorial, em conformidade com a realidade de mercado dos respectivos insumos.' },
+    texto: 'Independentemente do prazo de duração do contrato, será obrigatória a previsão no edital de índice de reajustamento de preço, com data-base vinculada à data do orçamento estimado e com a possibilidade de ser estabelecido mais de um índice específico ou setorial, em conformidade com a realidade de mercado dos respectivos insumos.' },
   { chave: '14.133|84', diploma: 'Lei 14.133/2021', dispositivo: 'art. 84', literal: false, url: PLANALTO_14133,
     texto: 'o prazo de vigência da ata de registro de preços é de 1 ano, prorrogável por igual período desde que comprovado o preço vantajoso' },
   { chave: '14.133|92|3', diploma: 'Lei 14.133/2021', dispositivo: 'art. 92, § 3º', literal: true, url: PLANALTO_14133,
-    texto: 'Independentemente do prazo de duração, o contrato deverá conter cláusula que estabeleça o índice de reajustamento de preço, com data-base vinculada à data do orçamento estimado e com a possibilidade de ser estabelecido mais de um índice específico ou setorial, em conformidade com a realidade de mercado dos respectivos insumos.' },
+    texto: 'Independentemente do prazo de duração, o contrato deverá conter cláusula que estabeleça o índice de reajustamento de preço, com data-base vinculada à data do orçamento estimado, e poderá ser estabelecido mais de um índice específico ou setorial, em conformidade com a realidade de mercado dos respectivos insumos.' },
   { chave: '14.133|92|4', diploma: 'Lei 14.133/2021', dispositivo: 'art. 92, § 4º', literal: false, url: PLANALTO_14133,
     texto: 'nos contratos de serviços contínuos, observado o interregno mínimo de 1 ano, o critério de reajustamento será: I — reajustamento em sentido estrito, quando não houver regime de dedicação exclusiva de mão de obra ou predominância de mão de obra, mediante índices específicos ou setoriais; II — repactuação, quando houver regime de dedicação exclusiva ou predominância de mão de obra, mediante demonstração analítica da variação dos custos' },
   { chave: '14.133|94', diploma: 'Lei 14.133/2021', dispositivo: 'art. 94', literal: false, url: PLANALTO_14133,
@@ -52,7 +53,7 @@ export const NORMAS_CONFERIDAS: NormaConferida[] = [
   { chave: '14.133|125', diploma: 'Lei 14.133/2021', dispositivo: 'art. 125', literal: false, url: PLANALTO_14133,
     texto: 'o contratado é obrigado a aceitar acréscimos ou supressões de até 25% do valor inicial atualizado do contrato (50% para acréscimos em reforma de edifício ou de equipamento)' },
   { chave: '14.133|135', diploma: 'Lei 14.133/2021', dispositivo: 'art. 135', literal: false, url: PLANALTO_14133,
-    texto: 'os preços dos contratos para serviços contínuos com dedicação exclusiva ou predominância de mão de obra serão repactuados mediante demonstração analítica da variação dos custos, com data vinculada: I — à da apresentação da proposta, para os custos de mercado; II — ao acordo, à convenção ou ao dissídio coletivo, para os custos de mão de obra' },
+    texto: 'os preços dos contratos para serviços contínuos com dedicação exclusiva ou predominância de mão de obra serão repactuados mediante demonstração analítica da variação dos custos, com data vinculada: I — à da apresentação da proposta, para os custos de mercado; II — ao acordo, à convenção ou ao dissídio coletivo, para os custos de mão de obra; § 3º: interregno mínimo de 1 ano, contado da data da apresentação da proposta ou do orçamento a que ela se referir' },
   { chave: '14.133|136|i', diploma: 'Lei 14.133/2021', dispositivo: 'art. 136, I', literal: false, url: PLANALTO_14133,
     texto: 'registram-se por simples apostila, dispensada a celebração de termo aditivo, a variação do valor contratual para fazer face ao reajuste ou à repactuação de preços previstos no próprio contrato' },
   { chave: '14.133|156', diploma: 'Lei 14.133/2021', dispositivo: 'art. 156', literal: false, url: PLANALTO_14133,
@@ -60,9 +61,9 @@ export const NORMAS_CONFERIDAS: NormaConferida[] = [
   { chave: '14.133|164', diploma: 'Lei 14.133/2021', dispositivo: 'art. 164', literal: false, url: PLANALTO_14133,
     texto: 'qualquer pessoa é parte legítima para impugnar o edital ou pedir esclarecimento, no prazo de até 3 dias úteis antes da data de abertura do certame; a resposta sai em até 3 dias úteis' },
   { chave: '14.133|165', diploma: 'Lei 14.133/2021', dispositivo: 'art. 165', literal: false, url: PLANALTO_14133,
-    texto: 'cabem recurso, no prazo de 3 dias úteis contado da intimação ou da lavratura da ata, contra o julgamento das propostas, o ato de habilitação ou inabilitação, a anulação ou revogação e a extinção do contrato; e pedido de reconsideração, no mesmo prazo, contra sanção; contrarrazões no mesmo prazo do recurso' },
+    texto: 'cabem recurso, no prazo de 3 dias úteis contado da intimação ou da lavratura da ata, contra pré-qualificação ou registro cadastral, julgamento das propostas, habilitação ou inabilitação, anulação ou revogação e extinção unilateral do contrato (I); e pedido de reconsideração, em 3 dias úteis da intimação, contra ato de que não caiba recurso hierárquico (II); no julgamento e na habilitação a intenção de recorrer é manifestada imediatamente, sob pena de preclusão (§ 1º)' },
   { chave: '14.133|166', diploma: 'Lei 14.133/2021', dispositivo: 'art. 166', literal: false, url: PLANALTO_14133,
-    texto: 'da aplicação das sanções de impedimento ou de declaração de inidoneidade cabe pedido de reconsideração à autoridade que a aplicou, no prazo de 15 dias úteis' },
+    texto: 'da aplicação de advertência, multa e impedimento de licitar e contratar (art. 156, I a III) cabe recurso no prazo de 15 dias úteis, contado da intimação, dirigido à autoridade que proferiu a decisão' },
   { chave: '10.192|2|1', diploma: 'Lei 10.192/2001', dispositivo: 'art. 2º, § 1º', literal: true, url: PLANALTO_10192,
     texto: 'É nula de pleno direito qualquer estipulação de reajuste ou correção monetária de periodicidade inferior a um ano.' },
   { chave: '10.192|3|1', diploma: 'Lei 10.192/2001', dispositivo: 'art. 3º, § 1º', literal: true, url: PLANALTO_10192,

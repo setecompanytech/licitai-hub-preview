@@ -358,6 +358,43 @@ total do contrato e um par "custo atual × novo". Regras que valem no código
   documento pode errar a própria coluna de porcentagem: o sistema calcula a
   sua e nunca copia.
 
+## Apoio Jurídico — o caso entra primeiro, e a IA só cita o que está na base (27/09/2026)
+
+Decisões do dono em 27/09: o módulo abre pelo **Radar**; peças judiciais
+ficam, com aviso de advogado (Lei 8.906/1994, art. 1º, I); fontes "tudo que
+for real, sem ilusão"; Claude com ferramentas; "revisado por" obrigatório
+antes de exportar. Regras que valem no código:
+
+- **O caso vem do sistema.** Escolher o contrato monta o dossiê
+  (`lib/juridico/dossie-do-contrato.ts`: partes, valores, termos, itens,
+  cláusula e data-base de reajuste, marco, aniversário, série do SGS) e ele
+  vai ao prompt como "dados lidos do sistema" com a ordem de não inventar.
+  O Radar (`lib/juridico/radar.ts`, `useRadarJuridico`) abre a peça certa
+  com `?contrato=`; reequilíbrio NÃO reinicia o interregno do reajuste
+  (lista `TIPOS_REAJUSTE`).
+- **Toda afirmação leva nota de origem** (`lib/juridico/notas-de-origem.ts`):
+  `[[norma:…]]`, `[[fonte:sistema|anexo|base]]`. No preview viram chips
+  (`NotaDeOrigem`); no PDF/Word, parênteses. Norma fora de
+  `normas-conferidas.ts` (espelho em `functions/_shared/`, teste de
+  igualdade) sai como "a confirmar" — nunca como certa.
+- **A base normativa é a verdade** (`base_normativa`, migration
+  `20260927000002`): a edge `ingestao-normativa` lê todo dia, SEM IA, o
+  Planalto artigo por artigo (`_shared/planalto-parser.ts`; revogado fora;
+  redação alterada vira `base_normativa_alteracoes` + aviso aos admins), a
+  API de dados abertos do TCU e a seção 1 do DOU — teto de 200 documentos
+  por execução, rastro em `base_normativa_coletas`. A redação
+  (`juridico-redigir`, Claude + ferramentas, SSE igual à `ai-chat`) tem
+  `texto_da_norma` e `buscar_base_juridica` sobre essa base. Fonte nova
+  entra pela edge com log e erro visível, nunca por raspagem com IA.
+- **Citação nova → conferir contra o texto compilado do Planalto** (a base
+  guarda o literal). Em 27/09 a leitura real corrigiu três sínteses da lista
+  conferida (art. 25 § 7º, art. 92 § 3º e art. 166): o que a memória "sabe"
+  da lei não substitui o texto lido.
+- **O sininho não repete o que outra rotina já avisa**: reajuste devido é da
+  `alertas-reajuste`, certidão vencendo é da `alertas-documentos`; a rotina
+  `notificar_radar_juridico` (migration `20260927000001`) leva só preclusão,
+  vigência, saldo negativo e recurso em prazo, sem repetir em 30 dias.
+
 ## Assinatura × Stripe — o preço se acha pelo valor e pelo ciclo (25/09/2026)
 
 Os doze ids `price_…` gravados em `src/data/stripe-config.ts` (março, pelo
