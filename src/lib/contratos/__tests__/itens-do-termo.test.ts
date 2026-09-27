@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   avisosJuridicos, casarLinhasLidas, errosDasLinhas, fundamentoDoTipo, impactoDaLinha, linhaDaLeitura,
   linhaFoiEditada, linhaSemMudanca, linhasParaGravar, modoDoTipo, numeroDoItem, ordenarItensPorNumero, resumoDoTermo,
-  semelhanca, trajetoriaDoPreco, type ItemDoContrato, type LinhaDoTermo, type LinhaLida,
+  rotuloCurtoDoTermo, semelhanca, trajetoriaDoPreco, type ItemDoContrato, type LinhaDoTermo, type LinhaLida,
 } from '../itens-do-termo';
 
 /**
@@ -89,6 +89,23 @@ describe('número e semelhança', () => {
       { codigo_item: '2', descricao: 'A', numero_lote: '1' },
     ]).map((i) => i.descricao);
     expect(lotes).toEqual(['A', 'B']);
+  });
+  it('o termo como cabe num selo: "2º TA", com o nome inteiro preservado quando não há número', () => {
+    expect(rotuloCurtoDoTermo('2º Termo Aditivo')).toBe('2º TA');
+    expect(rotuloCurtoDoTermo('4° TERMO ADITIVO')).toBe('4º TA');
+    expect(rotuloCurtoDoTermo('Termo Aditivo n.º 02')).toBe('2º TA');
+    expect(rotuloCurtoDoTermo('TERMO ADITIVO Nº 3')).toBe('3º TA');
+    expect(rotuloCurtoDoTermo('TERMO ADITIVO 02')).toBe('2º TA');
+    expect(rotuloCurtoDoTermo('3º Aditivo')).toBe('3º TA');
+    expect(rotuloCurtoDoTermo(3)).toBe('3º TA');
+    expect(rotuloCurtoDoTermo('Segundo Termo Aditivo')).toBe('2º TA');
+    expect(rotuloCurtoDoTermo('Décimo Primeiro Termo Aditivo')).toBe('11º TA');
+    expect(rotuloCurtoDoTermo('1º Termo de Apostilamento')).toBe('1º Apostilamento');
+    // O número do contrato não é o número do termo: fica como veio.
+    expect(rotuloCurtoDoTermo('Termo Aditivo ao Contrato 149/2024')).toBe('Termo Aditivo ao Contrato 149/2024');
+    expect(rotuloCurtoDoTermo('Aditivo')).toBe('Aditivo');
+    expect(rotuloCurtoDoTermo(null)).toBe('Termo');
+    expect(rotuloCurtoDoTermo('')).toBe('Termo');
   });
   it('semelhança por palavras, sem acento e sem caixa', () => {
     expect(semelhanca('AÇÚCAR TIPO REFINADO', 'acucar tipo refinado')).toBe(1);

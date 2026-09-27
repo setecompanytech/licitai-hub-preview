@@ -150,6 +150,40 @@ export function ordenarItensPorNumero<T extends Pick<ItemDoContrato, 'codigo_ite
   });
 }
 
+const ORDINAL_POR_EXTENSO: Record<string, number> = {
+  primeiro: 1, segundo: 2, terceiro: 3, quarto: 4, quinto: 5, sexto: 6, setimo: 7, oitavo: 8, nono: 9, decimo: 10,
+};
+
+/**
+ * O termo como cabe num selo da tabela de itens: "2º Termo Aditivo", "Termo
+ * Aditivo n.º 02", "TERMO ADITIVO 2", "Segundo Termo Aditivo" e "2º Aditivo"
+ * viram "2º TA" — a sigla corrente nos autos; apostilamento vira
+ * "1º Apostilamento". O nome inteiro segue no tooltip e no `title`.
+ *
+ * Nasceu em 27/09: "Atualizado: 2º Termo Aditivo" alargava a coluna Situação
+ * e empurrava o Saldo para baixo da coluna Ações, fixa à direita — a tela
+ * mostrava "Sa" e "R$ 65.675". Texto sem número de termo (ou com o número do
+ * CONTRATO, "149/2024") volta como veio: melhor comprido que errado.
+ */
+export function rotuloCurtoDoTermo(numero: string | number | null | undefined): string {
+  const texto = String(numero ?? '').trim();
+  if (!texto) return 'Termo';
+  const apostila = /apostil/i.test(texto);
+  const nome = apostila ? 'Apostilamento' : 'TA';
+
+  const ordinal = texto.match(/(\d{1,3})\s*[ºª°]/);
+  const numerado = ordinal ?? texto.match(/\bn\.?\s*[ºª°o]?\s*(\d{1,3})(?![\d./-])/i);
+  // Número solto ("TERMO ADITIVO 02"), desde que não faça parte de "149/2024".
+  const solto = numerado ?? texto.match(/(?:^|[^\d./-])(\d{1,3})(?![\d./-])/);
+  if (solto) return `${Number(solto[1])}º ${nome}`;
+
+  const tokens = texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z]+/);
+  const dezena = tokens.indexOf('decimo');
+  const unidade = tokens.find((p, i) => i !== dezena && ORDINAL_POR_EXTENSO[p] !== undefined && ORDINAL_POR_EXTENSO[p] < 10);
+  const n = (dezena >= 0 ? 10 : 0) + (unidade ? ORDINAL_POR_EXTENSO[unidade] : 0);
+  return n > 0 ? `${n}º ${nome}` : texto;
+}
+
 function palavras(texto: string | null | undefined): Set<string> {
   const limpo = String(texto ?? '')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')

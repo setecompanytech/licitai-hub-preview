@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UNIDADES } from '@/lib/unidades';
-import { ordenarItensPorNumero, trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
+import { ordenarItensPorNumero, rotuloCurtoDoTermo, trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +51,10 @@ type ContratoItem = {
 
 /** O que um termo aplicado fez neste item (contrato_aditivo_itens). */
 type PassoDoTermo = {
+  /** O nome do termo como foi registrado ("2º Termo Aditivo"): tooltip e title. */
   rotulo: string;
+  /** O mesmo termo como cabe no selo da coluna Situação ("2º TA"). */
+  rotuloCurto: string;
   data: string | null;
   valor_anterior: number | null;
   valor_novo: number | null;
@@ -301,6 +304,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
     for (const l of ((linhasDosTermos ?? []) as unknown as LinhaDoTermoLida[])) {
       (passos[l.contrato_item_id] ??= []).push({
         rotulo: l.aditivo?.numero_aditivo ?? 'Termo',
+        rotuloCurto: rotuloCurtoDoTermo(l.aditivo?.numero_aditivo),
         data: l.aditivo?.data_efeitos ?? l.aditivo?.data_assinatura ?? null,
         valor_anterior: l.valor_unitario_anterior === null ? null : Number(l.valor_unitario_anterior),
         valor_novo: l.valor_unitario_novo === null ? null : Number(l.valor_unitario_novo),
@@ -325,7 +329,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const getOrigemLabel = (aditivoId: string | null) => {
     if (!aditivoId) return meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
     const ad = aditivos.find(a => a.id === aditivoId);
-    return ad ? `Aditivo ${ad.numero_aditivo}` : 'Aditivo';
+    return ad ? rotuloCurtoDoTermo(ad.numero_aditivo) : 'Aditivo';
   };
 
   const ataItemLabel = (id: string | null) => {
@@ -859,8 +863,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           empurravam Saldo e o lápis para a rolagem horizontal, que o
                           macOS esconde — a tabela parecia quebrada e a edição ficava
                           inalcançável. O que ela existe para mostrar e permitir tem
-                          de caber SEM rolar. */}
-                      <TableHead className="whitespace-nowrap">Item</TableHead>
+                          de caber SEM rolar. Em 27/09 a coluna Situação (nome inteiro
+                          do termo) e a Unid. nova fizeram o Saldo sumir de novo, sob
+                          a coluna Ações: o selo encurtou ("2º TA"), as ações
+                          apertaram e a coluna Item passou a ser a ELÁSTICA — recebe
+                          a folga da tela e encolhe até 220px antes de a tabela rolar. */}
+                      <TableHead className="w-full min-w-[220px] whitespace-nowrap">Item</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
                       {/* A unidade numa coluna própria (26/09): "4.822 UNIDADE"
                           na célula da quantidade alargava a coluna e escondia
@@ -870,7 +878,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Consumido</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Saldo</TableHead>
-                      <TableHead className="sticky right-0 w-10 border-l border-border bg-secondary"><span className="sr-only">Ações</span></TableHead>
+                      <TableHead className="sticky right-0 border-l border-border bg-secondary px-2"><span className="sr-only">Ações</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -911,16 +919,26 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                   ? trajetoriaDoPreco(precoOriginal, passosDoTermo.filter((p) => p.valor_novo !== null).map((p) => ({ rotulo: p.rotulo, data: p.data, valor: p.valor_novo as number })))
                   : [];
 
+                // O termo que responde pelo estado do item: no selo vai o nome
+                // curto ("2º TA"); o inteiro fica no title e no tooltip. Com o
+                // nome inteiro, a coluna Situação empurrava o Saldo para baixo
+                // da coluna Ações, fixa à direita (27/09).
+                const termoDaSituacao = ultimoPasso
+                  ? { prefixo: 'Atualizado', curto: ultimoPasso.rotuloCurto, completo: ultimoPasso.rotulo }
+                  : foiModificado && aditivoModificador
+                    ? { prefixo: 'Atualizado', curto: rotuloCurtoDoTermo(aditivoModificador.numero_aditivo), completo: aditivoModificador.numero_aditivo }
+                    : foiAdicionado && aditivoModificador
+                      ? { prefixo: 'Novo', curto: rotuloCurtoDoTermo(aditivoModificador.numero_aditivo), completo: aditivoModificador.numero_aditivo }
+                      : null;
                 // Para visão plana (todos os registros), usa a lógica original
                 const origemLabel = camadaSel ? labelSituacao : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
-                  : ultimoPasso
-                    ? `Atualizado: ${ultimoPasso.rotulo}`
-                    : foiModificado && aditivoModificador
-                      ? `Atualizado: ${aditivoModificador.numero_aditivo}`
-                      : foiAdicionado && aditivoModificador
-                        ? `Novo: ${aditivoModificador.numero_aditivo}`
-                        : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
+                  : termoDaSituacao
+                    ? `${termoDaSituacao.prefixo}: ${termoDaSituacao.curto}`
+                    : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
+                const explicacaoDaSituacao = consolidado && !camadaSel && termoDaSituacao && termoDaSituacao.curto !== termoDaSituacao.completo
+                  ? `${termoDaSituacao.prefixo}: ${termoDaSituacao.completo}`
+                  : undefined;
 
                 // Status em texto + ícone + cor, nunca só cor: o selo da casa
                 // substitui o badge que dependia de emoji (✏/✦) para dizer o
@@ -1003,7 +1021,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <SeloSituacao tom={tomSituacao} icone={IconeSituacao}>{origemLabel}</SeloSituacao>
+                        <SeloSituacao tom={tomSituacao} icone={IconeSituacao} explicacao={explicacaoDaSituacao}>{origemLabel}</SeloSituacao>
                       )}
                     </TableCell>
                     {meta?.tipo_estrutura === 'lotes' && (
@@ -1013,7 +1031,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                     )}
-                    <TableCell className="max-w-[280px]">
+                    <TableCell className="w-full min-w-[220px] max-w-0">
                       <button
                         type="button"
                         onClick={() => setItemVisualizado(item)}
@@ -1168,15 +1186,15 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         </>
                       )}
                     </TableCell>
-                    <TableCell className="sticky right-0 border-l border-border bg-card">
-                      <div className="flex items-center gap-0.5">
-                        <Button size="icon-sm" variant="ghost" title="Duplicar item (aditivo)" aria-label="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
+                    <TableCell className="sticky right-0 border-l border-border bg-card px-2">
+                      <div className="flex items-center">
+                        <Button size="icon-sm" className="h-8 w-8" variant="ghost" title="Duplicar item (aditivo)" aria-label="Duplicar item (aditivo)" onClick={() => handleDuplicate(item)}>
                           <Copy aria-hidden="true" />
                         </Button>
-                        <Button size="icon-sm" variant="ghost" title="Editar item" aria-label="Editar item" onClick={() => abrirEdicao(item)}>
+                        <Button size="icon-sm" className="h-8 w-8" variant="ghost" title="Editar item" aria-label="Editar item" onClick={() => abrirEdicao(item)}>
                           <Pencil aria-hidden="true" />
                         </Button>
-                        <Button size="icon-sm" variant="ghost-destructive" title="Excluir item" aria-label="Excluir item" onClick={() => handleDelete(item.id)}>
+                        <Button size="icon-sm" className="h-8 w-8" variant="ghost-destructive" title="Excluir item" aria-label="Excluir item" onClick={() => handleDelete(item.id)}>
                           <Trash2 aria-hidden="true" />
                         </Button>
                       </div>
