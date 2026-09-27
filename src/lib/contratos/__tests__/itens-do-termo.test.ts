@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   avisosJuridicos, casarLinhasLidas, errosDasLinhas, fundamentoDoTipo, impactoDaLinha, linhaDaLeitura,
-  linhaFoiEditada, linhaSemMudanca, linhasParaGravar, modoDoTipo, numeroDoItem, resumoDoTermo, semelhanca,
-  trajetoriaDoPreco, type ItemDoContrato, type LinhaDoTermo, type LinhaLida,
+  linhaFoiEditada, linhaSemMudanca, linhasParaGravar, modoDoTipo, numeroDoItem, ordenarItensPorNumero, resumoDoTermo,
+  semelhanca, trajetoriaDoPreco, type ItemDoContrato, type LinhaDoTermo, type LinhaLida,
 } from '../itens-do-termo';
 
 /**
@@ -78,6 +78,17 @@ describe('número e semelhança', () => {
     expect(numeroDoItem({ codigo_item: '3.3.90.32.03' })).toBeNull();
     expect(numeroDoItem({ codigo_item: null })).toBeNull();
     expect(numeroDoItem({ codigo_item: '0' })).toBeNull();
+  });
+  it('a ordem de leitura: lote, número do item, descrição; sem número vai depois', () => {
+    const bagunca = [ITENS[6], ITENS[17], ITENS[3], ITENS[0], ITENS[8], ITENS[1]]; // 7, 18, 4, açúcar, 9, arroz
+    const ordem = ordenarItensPorNumero(bagunca).map((i) => i.id);
+    // 4, 7, 9, 18 pelo número; açúcar e arroz (elemento de despesa no código) depois, em ordem alfabética
+    expect(ordem).toEqual(['i4', 'i7', 'i9', 'i18', 'i1', 'i2']);
+    const lotes = ordenarItensPorNumero([
+      { codigo_item: '1', descricao: 'B', numero_lote: '2' },
+      { codigo_item: '2', descricao: 'A', numero_lote: '1' },
+    ]).map((i) => i.descricao);
+    expect(lotes).toEqual(['A', 'B']);
   });
   it('semelhança por palavras, sem acento e sem caixa', () => {
     expect(semelhanca('AÇÚCAR TIPO REFINADO', 'acucar tipo refinado')).toBe(1);

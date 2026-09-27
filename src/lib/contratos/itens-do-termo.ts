@@ -128,6 +128,28 @@ export function numeroDoItem(item: Pick<ItemDoContrato, 'codigo_item'>): number 
   return n > 0 ? n : null;
 }
 
+/**
+ * A ordem em que as pessoas leem um contrato: lote, depois o número do item,
+ * depois a descrição. A importação grava os itens na ordem em que a leitura os
+ * devolveu, e a tabela saía 6, 7, 18, 8, 16… (26/09). Item sem número vai
+ * depois dos numerados, em ordem alfabética.
+ */
+export function ordenarItensPorNumero<T extends Pick<ItemDoContrato, 'codigo_item' | 'descricao' | 'numero_lote'>>(itens: T[]): T[] {
+  const loteDe = (i: T): number => {
+    const n = Number(String(i.numero_lote ?? '').replace(/\D/g, ''));
+    return Number.isFinite(n) && n > 0 ? n : Number.MAX_SAFE_INTEGER;
+  };
+  return [...itens].sort((a, b) => {
+    const la = loteDe(a); const lb = loteDe(b);
+    if (la !== lb) return la - lb;
+    const na = numeroDoItem(a); const nb = numeroDoItem(b);
+    if (na !== null && nb !== null && na !== nb) return na - nb;
+    if (na === null && nb !== null) return 1;
+    if (na !== null && nb === null) return -1;
+    return a.descricao.localeCompare(b.descricao, 'pt-BR');
+  });
+}
+
 function palavras(texto: string | null | undefined): Set<string> {
   const limpo = String(texto ?? '')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')

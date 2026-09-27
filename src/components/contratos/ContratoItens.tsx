@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UNIDADES } from '@/lib/unidades';
-import { trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
+import { ordenarItensPorNumero, trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -197,7 +197,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   // guarda só a contratação original e saldo_financeiro do banco acumula acréscimo de
   // aditivo por cima do preço já reequilibrado (dupla contagem) — os dois descolavam do
   // Valor Global e acusavam divergência falsa de milhões (09/09).
-  const itensExibidos = consolidado ? itensMesclados : itens;
+  // Na ordem do contrato (lote, número do item, descrição), não na ordem em
+  // que a importação gravou: a lista saía 6, 7, 18, 8, 16… (26/09).
+  const itensExibidos = ordenarItensPorNumero(consolidado ? itensMesclados : itens);
   // ——— ATA × contrato: quem consome o quê ————————————————————————————
   // No CONTRATO, o consumo vem dos pedidos (quantidade_consumida) e o saldo
   // vive em saldo_quantitativo. Na ATA SRP, quem consome são os CONTRATOS

@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Undo2 } from 'lucide-react';
 import {
-  impactoDaLinha, linhaDaLeitura, linhaFoiEditada, linhaMudaAlgo, linhaSemMudanca, numeroDoItem, resumoDoTermo,
-  type ItemDoContrato, type LinhaDoTermo, type LinhaLida, type Modo,
+  impactoDaLinha, linhaDaLeitura, linhaFoiEditada, linhaMudaAlgo, linhaSemMudanca, numeroDoItem, ordenarItensPorNumero,
+  resumoDoTermo, type ItemDoContrato, type LinhaDoTermo, type LinhaLida, type Modo,
 } from '@/lib/contratos/itens-do-termo';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -61,6 +61,9 @@ export default function ItensDoTermo({ itens, modo, linhas, onChange, semItem, o
   };
 
   const resumo = useMemo(() => resumoDoTermo(linhas, itens), [linhas, itens]);
+  // Na ordem do contrato — lote e número do item —, não na ordem em que a
+  // importação gravou (saía 6, 7, 18, 8, 16…).
+  const ordenados = useMemo(() => ordenarItensPorNumero(itens), [itens]);
 
   if (itens.length === 0) {
     return (
@@ -98,7 +101,7 @@ export default function ItensDoTermo({ itens, modo, linhas, onChange, semItem, o
             </TableRow>
           </TableHeader>
           <TableBody>
-            {itens.map((item, idx) => {
+            {ordenados.map((item) => {
               const linha = linhaDe(item);
               const imp = impactoDaLinha(linha, item);
               const muda = linhaMudaAlgo(linha, item);
@@ -106,7 +109,7 @@ export default function ItensDoTermo({ itens, modo, linhas, onChange, semItem, o
               const numero = numeroDoItem(item);
               return (
                 <TableRow key={item.id} className={muda ? 'bg-warning-tint/40' : undefined} data-testid={`linha-${item.id}`}>
-                  <TableCell className="tabular-nums text-muted-foreground">{numero ?? idx + 1}</TableCell>
+                  <TableCell className="tabular-nums text-muted-foreground">{numero ?? '—'}</TableCell>
                   <TableCell className="max-w-[260px]">
                     <span className="block truncate font-medium text-foreground" title={item.descricao}>{item.descricao}</span>
                     <span className="g-meta text-muted-foreground">
@@ -205,8 +208,8 @@ export default function ItensDoTermo({ itens, modo, linhas, onChange, semItem, o
                 <Select onValueChange={(v) => atribuir(l, v)} disabled={disabled}>
                   <SelectTrigger className="w-64"><SelectValue placeholder="Escolher o item" /></SelectTrigger>
                   <SelectContent>
-                    {itens.map((it, idx) => (
-                      <SelectItem key={it.id} value={it.id}>{numeroDoItem(it) ?? idx + 1} · {it.descricao.slice(0, 50)}</SelectItem>
+                    {ordenados.map((it) => (
+                      <SelectItem key={it.id} value={it.id}>{numeroDoItem(it) ?? '—'} · {it.descricao.slice(0, 50)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
