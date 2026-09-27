@@ -19,13 +19,14 @@ import {
   comecarReleitura, progredirReleitura, terminarReleitura,
 } from '@/lib/contratos/releitura';
 import {
-  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, Sparkles, MoreHorizontal
+  Upload, Download, FileText, Trash2, Pencil, Loader2, File, DollarSign, Package, Calendar, Layers, FilePlus2, RefreshCw, Repeat, Eye, MoreHorizontal
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
 import { somarDias } from '@/lib/contratos/vigencia';
 import { extractContractDataFromFile, mapDetectedToFileTipo, motivoDaUltimaFalha } from './utils/extractContractData';
 import ItensDoTermo from './ItensDoTermo';
+import IconeRelerDocumento from '@/components/shared/IconeRelerDocumento';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   avisoBloqueia, avisoExigeRessalva, avisosJuridicos, casarLinhasLidas, errosDasLinhas, fundamentoDoTipo,
@@ -2245,7 +2246,7 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
                               aria-label="Reler com a IA">
                               {releituraDe(arq.id)
                                 ? <Loader2 aria-hidden="true" className="animate-spin" />
-                                : <Sparkles aria-hidden="true" className="text-teal" />}
+                                : <IconeRelerDocumento aria-hidden="true" className="text-info-ink" />}
                             </Button>
                             <Button size="icon-sm" variant="ghost" onClick={() => handleVisualizar(arq)} title="Visualizar em tela" aria-label="Visualizar em tela">
                               <Eye aria-hidden="true" />
