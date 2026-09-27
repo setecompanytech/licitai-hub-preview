@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import DocumentDetectionDialog, { type DetectionResult } from './DocumentDetectionDialog';
 import { confrontarContratoComAta, type ConfrontoComAta } from '@/lib/contratos/confronto';
+import { somarDias } from '@/lib/contratos/vigencia';
 import { extractContractDataFromFile, mapDetectedToFileTipo, motivoDaUltimaFalha } from './utils/extractContractData';
 import ItensDoTermo from './ItensDoTermo';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -512,6 +513,22 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       quantidade_supressao: String(r.quantidadeSupressao),
     }));
   }, [editLinhas, editItens, editTipo]);
+
+  // Renovação nova (art. 107) começa no dia seguinte ao fim da vigência
+  // atual: o início do período vem preenchido quando o campo está vazio. A
+  // leitura do PDF, quando traz a data, tem precedência — só entra aqui o
+  // que ainda estiver em branco. Não vale para a edição de termo antigo, cuja
+  // vigência já foi empurrada por ele mesmo.
+  useEffect(() => {
+    if (uploadTipo !== 'prorrogacao_continuo') return;
+    const fim = (parentContrato as { data_fim?: string | null } | null)?.data_fim;
+    if (!fim) return;
+    setAditivoForm((f) => {
+      if (f.periodo_inicio) return f;
+      const inicio = somarDias(fim, 1);
+      return inicio ? { ...f, periodo_inicio: inicio, data_efeitos: f.data_efeitos || inicio } : f;
+    });
+  }, [uploadTipo, parentContrato]);
 
   const limparTermo = () => {
     setLinhasDoTermo({});
@@ -2497,7 +2514,10 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
       </Dialog>
 
       <Dialog open={editDialog.open} onOpenChange={(v) => setEditDialog({ open: v, arquivo: v ? editDialog.arquivo : null })}>
-        <DialogContent className="max-w-lg">
+        {/* Largo o bastante para a tabela de itens do termo (26/09): em
+            max-w-lg as colunas de preço novo, variação e impacto ficavam
+            cortadas e a pessoa editava às cegas. */}
+        <DialogContent className="max-w-[min(96vw,84rem)] max-h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
           <div className="mt-2 space-y-4">
             <div className="space-y-1.5">
