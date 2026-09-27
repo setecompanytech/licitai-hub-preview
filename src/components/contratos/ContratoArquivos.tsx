@@ -313,6 +313,8 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
   const [comRessalva, setComRessalva] = useState(false);
   /** A última leitura de aditivo, guardada para recasar as linhas se o tipo mudar. */
   const [leituraDoTermo, setLeituraDoTermo] = useState<any>(null);
+  const [linhasPorAditivo, setLinhasPorAditivo] = useState<Record<string, number>>({});
+  const [aplicandoTermo, setAplicandoTermo] = useState<string | null>(null);
   const [editItens, setEditItens] = useState<ItemDoContrato[]>([]);
   const [editLinhas, setEditLinhas] = useState<Record<string, LinhaDoTermo>>({});
   const [editLinhasSemItem, setEditLinhasSemItem] = useState<LinhaLida[]>([]);
@@ -329,6 +331,40 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     setAditivos((adtRes.data as any[]) || []);
     setParentContrato(contratoRes.data || null);
     setLoading(false);
+
+    // Quantas linhas de item cada termo tem (26/09): o painel do termo diz se
+    // foram aplicadas e oferece aplicar quando ficaram pendentes. A tabela vem
+    // de migration colada à mão: ausente, o painel segue sem a informação.
+    const { data: linhas } = await supabase
+      .from('contrato_aditivo_itens' as never)
+      .select('aditivo_id')
+      .eq('contrato_id', contratoId);
+    const contagem: Record<string, number> = {};
+    for (const l of ((linhas ?? []) as unknown as Array<{ aditivo_id: string }>)) {
+      contagem[l.aditivo_id] = (contagem[l.aditivo_id] ?? 0) + 1;
+    }
+    setLinhasPorAditivo(contagem);
+  };
+
+  /**
+   * Aplica aos itens as linhas de um termo que ficaram gravadas sem aplicar
+   * (a gravação e a aplicação são dois passos; se o segundo falha, o termo
+   * fica pendente e nenhum preço muda). O erro real vai para o toast.
+   */
+  const aplicarItensDoTermo = async (aditivoId: string) => {
+    setAplicandoTermo(aditivoId);
+    try {
+      const { data, error } = await supabase.rpc('aplicar_itens_do_aditivo' as never, { p_aditivo_id: aditivoId } as never);
+      if (error) throw error;
+      const n = (data as { aplicadas?: number } | null)?.aplicadas ?? 0;
+      toast.success(n > 0 ? `${n} item(ns) atualizado(s) pelo termo.` : 'Nada a aplicar: as linhas já estavam aplicadas.');
+      loadData();
+    } catch (err) {
+      const motivo = err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err);
+      toast.error('Não foi possível aplicar o termo aos itens.', { description: motivo, duration: 12000 });
+    } finally {
+      setAplicandoTermo(null);
+    }
   };
 
   useEffect(() => { loadData(); }, [contratoId]);
@@ -1959,6 +1995,29 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
             ]}
           />
         </BlocoDoPainel>
+
+        {(linhasPorAditivo[a.id] ?? 0) > 0 && (
+          <BlocoDoPainel titulo="Itens do termo">
+            {a.itens_aplicados_em ? (
+              <p className="g-corpo" data-testid="itens-do-termo-aplicados">
+                {linhasPorAditivo[a.id]} item(ns) com preço ou quantidade alterados, aplicados em{' '}
+                {new Date(a.itens_aplicados_em).toLocaleDateString('pt-BR')}.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2" data-testid="itens-do-termo-pendentes">
+                <p className="g-corpo text-warning-ink">
+                  {linhasPorAditivo[a.id]} item(ns) gravados neste termo ainda NÃO foram aplicados: os preços e saldos dos itens continuam os de antes.
+                </p>
+                <div>
+                  <Button size="sm" className="g-controle" onClick={() => aplicarItensDoTermo(a.id)} disabled={aplicandoTermo === a.id}>
+                    {aplicandoTermo === a.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : <RefreshCw aria-hidden="true" />}
+                    Aplicar aos itens
+                  </Button>
+                </div>
+              </div>
+            )}
+          </BlocoDoPainel>
+        )}
 
         <BlocoDoPainel titulo="Justificativa / fundamentação">
           {a.justificativa
