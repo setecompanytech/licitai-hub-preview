@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import EstadoVazio from '@/components/shared/EstadoVazio';
@@ -14,12 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import ReactMarkdown from 'react-markdown';
+import {
+  dataBr, htmlDoEstudo, montarEstudo, nomeDoArquivoDoEstudo, referenciasDoRegime, temSerieOficial,
+  type EntradaDoEstudo, type Estudo, type SerieOficial, type TipoDeServico,
+} from '@/lib/contratos/estudo-de-reajuste';
+import { hojeLocal } from '@/lib/financeiro/data-local';
 import {
   TrendingUp, TrendingDown, RefreshCw, Calculator, FileText, Scale, Building2,
-  HardHat, Users, DollarSign, Percent, CalendarDays, AlertTriangle, Sparkles,
+  HardHat, Users, DollarSign, Percent, CalendarDays, AlertTriangle,
   Plus, Search, Clock, ArrowUpRight, ArrowDownRight, Minus, Info, Save, Loader2, ArrowRight,
-  ExternalLink,
+  ExternalLink, Printer, Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -38,10 +42,15 @@ type CCT = {
   abrangencia_uf: string | null; status: string;
 };
 
-type SimResult = {
-  valor_reajustado: number; diferenca: number; fundamentacao: string;
-  parecer: string; alertas: string[]; indice_oficial_periodo: string | null;
+/** "ago/2026" → número ordenável, para ficar com o mês mais novo de cada sigla. */
+const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const ordemDoPeriodo = (periodo: string): number => {
+  const [m, a] = periodo.toLowerCase().split('/');
+  const mes = MESES_ABREV.indexOf(m);
+  return (Number(a) || 0) * 12 + (mes >= 0 ? mes : 0);
 };
+
+const percentualDaSerie = (s: SerieOficial) => (Math.round(s.percentual * 100) / 100).toFixed(2).replace('.', ',');
 
 const fmtCur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPerc = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
@@ -84,11 +93,16 @@ export default function IndicesRepactuacao() {
   const [simValor, setSimValor] = useState(0);
   const [simIndice, setSimIndice] = useState('IPCA');
   const [simPerc, setSimPerc] = useState('');
+  // O percentual nasce da série oficial; editado à mão, fica como a pessoa
+  // deixou até ela trocar índice ou data (27/09).
+  const [simPercEditado, setSimPercEditado] = useState(false);
   const [simDataOrig, setSimDataOrig] = useState('');
   const [simDataReaj, setSimDataReaj] = useState('');
-  const [simTipo, setSimTipo] = useState('continuado');
-  const [simLoading, setSimLoading] = useState(false);
-  const [simResult, setSimResult] = useState<SimResult | null>(null);
+  const [simTipo, setSimTipo] = useState<TipoDeServico>('fornecimento');
+  const [serieOficial, setSerieOficial] = useState<SerieOficial | null>(null);
+  const [buscandoSerie, setBuscandoSerie] = useState(false);
+  const [erroDaSerie, setErroDaSerie] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<{ entrada: EntradaDoEstudo; estudo: Estudo } | null>(null);
 
   // CCT form
   const [showCCTForm, setShowCCTForm] = useState(false);
@@ -130,30 +144,78 @@ export default function IndicesRepactuacao() {
     }
   };
 
-  const simular = async () => {
-    if (!simValor || !simPerc) { toast.error('Preencha valor e percentual'); return; }
-    setSimLoading(true);
-    setSimResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke('indices-economicos', {
-        body: {
-          action: 'simular_repactuacao',
-          valor_original: simValor,
-          indice: simIndice,
-          percentual: parseFloat(simPerc.replace(',', '.')),
-          data_base_original: simDataOrig,
-          data_base_reajuste: simDataReaj,
-          tipo_servico: simTipo,
-        },
-      });
-      if (error) throw error;
-      if (data?.success) setSimResult(data.data);
-      else toast.error(data?.error || 'Erro na simulação');
-    } catch (e: any) {
-      toast.error(e.message || 'Erro na simulação');
-    } finally {
-      setSimLoading(false);
+  // Índice com série no SGS + as duas datas = percentual oficial no campo.
+  // Quem editou o campo não é atropelado: a série fica ao lado, com "usar o oficial".
+  useEffect(() => {
+    const datasOk = /^\d{4}-\d{2}-\d{2}$/.test(simDataOrig) && /^\d{4}-\d{2}-\d{2}$/.test(simDataReaj) && simDataReaj > simDataOrig;
+    if (!temSerieOficial(simIndice) || !datasOk) {
+      setSerieOficial(null);
+      setErroDaSerie(null);
+      return;
     }
+    let vivo = true;
+    setBuscandoSerie(true);
+    setErroDaSerie(null);
+    supabase.functions.invoke('indices-economicos', {
+      body: { action: 'calculo_reajuste', indice: simIndice, data_base: simDataOrig, data_alvo: simDataReaj },
+    }).then(({ data, error }) => {
+      if (!vivo) return;
+      if (error || !data?.success) {
+        setSerieOficial(null);
+        setErroDaSerie(`Não foi possível ler a série oficial: ${error?.message ?? data?.error ?? 'falha na consulta'}. Informe o percentual à mão.`);
+        return;
+      }
+      const serie = data as SerieOficial;
+      setSerieOficial(serie);
+      if (!simPercEditado) setSimPerc(percentualDaSerie(serie));
+    }).finally(() => { if (vivo) setBuscandoSerie(false); });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simIndice, simDataOrig, simDataReaj]);
+
+  const percentualAplicado = (): number | null => {
+    const t = simPerc.trim().replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(t);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  /** A conta e o estudo, sem IA: lib `estudo-de-reajuste`. */
+  const simular = () => {
+    const perc = percentualAplicado();
+    if (!simValor || perc === null) { toast.error('Preencha a base de cálculo e o percentual'); return; }
+    const entrada: EntradaDoEstudo = {
+      valorBase: simValor,
+      indice: simIndice,
+      percentualAplicado: perc,
+      dataBase: simDataOrig || null,
+      dataAlvo: simDataReaj || null,
+      tipoServico: simTipo,
+      serie: serieOficial,
+      hoje: hojeLocal(),
+    };
+    setResultado({ entrada, estudo: montarEstudo(entrada) });
+  };
+
+  const imprimirEstudo = () => {
+    if (!resultado) return;
+    const w = window.open('', '_blank');
+    if (!w) { toast.error('Habilite pop-ups para imprimir o estudo.'); return; }
+    w.document.write(htmlDoEstudo(resultado.entrada, resultado.estudo, { imprimirAoAbrir: true }));
+    w.document.close();
+  };
+
+  const baixarEstudoWord = () => {
+    if (!resultado) return;
+    const html = htmlDoEstudo(resultado.entrada, resultado.estudo, { paraWord: true });
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeDoArquivoDoEstudo(resultado.entrada, 'doc');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const salvarCCT = async () => {
@@ -177,8 +239,18 @@ export default function IndicesRepactuacao() {
     fetchCCTs();
   };
 
-  const filteredIndices = catFiltro === 'todos' ? indices : indices.filter(i => i.categoria === catFiltro);
-  const categorias = [...new Set(indices.map(i => i.categoria))];
+  // Um índice por sigla, o mês mais novo: a atualização guarda cada mês em
+  // linha própria e a tela mostrava INPC de jul e de ago lado a lado (27/09).
+  const indicesAtuais = useMemo(() => {
+    const porSigla = new Map<string, Indice>();
+    for (const i of indices) {
+      const atual = porSigla.get(i.sigla);
+      if (!atual || ordemDoPeriodo(i.periodo) > ordemDoPeriodo(atual.periodo)) porSigla.set(i.sigla, i);
+    }
+    return [...porSigla.values()];
+  }, [indices]);
+  const filteredIndices = catFiltro === 'todos' ? indicesAtuais : indicesAtuais.filter(i => i.categoria === catFiltro);
+  const categorias = [...new Set(indicesAtuais.map(i => i.categoria))];
 
   return (
     <AppLayout>
@@ -192,17 +264,20 @@ export default function IndicesRepactuacao() {
                 Visível em todas as abas do menu; os números são os MESMOS da base
                 local (fonte SGS), só mudam de roupa. Duplicada para o loop ser
                 contínuo; a segunda cópia é decorativa para o leitor de tela. */}
-            {indices.length > 0 && (
+            {/* `width: max-content` inline e `shrink-0` nos itens: com a largura
+                pela classe, a faixa encolhia até a caixa e os 14 itens se
+                sobrepunham a 54 px cada — o print do dono de 27/09. */}
+            {indicesAtuais.length > 0 && (
               <div className="esteira-indices flex items-stretch rounded-lg border border-border bg-muted overflow-hidden">
                 <span className="flex shrink-0 items-center whitespace-nowrap border-r border-border bg-card px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   ÍNDICES OFICIAIS
                 </span>
                 <div className="relative flex-1 overflow-hidden flex items-center">
-                  <div className="esteira-indices-faixa flex w-max items-center gap-8 px-4">
+                  <div className="esteira-indices-faixa flex shrink-0 items-center gap-8 px-4" style={{ width: 'max-content' }}>
                     {[0, 1].map((volta) => (
-                      <span key={volta} className="flex items-center gap-8" aria-hidden={volta === 1}>
-                        {indices.map((idx) => (
-                          <span key={`${volta}-${idx.id}`} className="text-xs whitespace-nowrap tabular-nums">
+                      <span key={volta} className="flex shrink-0 items-center gap-8" aria-hidden={volta === 1}>
+                        {indicesAtuais.map((idx) => (
+                          <span key={`${volta}-${idx.id}`} className="shrink-0 text-xs whitespace-nowrap tabular-nums">
                             <b>{idx.sigla}</b>
                             <span className="text-muted-foreground"> · {idx.periodo} · </span>
                             <span className={(idx.variacao_mensal ?? 0) < 0 ? 'text-success-ink' : 'text-warning-ink'}>
@@ -241,7 +316,7 @@ export default function IndicesRepactuacao() {
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={atualizarIndices} disabled={atualizando}>
                 {atualizando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-                {atualizando ? 'Atualizando via IA...' : 'Atualizar Índices'}
+                {atualizando ? 'Atualizando…' : 'Atualizar Índices'}
               </Button>
               {/* Recorte por categoria: botões, não selos — quem filtra precisa
                   alcançar o controle pelo teclado, e selo não é botão. */}
@@ -333,8 +408,8 @@ export default function IndicesRepactuacao() {
             <Alert variant="info">
               <Info className="w-4 h-4" aria-hidden="true" />
               <AlertDescription>
-                <strong>Fundamentação Legal:</strong> Art. 92, §3º e Art. 135 da Lei 14.133/2021 — os contratos de serviços e fornecimentos contínuos terão reajuste com base em índice oficial.
-                Para mão de obra: repactuação por CCT (Art. 135, I). Para insumos: reajuste por índice setorial (Art. 135, II).
+                <strong>Fundamentação legal:</strong> Lei 14.133/2021, art. 92, § 4º — serviços contínuos: reajustamento em sentido estrito por índice (I) ou repactuação (II).
+                Na repactuação (art. 135), os custos de mercado têm data vinculada à proposta (inciso I) e os de mão de obra à convenção, acordo ou dissídio coletivo (inciso II).
               </AlertDescription>
             </Alert>
           </TabsContent>
@@ -449,13 +524,17 @@ export default function IndicesRepactuacao() {
             <Alert variant="info">
               <Scale className="w-4 h-4" aria-hidden="true" />
               <AlertDescription>
-                <strong>Art. 135, I — Lei 14.133/2021:</strong> A repactuação para serviços contínuos com dedicação exclusiva de mão de obra
-                será precedida de nova CCT ou sentença normativa. O prazo mínimo é de 1 ano, contado da data do orçamento ou última repactuação.
+                <strong>Art. 135, II — Lei 14.133/2021:</strong> na repactuação de serviços contínuos com dedicação exclusiva ou predominância de mão de obra, a
+                parcela de pessoal tem data vinculada à convenção, ao acordo ou ao dissídio coletivo a que a proposta esteja vinculada. O interregno mínimo é de 1 ano (art. 92, § 4º), contado dessa data-base ou da última repactuação.
               </AlertDescription>
             </Alert>
           </TabsContent>
 
-          {/* ═══ SIMULADOR DE REPACTUAÇÃO ═══ */}
+          {/* ═══ SIMULADOR DE REAJUSTE / REPACTUAÇÃO ═══
+              Sem IA (27/09): a série vem do SGS pela edge `calculo_reajuste`,
+              a conta e as citações são da lib `estudo-de-reajuste`. O
+              percentual se preenche sozinho ao escolher índice e datas, e
+              continua editável — edição fica dita no estudo. */}
           <TabsContent value="simulador" className="space-y-4">
             <Card className="space-y-4 p-5">
               <h2 className="flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
@@ -463,82 +542,118 @@ export default function IndicesRepactuacao() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sim-valor">Valor Original do Contrato (R$)</Label>
+                  <Label htmlFor="sim-valor">Base de cálculo (R$)</Label>
                   <MoneyInput id="sim-valor" value={simValor} onValueChange={setSimValor} />
+                  <p className="g-meta text-muted-foreground">Use o saldo a executar na data do aniversário: parcela já paga não se reajusta.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sim-indice">Índice de Reajuste</Label>
-                  <Select value={simIndice} onValueChange={setSimIndice}>
+                  <Label htmlFor="sim-indice">Índice de reajuste</Label>
+                  <Select value={simIndice} onValueChange={(v) => { setSimIndice(v); setSimPercEditado(false); }}>
                     <SelectTrigger id="sim-indice"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="IPCA">IPCA (inflação geral)</SelectItem>
                       <SelectItem value="INPC">INPC (mão de obra)</SelectItem>
                       <SelectItem value="IGP-M">IGP-M</SelectItem>
-                      <SelectItem value="SINAPI">SINAPI (construção civil)</SelectItem>
-                      <SelectItem value="CUB">CUB/m² (engenharia)</SelectItem>
-                      <SelectItem value="CCT">CCT / Dissídio Coletivo</SelectItem>
-                      <SelectItem value="SICRO">SICRO/DNIT (obras rodoviárias)</SelectItem>
+                      <SelectItem value="IGP-DI">IGP-DI</SelectItem>
+                      <SelectItem value="INCC-DI">INCC-DI (construção civil)</SelectItem>
+                      <SelectItem value="SINAPI">SINAPI (construção civil) — percentual manual</SelectItem>
+                      <SelectItem value="CUB">CUB/m² (engenharia) — percentual manual</SelectItem>
+                      <SelectItem value="CCT">CCT / dissídio coletivo — percentual manual</SelectItem>
+                      <SelectItem value="SICRO">SICRO/DNIT (obras rodoviárias) — percentual manual</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sim-perc">Percentual de Reajuste (%)</Label>
-                  <Input id="sim-perc" placeholder="4,50" value={simPerc} onChange={e => setSimPerc(e.target.value)} />
+                  <Label htmlFor="sim-perc">Percentual de reajuste (%)</Label>
+                  <Input
+                    id="sim-perc"
+                    inputMode="decimal"
+                    placeholder={temSerieOficial(simIndice) ? 'preenche com a série oficial' : 'informe o percentual da tabela ou da CCT'}
+                    value={simPerc}
+                    onChange={(e) => { setSimPerc(e.target.value); setSimPercEditado(true); }}
+                  />
+                  {/* De onde o número veio — e como voltar ao oficial depois de editar. */}
+                  {buscandoSerie ? (
+                    <p className="g-meta flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Buscando a série oficial…</p>
+                  ) : serieOficial ? (
+                    <p className="g-meta text-muted-foreground" data-testid="serie-oficial">
+                      {serieOficial.fonte}, {serieOficial.meses.length} mês(es) de {dataBr(serieOficial.data_base)} a {dataBr(serieOficial.data_alvo)}:{' '}
+                      <b className="tabular-nums text-foreground">{percentualDaSerie(serieOficial)}%</b>
+                      {!serieOficial.completo && <span className="text-warning-ink"> · série parcial até {serieOficial.serie_ate}</span>}
+                      {simPercEditado && (
+                        <>
+                          {' '}· editado à mão —{' '}
+                          <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => { setSimPerc(percentualDaSerie(serieOficial)); setSimPercEditado(false); }}>
+                            usar o oficial
+                          </button>
+                        </>
+                      )}
+                    </p>
+                  ) : erroDaSerie ? (
+                    <p className="g-meta text-warning-ink">{erroDaSerie}</p>
+                  ) : temSerieOficial(simIndice) ? (
+                    <p className="g-meta text-muted-foreground">Informe as duas datas: o percentual vem da série oficial do Banco Central (SGS).</p>
+                  ) : (
+                    <p className="g-meta text-muted-foreground">Índice sem série no SGS: digite o percentual publicado e anexe a fonte ao pedido.</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sim-data-orig">Data-Base Original</Label>
-                  <Input id="sim-data-orig" type="date" value={simDataOrig} onChange={e => setSimDataOrig(e.target.value)} />
+                  <Label htmlFor="sim-data-orig">Data-base (proposta/orçamento ou último reajuste)</Label>
+                  <Input id="sim-data-orig" type="date" value={simDataOrig} onChange={(e) => { setSimDataOrig(e.target.value); setSimPercEditado(false); }} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sim-data-reaj">Data-Base do Reajuste</Label>
-                  <Input id="sim-data-reaj" type="date" value={simDataReaj} onChange={e => setSimDataReaj(e.target.value)} />
+                  <Label htmlFor="sim-data-reaj">Data de incidência (aniversário)</Label>
+                  <Input id="sim-data-reaj" type="date" value={simDataReaj} onChange={(e) => { setSimDataReaj(e.target.value); setSimPercEditado(false); }} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sim-tipo">Tipo de Serviço</Label>
-                  <Select value={simTipo} onValueChange={setSimTipo}>
+                  <Label htmlFor="sim-tipo">Tipo de serviço</Label>
+                  <Select value={simTipo} onValueChange={(v) => setSimTipo(v as TipoDeServico)}>
                     <SelectTrigger id="sim-tipo"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="continuado">Serviço Continuado (mão de obra)</SelectItem>
-                      <SelectItem value="engenharia">Engenharia</SelectItem>
-                      <SelectItem value="fornecimento">Fornecimento Contínuo</SelectItem>
-                      <SelectItem value="comum">Serviço Comum</SelectItem>
+                      <SelectItem value="continuado">Serviço contínuo (mão de obra) — repactuação</SelectItem>
+                      <SelectItem value="engenharia">Obra ou serviço de engenharia</SelectItem>
+                      <SelectItem value="fornecimento">Fornecimento contínuo</SelectItem>
+                      <SelectItem value="comum">Serviço comum</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <Button onClick={simular} disabled={simLoading}>
-                {simLoading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-                {simLoading ? 'Calculando com IA...' : 'Simular Repactuação'}
+              <Button onClick={simular}>
+                <Calculator aria-hidden="true" /> Calcular e montar o estudo
               </Button>
             </Card>
 
-            {simResult && (
-              <div className="space-y-4">
+            {resultado && (
+              <div className="space-y-4" data-testid="estudo-de-reajuste">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Cartão KPI do Design System v3: rótulo em cima, valor 28/36
-                      em 600, alinhado à esquerda — nada centralizado em tela
-                      operacional. */}
                   <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
-                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor Original</p>
-                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(simValor || 0)}</p>
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Base de cálculo</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(resultado.entrada.valorBase)}</p>
                   </Card>
                   <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
-                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor Reajustado</p>
-                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(simResult.valor_reajustado)}</p>
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Valor reajustado</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-foreground">{fmtCur(resultado.estudo.valorReajustado)}</p>
                   </Card>
                   <Card className="flex min-h-[112px] flex-col justify-between gap-2 p-4">
-                    <p className="text-sm font-medium leading-5 text-muted-foreground">Diferença</p>
-                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-success-ink">{fmtCur(simResult.diferenca)}</p>
+                    <p className="text-sm font-medium leading-5 text-muted-foreground">Reajuste ({resultado.entrada.percentualAplicado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</p>
+                    <p className="break-normal text-[1.75rem] font-semibold leading-9 tabular-nums text-success-ink">{fmtCur(resultado.estudo.diferenca)}</p>
                   </Card>
                 </div>
 
-                {simResult.alertas?.length > 0 && (
+                {/* O documento sai daqui: PDF pela impressão do navegador, Word como .doc. */}
+                <div className="flex flex-wrap items-center gap-2 nao-imprime">
+                  <Button onClick={imprimirEstudo}><Printer aria-hidden="true" /> Imprimir / salvar em PDF</Button>
+                  <Button variant="outline" onClick={baixarEstudoWord}><Download aria-hidden="true" /> Baixar Word (.doc)</Button>
+                  <span className="g-meta text-muted-foreground">Estudo técnico com identificação, fundamentação, memória de cálculo, parecer e aspectos contábeis.</span>
+                </div>
+
+                {resultado.estudo.alertas.length > 0 && (
                   <Alert variant="warning">
                     <AlertTriangle className="w-4 h-4" aria-hidden="true" />
                     <AlertDescription>
-                      <p className="font-semibold mb-2">Alertas</p>
+                      <p className="font-semibold mb-2">Pontos de atenção</p>
                       <ul className="space-y-1">
-                        {simResult.alertas.map((a, i) => (
+                        {resultado.estudo.alertas.map((a, i) => (
                           <li key={i} className="text-sm flex items-start gap-1">
                             <Minus className="w-3 h-3 mt-1 flex-shrink-0" aria-hidden="true" /> {a}
                           </li>
@@ -550,19 +665,57 @@ export default function IndicesRepactuacao() {
 
                 <Card className="p-5">
                   <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-                    <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Fundamentação Jurídica
+                    <Calculator className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Memória de cálculo
                   </h2>
-                  <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-                    <ReactMarkdown>{simResult.fundamentacao}</ReactMarkdown>
+                  {resultado.entrada.serie ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary text-xs font-semibold text-muted-foreground">
+                          <tr><th className="px-3 py-2 text-left">Competência</th><th className="px-3 py-2 text-right">Variação mensal</th><th className="px-3 py-2 text-right">Fator (1 + i)</th></tr>
+                        </thead>
+                        <tbody>
+                          {resultado.entrada.serie.meses.map((m) => (
+                            <tr key={m.competencia} className="border-b border-border last:border-0">
+                              <td className="px-3 py-1.5 tabular-nums">{m.competencia}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{m.variacao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{m.fator.toFixed(6).replace('.', ',')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Percentual informado pelo requerente — sem série oficial carregada.</p>
+                  )}
+                  <div className="mt-3 space-y-1 text-sm">
+                    {resultado.estudo.parecer.slice(0, 2).map((p, i) => <p key={i}>{p}</p>)}
                   </div>
                 </Card>
 
                 <Card className="p-5">
                   <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
-                    <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Parecer Técnico
+                    <Scale className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Fundamentação jurídica
                   </h2>
-                  <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-                    <ReactMarkdown>{simResult.parecer}</ReactMarkdown>
+                  <div className="space-y-2 text-sm">
+                    {resultado.estudo.fundamentacao.map((p, i) => <p key={i}>{p}</p>)}
+                  </div>
+                </Card>
+
+                <Card className="p-5">
+                  <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                    <FileText className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Parecer técnico
+                  </h2>
+                  <div className="space-y-2 text-sm">
+                    {resultado.estudo.parecer.slice(2).map((p, i) => <p key={i}>{p}</p>)}
+                  </div>
+                </Card>
+
+                <Card className="p-5">
+                  <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold leading-6 text-foreground">
+                    <DollarSign className="h-5 w-5 text-muted-foreground" aria-hidden="true" /> Aspectos contábeis e orçamentários
+                  </h2>
+                  <div className="space-y-2 text-sm">
+                    {resultado.estudo.contabil.map((p, i) => <p key={i}>{p}</p>)}
                   </div>
                 </Card>
               </div>
@@ -573,7 +726,7 @@ export default function IndicesRepactuacao() {
                 <div className="flex items-start gap-2">
                   <Scale className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div>
-                    <p className="text-base font-semibold leading-6 text-foreground">Gerar Pedido de Reequilíbrio Formal</p>
+                    <p className="text-base font-semibold leading-6 text-foreground">Gerar pedido de reequilíbrio formal</p>
                     <p className="text-sm text-muted-foreground">Vá ao Apoio Jurídico para gerar documentos completos com estes índices e CCTs como fundamentação</p>
                   </div>
                 </div>
@@ -583,15 +736,16 @@ export default function IndicesRepactuacao() {
               </div>
             </Card>
 
+            {/* As normas conferidas contra o texto de 2021 (auditoria de 31/08),
+                pelo regime que o tipo de serviço escolhido impõe. */}
             <Alert variant="info">
               <Info className="w-4 h-4" aria-hidden="true" />
               <AlertDescription>
                 <div className="space-y-1">
-                  <p><strong>Referências Legais:</strong></p>
-                  <p>• Art. 92, §3º, Lei 14.133/2021 — Cláusula de reajuste obrigatória em contratos com prazo &gt; 1 ano</p>
-                  <p>• Art. 135, Lei 14.133/2021 — Reajuste em sentido estrito (índice) e repactuação (CCT/dissídio)</p>
-                  <p>• Art. 124, II, "d", Lei 14.133/2021 — Reequilíbrio econômico-financeiro</p>
-                  <p>• Acórdão TCU 1.563/2004, 1.827/2008 — Súmulas sobre reajuste contratual</p>
+                  <p><strong>Referências normativas — {simTipo === 'continuado' ? 'repactuação' : 'reajustamento em sentido estrito'}:</strong></p>
+                  {referenciasDoRegime(simTipo === 'continuado' ? 'repactuacao' : 'reajuste').map((r) => (
+                    <p key={r.norma}>• <b>{r.norma}</b> — {r.texto}</p>
+                  ))}
                 </div>
               </AlertDescription>
             </Alert>
