@@ -156,6 +156,17 @@ function diffMonths(start: string | null, end: string | null): number | null {
   return totalMonths >= 0 ? totalMonths : null;
 }
 
+/**
+ * Elemento de despesa ("3.3.90.32.03", "3.3.90.30.00") não é código de item:
+ * é o cabeçalho da dotação que a tabela do contrato traz logo acima do item 1,
+ * e a leitura o colava no primeiro item do bloco — o 772/2024 ficou com o
+ * açúcar como "3.3.90.32.03" e o arroz como "3.3.90.32.00", sem número, e os
+ * termos aditivos citam o item pelo número (26/09).
+ */
+function ehElementoDeDespesa(codigo: string | null): boolean {
+  return !!codigo && /^\d(\.\d{1,2}){3,5}$/.test(codigo.trim());
+}
+
 function normalizeItem(item: ItemExtraido, index: number) {
   const descricao = cleanString(item.descricao);
   if (!descricao) return null;
@@ -164,9 +175,10 @@ function normalizeItem(item: ItemExtraido, index: number) {
   const valorUnitario = parseNumber(item.valor_unitario);
   const valorTotalOriginal = parseNumber(item.valor_total);
   const valorTotal = valorTotalOriginal ?? (quantidade != null && valorUnitario != null ? quantidade * valorUnitario : null);
+  const codigoLido = cleanString(item.codigo_item);
 
   return {
-    codigo_item: cleanString(item.codigo_item) ?? String(index + 1),
+    codigo_item: codigoLido && !ehElementoDeDespesa(codigoLido) ? codigoLido : String(index + 1),
     descricao,
     quantidade: quantidade ?? undefined,
     unidade: cleanString(item.unidade) ?? undefined,
@@ -612,7 +624,7 @@ serve(async (req) => {
                     items: {
                       type: "object",
                       properties: {
-                        codigo_item: { type: "string" },
+                        codigo_item: { type: "string", description: "O NÚMERO do item na coluna ITEM da tabela (1, 2, 3…), como está no documento. NUNCA o elemento/subelemento de despesa (3.3.90.32.03) nem a dotação: isso é cabeçalho do bloco, não código do item. Sem coluna ITEM, deixe vazio." },
                         descricao: { type: "string" },
                         quantidade: { type: ["string", "number"], description: "Transcreva EXATAMENTE como no documento, como texto (ex.: \"100.800\", \"15,80\", \"1.234.567,89\")" },
                         unidade: { type: "string" },
