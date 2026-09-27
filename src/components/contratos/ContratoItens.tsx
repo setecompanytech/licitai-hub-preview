@@ -862,6 +862,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           de caber SEM rolar. */}
                       <TableHead className="whitespace-nowrap">Item</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
+                      {/* A unidade numa coluna própria (26/09): "4.822 UNIDADE"
+                          na célula da quantidade alargava a coluna e escondia
+                          o número; a palavra vale para a linha inteira. */}
+                      <TableHead className="whitespace-nowrap">Unid.</TableHead>
                       {podeVerCustos && <TableHead className="whitespace-nowrap text-right">Custo</TableHead>}
                       <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Consumido</TableHead>
@@ -1047,7 +1051,6 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {camadaSel ? (
                         <>
                           {nf(camadaSel.capacidade)}
-                          <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                           {camadaSel.capacidade > 0 ? (
                             <div className="g-meta text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
                           ) : (
@@ -1057,7 +1060,6 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       ) : (
                         <>
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
-                      <span className="text-muted-foreground"> {uni(item.unidade)}</span>
                       {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
                         <div className="g-meta text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
                           vigente: {qtdVigente.toLocaleString('pt-BR')}
@@ -1071,6 +1073,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {(item.quantidade_contratada || 0) === 0 && (
                         <div className="g-meta text-warning-ink">sem quantidade — edite no lápis</div>
                       )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground" data-testid={`unidade-${item.id}`}>
+                      {uni(item.unidade) || <span title="Item sem unidade — edite no lápis">—</span>}
                     </TableCell>
                     {podeVerCustos && (
                       <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
@@ -1149,7 +1154,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {camadaSel ? (
                         camadaSel.capacidade > 0 ? (
                           <>
-                            <div>{nf(camadaSel.saldo)} {uni(item.unidade)}</div>
+                            <div>{nf(camadaSel.saldo)}</div>
                             <div>{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
                           </>
                         ) : <span className="text-muted-foreground font-normal">—</span>
@@ -1158,7 +1163,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           {/* Saldo em R$ sempre CALCULADO (saldo × preço vigente): a coluna
                               saldo_financeiro do banco acumula acréscimo de aditivo por cima
                               do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
-                          <div>{saldoQtdDe(item).toLocaleString('pt-BR')} {uni(item.unidade)}</div>
+                          <div>{saldoQtdDe(item).toLocaleString('pt-BR')}</div>
                           <div>{fmt(saldoFinanceiroDe(item))}</div>
                         </>
                       )}
