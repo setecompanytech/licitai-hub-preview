@@ -157,6 +157,7 @@ import { useEmpresa } from '@/contexts/EmpresaContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePessoas } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
+import { formatarMoedaBr, mascaraMoedaBr, parseMoedaBr, parseQuantidade } from '@/lib/compras/numeros';
 import CondicoesPagamento from './CondicoesPagamento';
 import { buscarCfop, formatarCfop } from '@/data/cfop';
 import {
@@ -262,17 +263,13 @@ const STATUS_MSG: Record<string, string> = {
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function fmtM(v: number): string {
-  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
-}
-function parseM(v: string): number {
-  return parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0;
-}
-function inputM(v: string): string {
-  const d = v.replace(/\D/g, '');
-  if (!d) return '0,00';
-  return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseInt(d) / 100);
-}
+// Dinheiro e quantidade têm parsers DIFERENTES (lib/compras/numeros.ts): a
+// quantidade vem do campo numérico com ponto decimal ("818.21"); lida pelo
+// parser de dinheiro virava 81.821 e o total saía 3.109.198,00 (28/09/2026).
+const fmtM = formatarMoedaBr;
+const parseM = parseMoedaBr;
+const parseQ = parseQuantidade;
+const inputM = mascaraMoedaBr;
 function fmtDateBR(iso: string | null): string {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');
@@ -422,7 +419,7 @@ function ItemDialog({ open, onOpenChange, produtos, initial, onConfirm }: {
     }));
   }
 
-  const valorTotal = parseM(item.quantidade) * parseM(item.preco_unitario);
+  const valorTotal = parseQ(item.quantidade) * parseM(item.preco_unitario);
 
   function handleConfirm() {
     if (!item.descricao.trim()) { toast.error('Informe a descrição do item'); return; }
@@ -810,7 +807,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
 
   async function handleSave() {
     setSaving(true);
-    const totalMerc = itens.reduce((s, i) => s + parseM(i.quantidade) * parseM(i.preco_unitario), 0);
+    const totalMerc = itens.reduce((s, i) => s + parseQ(i.quantidade) * parseM(i.preco_unitario), 0);
     const desconto  = parseM(form.valor_desconto);
     const valorTotal = Math.max(0, totalMerc - desconto);
     const numero = editingId ? editingNum! : await getNextNumero();
@@ -866,8 +863,8 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             empresa_id: empresaAtiva!.id, pedido_id: pedidoId,
             produto_id: i.produto_id || null, codigo_produto: i.codigo_produto || null,
             descricao: i.descricao, unidade: i.unidade,
-            quantidade: parseM(i.quantidade) || 1, preco_unitario: parseM(i.preco_unitario),
-            valor_total: parseM(i.quantidade) * parseM(i.preco_unitario),
+            quantidade: parseQ(i.quantidade) || 1, preco_unitario: parseM(i.preco_unitario),
+            valor_total: parseQ(i.quantidade) * parseM(i.preco_unitario),
             local_estoque: i.local_estoque || null,
           })) as never
         );
@@ -878,7 +875,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
     if (pedidoId) {
       if (form.contrato_id) {
         const cpDescricao = itens.map(i => i.descricao).join('; ').slice(0, 255) || `Pedido Nº ${numero}`;
-        const cpQtd = itens.reduce((s, i) => s + (parseM(i.quantidade) || 1), 0) || 1;
+        const cpQtd = itens.reduce((s, i) => s + (parseQ(i.quantidade) || 1), 0) || 1;
         const { data: existing } = await supabase
           .from('contrato_pedidos')
           .select('id')
@@ -948,7 +945,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) { toast.error('Habilite pop-ups para imprimir'); return; }
     const itemRows = itens.map(i => {
-      const qt = parseM(i.quantidade);
+      const qt = parseQ(i.quantidade);
       const pu = parseM(i.preco_unitario);
       return `<tr>
         <td>${i.codigo_produto || '—'}</td>
@@ -1037,8 +1034,8 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
             pedido_id: newId, empresa_id: empresaAtiva.id,
             produto_id: i.produto_id || null, codigo_produto: i.codigo_produto || null,
             descricao: i.descricao, unidade: i.unidade,
-            quantidade: parseM(i.quantidade) || 1, preco_unitario: parseM(i.preco_unitario),
-            valor_total: parseM(i.quantidade) * parseM(i.preco_unitario),
+            quantidade: parseQ(i.quantidade) || 1, preco_unitario: parseM(i.preco_unitario),
+            valor_total: parseQ(i.quantidade) * parseM(i.preco_unitario),
             local_estoque: i.local_estoque || null,
           })) as never
         );
@@ -1128,7 +1125,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
   }
 
   // Computed totals
-  const totalMerc  = itens.reduce((s, i) => s + parseM(i.quantidade) * parseM(i.preco_unitario), 0);
+  const totalMerc  = itens.reduce((s, i) => s + parseQ(i.quantidade) * parseM(i.preco_unitario), 0);
   const desconto   = parseM(form.valor_desconto);
   const valorTotal = Math.max(0, totalMerc - desconto);
 
@@ -2197,7 +2194,7 @@ const PedidosDeCompra = forwardRef<PedidosDeCompraRef>(function PedidosDeCompra(
                         </TableCell>
                       </TableRow>
                     ) : itens.map(item => {
-                      const vt = parseM(item.quantidade) * parseM(item.preco_unitario);
+                      const vt = parseQ(item.quantidade) * parseM(item.preco_unitario);
                       const isSel = selectedItem === item._key;
                       return (
                         <TableRow key={item._key}
