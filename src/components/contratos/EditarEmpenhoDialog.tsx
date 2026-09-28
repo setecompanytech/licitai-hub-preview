@@ -39,6 +39,9 @@ type Db = {
 };
 const db = supabase as unknown as Db;
 const brl = (n: number) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// Os números chegam do banco com ponto ("5.0400"); na tela entram à brasileira ("5,04") — e a lib lê os dois.
+const qtdBr = (v: unknown) => (v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 4 }));
+const moedaBr = (v: unknown) => (v == null || v === '' ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
 
 export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, itensDoContrato, podeApagar, onFechar, onMudou }: Props) {
   const [original, setOriginal] = useState<EmpenhoOriginal | null>(null);
@@ -74,7 +77,7 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
         setForm(formularioDoEmpenho(o));
         setLinhas(((itens.data ?? []) as Array<Record<string, unknown>>).map((l) => ({
           key: String(l.id), id: String(l.id), contrato_item_id: (l.contrato_item_id as string | null) ?? '', descricao: String(l.descricao ?? ''),
-          cota: ((l.cota as string | null) ?? '') as LinhaDoEmpenho['cota'], quantidade: l.quantidade != null ? String(l.quantidade) : '', unidade: String(l.unidade ?? ''), valor_unitario: l.valor_unitario != null ? String(l.valor_unitario) : '',
+          cota: ((l.cota as string | null) ?? '') as LinhaDoEmpenho['cota'], quantidade: qtdBr(l.quantidade), unidade: String(l.unidade ?? ''), valor_unitario: moedaBr(l.valor_unitario),
         })));
         setVinculos({ pedidos: pedidos.count ?? 0, movimentos: movs.count ?? 0, arquivoNome });
       } catch (err) {
@@ -151,7 +154,7 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
 
   return (
     <Dialog open={!!empenho} onOpenChange={(v) => { if (!v) onFechar(); }}>
-      <DialogContent className="max-w-[min(96vw,64rem)] max-h-[92vh] overflow-y-auto" data-testid="editar-empenho">
+      <DialogContent className="max-w-[min(98vw,96rem)] max-h-[94vh] overflow-y-auto" data-testid="editar-empenho">
         <DialogHeader>
           <DialogTitle>Editar empenho {empenho?.numero}</DialogTitle>
           <DialogDescription>Número, espécie, data, valor, observação e as linhas por cota. O que você mudar aqui vale para o saldo e aparece no dossiê.</DialogDescription>
@@ -201,12 +204,12 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
               <div className="space-y-1.5"><Label htmlFor="ee-unidade">Unidade</Label><Input id="ee-unidade" value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} /></div>
               <div className="space-y-1.5">
                 <Label htmlFor="ee-valor">Valor (R$)</Label>
-                <Input id="ee-valor" inputMode="decimal" value={totais.linhasValidas.length ? String(totais.valor) : form.valor} disabled={totais.linhasValidas.length > 0} onChange={(e) => setForm({ ...form, valor: e.target.value })} className="text-right tabular-nums" />
+                <Input id="ee-valor" inputMode="decimal" value={totais.linhasValidas.length ? moedaBr(totais.valor) : form.valor} disabled={totais.linhasValidas.length > 0} onChange={(e) => setForm({ ...form, valor: e.target.value })} className="text-right tabular-nums" />
                 {totais.linhasValidas.length > 0 && <p className="g-meta text-muted-foreground">Soma das linhas: {brl(totais.valor)}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ee-qtd">Quantidade</Label>
-                <Input id="ee-qtd" inputMode="decimal" value={totais.linhasValidas.length ? String(totais.quantidade) : form.quantidade} disabled={totais.linhasValidas.length > 0} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} className="text-right tabular-nums" />
+                <Input id="ee-qtd" inputMode="decimal" value={totais.linhasValidas.length ? qtdBr(totais.quantidade) : form.quantidade} disabled={totais.linhasValidas.length > 0} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} className="text-right tabular-nums" />
               </div>
               <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="ee-obs">Observação</Label><Textarea id="ee-obs" value={form.observacao} onChange={(e) => setForm({ ...form, observacao: e.target.value })} className="min-h-10" /></div>
             </div>
@@ -220,23 +223,25 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
               {linhas.length > 0 && (
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
-                    <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-2 py-1.5">Item do contrato</th><th className="px-2 py-1.5">Descrição</th><th className="px-2 py-1.5">Cota</th><th className="px-2 py-1.5 text-right">Qtd</th><th className="px-2 py-1.5">Unid.</th><th className="px-2 py-1.5 text-right">Unitário</th><th className="px-2 py-1.5 text-right">Total</th><th className="px-2 py-1.5"></th></tr></thead>
+                    <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-2 py-1.5 w-[24%]">Item do contrato</th><th className="px-2 py-1.5">Descrição</th><th className="px-2 py-1.5 w-32">Cota</th><th className="px-2 py-1.5 w-24 text-right">Qtd</th><th className="px-2 py-1.5 w-16">Unid.</th><th className="px-2 py-1.5 w-28 text-right">Unitário</th><th className="px-2 py-1.5 w-32 whitespace-nowrap text-right">Total</th><th className="px-2 py-1.5 w-10"></th></tr></thead>
                     <tbody className="divide-y divide-border">
                       {linhas.map((l) => {
-                        const q = parseFloat(String(l.quantidade).replace(',', '.')) || 0; const vu = parseFloat(String(l.valor_unitario).replace(',', '.')) || 0;
+                        const lerNum = (v: string) => (v.includes(',') ? parseFloat(v.replace(/\./g, '').replace(',', '.')) : parseFloat(v)) || 0;
+                        const q = lerNum(String(l.quantidade)); const vu = lerNum(String(l.valor_unitario));
                         return (
                           <tr key={l.key}>
-                            <td className="px-2 py-1 min-w-48">
+                            <td className="px-2 py-1 min-w-56 align-top">
+                              {/* O nome do item cabe inteiro: o gatilho quebra linha em vez de cortar. */}
                               <Select value={l.contrato_item_id || '__nenhum__'} onValueChange={(v) => escolherItem(l.key, v)}>
-                                <SelectTrigger className="h-8" aria-label="Item do contrato"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-auto min-h-8 whitespace-normal py-1 text-left [&>span]:line-clamp-2" aria-label="Item do contrato"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__nenhum__">— sem vínculo —</SelectItem>
                                   {itensDoContrato.map((i) => <SelectItem key={i.id} value={i.id}>{i.codigo_item ? `${i.codigo_item} · ` : ''}{i.descricao.slice(0, 60)}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-2 py-1 min-w-56"><Input className="h-8" value={l.descricao} onChange={(e) => mudarLinha(l.key, { descricao: e.target.value })} aria-label="Descrição" /></td>
-                            <td className="px-2 py-1">
+                            <td className="px-2 py-1 min-w-80 align-top"><Textarea className="min-h-8 resize-y py-1.5 text-sm leading-5" rows={1} value={l.descricao} onChange={(e) => mudarLinha(l.key, { descricao: e.target.value })} aria-label="Descrição" title={l.descricao} /></td>
+                            <td className="px-2 py-1 align-top">
                               <Select value={l.cota || '__'} onValueChange={(v) => mudarLinha(l.key, { cota: (v === '__' ? '' : v) as LinhaDoEmpenho['cota'] })}>
                                 <SelectTrigger className="h-8 w-32" aria-label="Cota"><SelectValue /></SelectTrigger>
                                 <SelectContent><SelectItem value="__">sem cota</SelectItem><SelectItem value="principal">principal</SelectItem><SelectItem value="reservada">reservada</SelectItem></SelectContent>
@@ -245,7 +250,7 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
                             <td className="px-2 py-1"><Input className="h-8 w-24 text-right tabular-nums" inputMode="decimal" value={l.quantidade} onChange={(e) => mudarLinha(l.key, { quantidade: e.target.value })} aria-label="Quantidade" /></td>
                             <td className="px-2 py-1"><Input className="h-8 w-16" value={l.unidade} onChange={(e) => mudarLinha(l.key, { unidade: e.target.value })} aria-label="Unidade" /></td>
                             <td className="px-2 py-1"><Input className="h-8 w-28 text-right tabular-nums" inputMode="decimal" value={l.valor_unitario} onChange={(e) => mudarLinha(l.key, { valor_unitario: e.target.value })} aria-label="Valor unitário" /></td>
-                            <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{brl(q * vu)}</td>
+                            <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-muted-foreground">{brl(q * vu)}</td>
                             <td className="px-2 py-1"><Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive-ink" aria-label="Remover linha" onClick={() => setLinhas((ls) => ls.filter((x) => x.key !== l.key))}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button></td>
                           </tr>
                         );
