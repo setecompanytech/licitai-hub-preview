@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { stripePlans } from '@/data/stripe-config';
 import { planHierarchy, type PlanSlug } from '@/data/plan-features';
+import { melhorAssinaturaVigente, type LinhaDeAssinatura } from '@/lib/assinatura/vigencia';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { queryClient, invalidatePermissionCaches } from '@/lib/query-client';
 import { registrarEventoSessao } from '@/lib/auditoria/trilha';
@@ -13,6 +14,8 @@ type SubscriptionState = {
   planSlug: PlanSlug | null;
   subscriptionEnd: string | null;
   loading: boolean;
+  /** A verificação falhou (edge e banco): não se sabe — o que é diferente de 'sem assinatura'. */
+  erro?: boolean;
 };
 
 type AuthContextType = {
@@ -70,8 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // 28/09/2026: 6 s de prazo estourado (edge fria) deixava o estado no
+    // valor inicial — "sem assinatura" — e o PlanGuard bloqueava a ETHOS,
+    // que tem Enterprise até 2027. Agora: 12 s, e se a edge falhar, a
+    // assinatura é lida direto do banco (RLS: só as empresas da pessoa).
+    // Só quando as duas falham o estado vira "não sei" (erro), nunca "não tem".
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 6000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-subscription`, {
@@ -91,13 +99,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           planSlug: planoDaResposta(data),
           subscriptionEnd: data.subscription_end ?? null,
           loading: false,
+          erro: false,
         });
-      } else {
-        setSubscription(prev => ({ ...prev, loading: false }));
+        return;
       }
+      throw new Error(`check-subscription HTTP ${response.status}`);
     } catch (err) {
-      console.error('Error checking subscription:', err);
-      setSubscription(prev => ({ ...prev, loading: false }));
+      console.warn('check-subscription indisponível; lendo a assinatura do banco:', err);
+      try {
+        const { data, error } = await supabase
+          .from('assinaturas')
+          .select('status, data_fim, planos(slug)')
+          .in('status', ['trial', 'ativa']);
+        if (error) throw error;
+        const melhor = melhorAssinaturaVigente((data ?? []) as unknown as LinhaDeAssinatura[]);
+        if (melhor) {
+          setSubscription({ subscribed: true, planSlug: melhor.planSlug, subscriptionEnd: melhor.subscriptionEnd, loading: false, erro: false });
+        } else {
+          // O banco respondeu e não há assinatura vigente: isso é "sem assinatura" de verdade.
+          setSubscription({ subscribed: false, planSlug: null, subscriptionEnd: null, loading: false, erro: false });
+        }
+      } catch (err2) {
+        console.error('Assinatura: edge e banco falharam', err2);
+        setSubscription(prev => ({ ...prev, loading: false, erro: true }));
+      }
     } finally {
       window.clearTimeout(timeoutId);
     }
