@@ -121,16 +121,16 @@ export default function PesquisaTcu({ termoInicial = '' }: { termoInicial?: stri
     const mostrados = expandida ? itens : itens.slice(0, limite);
     let grupoAnterior: string | undefined;
     return (
-      <div className="space-y-1" data-testid={`faceta-${chave}`}>
-        <p className="g-meta font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
-        <ul className="space-y-0.5">
+      <div className="border-b border-border px-3 py-3 last:border-b-0" data-testid={`faceta-${chave}`}>
+        <p className="g-meta mb-1 font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
+        <ul className="space-y-px">
           {mostrados.map((i) => {
             const cabecalho = i.grupo && i.grupo !== grupoAnterior ? i.grupo : null;
             grupoAnterior = i.grupo;
             return (
               <li key={`${i.grupo ?? ''}${i.valor}`}>
-                {cabecalho && <p className="g-meta pt-1 text-muted-foreground">{cabecalho}</p>}
-                <button type="button" onClick={() => aoClicar(i.valor)} aria-pressed={ativo(i.valor)} className={`flex w-full items-center justify-between gap-2 rounded px-1.5 py-0.5 text-left text-sm hover:bg-muted ${ativo(i.valor) ? 'bg-muted font-semibold text-foreground' : 'text-foreground'}`}>
+                {cabecalho && <p className="g-meta px-2 pb-0.5 pt-1.5 text-muted-foreground">{cabecalho}</p>}
+                <button type="button" onClick={() => aoClicar(i.valor)} aria-pressed={ativo(i.valor)} className={`flex w-full items-center justify-between gap-2 rounded-md border-l-2 px-2 py-1 text-left text-sm hover:bg-muted ${ativo(i.valor) ? 'border-primary bg-primary-tint font-semibold text-foreground' : 'border-transparent text-foreground'}`}>
                   <span className="truncate">{i.valor}</span>
                   <span className="g-meta shrink-0 tabular-nums text-muted-foreground">{i.quantidade.toLocaleString('pt-BR')}</span>
                 </button>
@@ -139,7 +139,7 @@ export default function PesquisaTcu({ termoInicial = '' }: { termoInicial?: stri
           })}
         </ul>
         {itens.length > limite && (
-          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary hover:underline" onClick={() => setExpandidas((s) => { const n = new Set(s); if (expandida) n.delete(chave); else n.add(chave); return n; })}>
+          <button type="button" className="g-meta mt-1 inline-flex items-center gap-1 px-2 text-primary hover:underline" onClick={() => setExpandidas((s) => { const n = new Set(s); if (expandida) n.delete(chave); else n.add(chave); return n; })}>
             {expandida ? <><ChevronUp className="h-3 w-3" aria-hidden="true" /> menos</> : <><ChevronDown className="h-3 w-3" aria-hidden="true" /> mais {itens.length - limite}</>}
           </button>
         )}
@@ -228,26 +228,28 @@ export default function PesquisaTcu({ termoInicial = '' }: { termoInicial?: stri
       )}
 
       {resposta && ultima && (
-        <div className={`grid gap-5 lg:grid-cols-[13.5rem_minmax(0,1fr)] ${buscando ? 'opacity-60' : ''}`} aria-busy={buscando}>
-          <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start" data-testid="facetas-tcu" aria-label="Refinar">
-            <p className="text-sm font-semibold text-foreground">Refinar</p>
+        <div className={`grid overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:grid-cols-[14rem_minmax(0,1fr)] ${buscando ? 'opacity-60' : ''}`} aria-busy={buscando}>
+          <aside className="border-b border-border bg-secondary lg:border-b-0 lg:border-r" data-testid="facetas-tcu" aria-label="Refinar">
+            <div className="lg:sticky lg:top-0">
+              <p className="border-b border-border px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Refinar</p>
             {grupoDeFacetas('tipo', 'Tipo', resposta.facetas.tipo, (v) => f.tipo.includes(v), (v) => aplicar({ tipo: alternar(f.tipo, v) }))}
             {grupoDeFacetas('colegiado', 'Colegiado', resposta.facetas.colegiado, (v) => f.colegiado.includes(v), (v) => aplicar({ colegiado: alternar(f.colegiado, v) }))}
             {grupoDeFacetas('ano', 'Ano', resposta.facetas.ano, (v) => f.ano === v, (v) => aplicar({ ano: f.ano === v ? '' : v }), 8)}
             {grupoDeFacetas('relator', 'Relator', resposta.facetas.relator, (v) => f.relator.toUpperCase() === v.toUpperCase(), (v) => aplicar({ relator: f.relator.toUpperCase() === v.toUpperCase() ? '' : v }), 8)}
-            {resposta.facetas.tipo.length + resposta.facetas.colegiado.length + resposta.facetas.ano.length + resposta.facetas.relator.length === 0 && <p className="g-meta text-muted-foreground">Sem refinamentos para esta pesquisa.</p>}
+              {resposta.facetas.tipo.length + resposta.facetas.colegiado.length + resposta.facetas.ano.length + resposta.facetas.relator.length === 0 && <p className="g-meta px-4 py-3 text-muted-foreground">Sem refinamentos para esta pesquisa.</p>}
+            </div>
           </aside>
 
-          <div className="min-w-0 space-y-2" data-testid="resultado-tcu">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+          <div className="min-w-0" data-testid="resultado-tcu">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary px-4 py-2.5">
               <p className="text-sm text-foreground"><b>{resumoDaPagina(total, paginaAtual)}</b>{ultima.termo.trim() ? <> para <i>"{ultima.termo.trim()}"</i></> : ''}</p>
               {resposta.alerta && <SeloSituacao tom="atencao">{resposta.alerta}</SeloSituacao>}
             </div>
             {resposta.sugestao && total === 0 && (
-              <p className="text-sm text-muted-foreground">Você quis dizer <button type="button" className="text-primary hover:underline" onClick={() => aplicar({ termo: resposta.sugestao ?? '' })}>{resposta.sugestao}</button>?</p>
+              <p className="px-4 pt-3 text-sm text-muted-foreground">Você quis dizer <button type="button" className="text-primary hover:underline" onClick={() => aplicar({ termo: resposta.sugestao ?? '' })}>{resposta.sugestao}</button>?</p>
             )}
             {total === 0 ? (
-              <p className="text-sm text-muted-foreground">O TCU não devolveu acórdão com estes critérios. Tente menos filtros, o radical com $ (ex.: reajust$) ou sinônimos com "ou".</p>
+              <p className="px-4 py-6 text-sm text-muted-foreground">O TCU não devolveu acórdão com estes critérios. Tente menos filtros, o radical com $ (ex.: reajust$) ou sinônimos com "ou".</p>
             ) : (
               <ol className="divide-y divide-border" start={(paginaAtual - 1) * POR_PAGINA_TCU + 1}>
                 {resposta.documentos.map((d) => {
@@ -257,7 +259,7 @@ export default function PesquisaTcu({ termoInicial = '' }: { termoInicial?: stri
                   const aberto = abertos.has(d.key);
                   const leitura = leituras[d.key];
                   return (
-                    <li key={d.key} className="space-y-1.5 py-3">
+                    <li key={d.key} className="space-y-1.5 px-4 py-3 hover:bg-muted/40">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">{ident}</p>
                         {d.tipo !== 'ACÓRDÃO' && <SeloSituacao tom="neutro">{d.tipo.toLowerCase()}</SeloSituacao>}
@@ -303,7 +305,7 @@ export default function PesquisaTcu({ termoInicial = '' }: { termoInicial?: stri
               </ol>
             )}
             {total > POR_PAGINA_TCU && (
-              <nav className="flex flex-wrap items-center gap-2 border-t border-border pt-2" aria-label="Páginas">
+              <nav className="flex flex-wrap items-center gap-2 border-t border-border bg-secondary px-4 py-2.5" aria-label="Páginas">
                 <Button type="button" size="sm" variant="outline" disabled={paginaAtual <= 1 || buscando} onClick={() => irPara(1)} title="Primeira página"><ChevronsLeft aria-hidden="true" /></Button>
                 <Button type="button" size="sm" variant="outline" disabled={paginaAtual <= 1 || buscando} onClick={() => irPara(paginaAtual - 1)}><ChevronLeft aria-hidden="true" /> Anterior</Button>
                 <form className="inline-flex items-center gap-1 text-sm text-muted-foreground" onSubmit={(e) => { e.preventDefault(); const n = parseInt(paginaDigitada, 10); if (n >= 1 && n <= paginas) irPara(n); else toast.error(`Página entre 1 e ${paginas.toLocaleString('pt-BR')}`); }}>
