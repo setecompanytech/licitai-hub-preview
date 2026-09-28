@@ -20,7 +20,8 @@ import { BookOpenCheck, Search, RefreshCw, Loader2, ExternalLink } from 'lucide-
  * disparar a ingestão pela tela.
  */
 type Coleta = { fonte: string; iniciado_em: string; concluido_em: string | null; documentos: number; novos: number; alterados: number; erros: string[] };
-type Resultado = { id: string; fonte: string; tipo: string; identificador: string; dispositivo: string | null; titulo: string | null; ementa: string | null; trecho: string; url: string | null; data_publicacao: string | null; atualizado_em: string };
+type Resultado = { id: string; fonte: string; tipo: string; identificador: string; dispositivo: string | null; titulo: string | null; ementa: string | null; trecho: string; url: string | null; data_publicacao: string | null; atualizado_em: string; correspondencia: 'todas' | 'parcial' };
+type Contagem = { fonte: string; todas: number; parcial: number };
 
 const NOME_DA_FONTE: Record<string, string> = { planalto: 'Planalto — leis acompanhadas', tcu: 'TCU — acórdãos (dados abertos)', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
 const dataBr = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
@@ -37,6 +38,8 @@ export default function FontesOficiais() {
   const [termo, setTermo] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [resultados, setResultados] = useState<Resultado[] | null>(null);
+  const [contagens, setContagens] = useState<Contagem[]>([]);
+  const [fonteFiltro, setFonteFiltro] = useState<string | null>(null);
   const [atualizando, setAtualizando] = useState(false);
 
   const { data: coletas } = useQuery<Coleta[]>({
@@ -64,15 +67,20 @@ export default function FontesOficiais() {
   for (const c of coletas ?? []) if (!ultimaPorFonte.has(c.fonte)) ultimaPorFonte.set(c.fonte, c);
   const fontes = ['planalto', 'tcu', 'dou'];
 
-  const buscar = async () => {
+  const buscar = async (fonte: string | null = fonteFiltro) => {
     const t = termo.trim();
     if (t.length < 3) { toast.error('Digite ao menos 3 letras'); return; }
     setBuscando(true);
-    const { data, error } = await db.rpc('buscar_base_normativa', { p_termo: t, p_limite: 20 });
+    const [r, c] = await Promise.all([
+      db.rpc('buscar_base_normativa', { p_termo: t, p_limite: 30, p_fonte: fonte }),
+      db.rpc('contar_base_normativa', { p_termo: t }),
+    ]);
     setBuscando(false);
-    if (error) { toast.error('Não foi possível buscar', { description: error.message }); return; }
-    setResultados((data ?? []) as Resultado[]);
+    if (r.error) { toast.error('Não foi possível buscar', { description: r.error.message }); return; }
+    setResultados((r.data ?? []) as Resultado[]);
+    setContagens(c.error ? [] : ((c.data ?? []) as Contagem[]).map((x) => ({ ...x, todas: Number(x.todas), parcial: Number(x.parcial) })));
   };
+  const escolherFonte = (f: string | null) => { setFonteFiltro(f); void buscar(f); };
 
   const atualizar = async () => {
     setAtualizando(true);
@@ -130,11 +138,28 @@ export default function FontesOficiais() {
         <Label htmlFor="busca-normativa">Buscar na base normativa</Label>
         <div className="flex flex-wrap gap-2">
           <Input id="busca-normativa" className="max-w-md" placeholder="ex.: reajustamento apostila, repactuação convenção coletiva" value={termo} onChange={(e) => setTermo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void buscar(); }} />
-          <Button size="sm" onClick={buscar} disabled={buscando}>{buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />} Buscar</Button>
+          <Button size="sm" onClick={() => buscar()} disabled={buscando}>{buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />} Buscar</Button>
         </div>
+        {/* O que cada fonte tem para o termo — inclusive zero: "DOU: 0" é
+            resposta, sumir com o DOU não é. Clique filtra. */}
+        {resultados && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="contagem-por-fonte">
+            <button type="button" onClick={() => escolherFonte(null)} className={`rounded-sm border px-2 py-0.5 text-xs font-semibold ${fonteFiltro === null ? 'border-primary bg-primary-tint text-primary' : 'border-border bg-card text-muted-foreground'}`}>Todas as fontes</button>
+            {fontes.map((f) => {
+              const c = contagens.find((x) => x.fonte === f);
+              const n = (c?.todas ?? 0) + (c?.parcial ?? 0);
+              return (
+                <button key={f} type="button" onClick={() => escolherFonte(f)} className={`rounded-sm border px-2 py-0.5 text-xs font-semibold ${fonteFiltro === f ? 'border-primary bg-primary-tint text-primary' : 'border-border bg-card text-muted-foreground'}`}>
+                  {NOME_DA_FONTE[f]?.split(' — ')[0]}: {n}{c && c.todas > 0 ? ` (${c.todas} com todas as palavras)` : ''}
+                </button>
+              );
+            })}
+            <span className="g-meta text-muted-foreground">Base: {fontes.map((f) => `${NOME_DA_FONTE[f]?.split(' — ')[0]} ${totais?.[f] ?? 0}`).join(' · ')}</span>
+          </div>
+        )}
         {resultados && (
           resultados.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nada na base para este termo. Se a fonte ainda não rodou, o cartão acima diz "nunca rodou".</p>
+            <p className="text-sm text-muted-foreground">Nenhum registro com estas palavras{fonteFiltro ? ` em ${NOME_DA_FONTE[fonteFiltro]}` : ''}. Se a fonte ainda não rodou, o cartão acima diz "nunca rodou".</p>
           ) : (
             <ul className="divide-y divide-border">
               {resultados.map((r) => (
@@ -142,10 +167,11 @@ export default function FontesOficiais() {
                   <div className="flex flex-wrap items-center gap-2">
                     <SeloSituacao tom="info">{NOME_DA_FONTE[r.fonte]?.split(' — ')[0] ?? r.fonte}</SeloSituacao>
                     <p className="text-sm font-semibold text-foreground">{r.identificador}{r.dispositivo ? `, ${r.dispositivo}` : ''}</p>
+                    {r.correspondencia === 'parcial' && <SeloSituacao tom="neutro">parcial</SeloSituacao>}
                     {r.data_publicacao && <span className="g-meta text-muted-foreground">{r.data_publicacao.slice(8, 10)}/{r.data_publicacao.slice(5, 7)}/{r.data_publicacao.slice(0, 4)}</span>}
                     {r.url && <a href={r.url} target="_blank" rel="noreferrer" className="g-meta inline-flex items-center gap-1 text-primary hover:underline">texto oficial <ExternalLink className="h-3 w-3" aria-hidden="true" /></a>}
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">{(r.trecho || r.ementa || '').slice(0, 700)}{(r.trecho || '').length > 700 ? '…' : ''}</p>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">{(r.trecho || r.ementa || '').slice(0, 700)}</p>
                 </li>
               ))}
             </ul>
