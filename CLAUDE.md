@@ -789,3 +789,18 @@ seguem o Conv. 52/17, superado: servem só como segunda conferência.
 `lib/fiscal/cest.ts` casa CEST × NCM por prefixo e `avaliarCest` alimenta o
 aviso do cadastro de produto (inexistente, revogado, incompatível, sem CEST
 com sugestão).
+
+## Apoio Contábil — mesma regra do jurídico (28/09/2026)
+
+Modelos em `src/lib/contabil/modelos.ts` (fundamento CONFERIDO contra o
+Planalto: custos = art. 23, encargos = IN 5/2017 Anexo VII-D, inexequibilidade
+= art. 59 com o piso de 75% só para obras; cada um com URL do texto oficial
+e roteiro por seções). Gerador e Análise de Balanço chamam
+`juridico-redigir` com `dominio: 'contabil'` (persona `SISTEMA_CONTABIL`,
+mesmas ferramentas; `buscar_base_juridica` também lê `base_contabil`) e
+renderizam notas de origem; a `ai-chat` é só queda por 404. INs da SEGES
+entram na ingestão diária com `formato: 'texto'` (`artigosPorTexto`,
+`trechoEntre` para anexos; UTF-8, sem âncoras) — fonte continua `planalto`
+(a coluna tem CHECK), com `detalhe.origem = 'gov.br'`. `texto_da_norma` só
+acha `art. N`; anexo entra pela busca textual.
+
