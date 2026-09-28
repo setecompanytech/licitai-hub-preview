@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { avaliarCest } from '@/lib/fiscal/cest';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -1075,6 +1076,33 @@ const CadastroProdutos = forwardRef<CadastroProdutosRef, { aoMudar?: () => void 
                     />
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   </div>
+                  {/* CEST conferido contra o Convênio ICMS 142/18 (28/09/2026): a
+                      tabela antiga do sistema numerava os segmentos de outro jeito
+                      e deixou códigos inexistentes gravados nos produtos. */}
+                  {(() => {
+                    const a = avaliarCest(form.cest, form.ncm);
+                    if (a.situacao === 'ok') return null;
+                    return (
+                      <Alert variant={a.situacao === 'sem_cest' ? 'default' : 'destructive'} className="mt-2" data-testid="aviso-cest">
+                        <AlertDescription className="space-y-1.5">
+                          <p className="font-semibold">{a.titulo}</p>
+                          <p>{a.explicacao}</p>
+                          {a.sugestoes.length > 0 && (
+                            <ul className="space-y-1">
+                              {a.sugestoes.map((c) => (
+                                <li key={c.codigo}>
+                                  <button type="button" className="text-left text-primary hover:underline" onClick={() => setForm(f => ({ ...f, cest: c.codigo, cest_descricao: c.descricao }))}>
+                                    Usar {c.codigo}
+                                  </button>
+                                  <span className="text-muted-foreground"> — {c.descricao}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })()}
                 </Field>
                 <Field label="Número da FCI">
                   <Input value={form.numero_fci} onChange={e => setForm(f => ({ ...f, numero_fci: e.target.value }))} className="g-controle" placeholder="Opcional" />
