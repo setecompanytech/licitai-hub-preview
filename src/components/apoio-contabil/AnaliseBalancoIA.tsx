@@ -10,9 +10,58 @@ import { toast } from 'sonner';
 import { Sparkles, Loader2, Copy, BarChart3, Upload, FileText, Archive, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import NotaDeOrigem from '@/components/apoio-juridico/NotaDeOrigem';
+import { marcarNotasComoLinks } from '@/lib/juridico/notas-de-origem';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+/**
+ * Dois perfis (28/09/2026): "Empresa" — o balanço da própria empresa ou de
+ * um concorrente, lido para a habilitação do art. 69 e para a precificação;
+ * "Ente público" — o balanço do órgão contratante, lido pela Lei 4.320, LRF
+ * e NBC TSP para medir a capacidade de pagamento. Antes só havia o segundo,
+ * e ele era aplicado a tudo.
+ */
+type Perfil = 'empresa' | 'ente';
+const PROMPT_EMPRESA = (nome: string, exercicio: string, dados: string) => `Analise as demonstrações contábeis da empresa "${nome || 'não informada'}", exercício ${exercicio}, para fins de HABILITAÇÃO econômico-financeira em licitação (Lei 14.133/2021, art. 69) e de precificação:
+
+${dados}
+
+Estrutura obrigatória:
+## 1. Leitura das demonstrações
+- Saldos usados (ativo circulante, realizável a longo prazo, passivo circulante, exigível a longo prazo, patrimônio líquido, receita, resultado), cada um com [[fonte:anexo|linha]].
+## 2. Índices do art. 69
+- Liquidez Geral, Liquidez Corrente e Solvência Geral: fórmula, cálculo e resultado.
+- Endividamento e capital circulante líquido.
+- Patrimônio líquido e capital social: até que valor estimado de contratação a empresa atende ao mínimo de 10% (art. 69, § 4º).
+## 3. Riscos e inconsistências
+- Saldos que não fecham, contas atípicas, notas explicativas ausentes, o que um pregoeiro questionaria.
+## 4. O que o edital pode e não pode exigir
+- Vedação de faturamento mínimo e índice de lucratividade (§ 2º); relação de compromissos (§ 3º); último exercício se constituída há menos de 2 anos (§ 6º).
+## 5. Impacto na precificação
+- Capital de giro disponível × prazo de pagamento; margem mínima recomendada.
+## 6. Recomendações
+Use texto_da_norma para o art. 69 antes de citá-lo. Toda afirmação com nota de origem.`;
+const PROMPT_ENTE = (orgao: string, exercicio: string, dados: string) => `Analise os seguintes dados contábeis do ente público "${orgao || 'não informado'}", exercício ${exercicio}, pela Lei 4.320/1964, LRF (LC 101/2000) e NBC TSP, para medir a CAPACIDADE DE PAGAMENTO de quem fornece a ele:
+
+${dados}
+
+Estrutura obrigatória:
+## 1. Diagnóstico geral
+- Situação patrimonial líquida; liquidez corrente, seca e geral; endividamento.
+## 2. Divergências e irregularidades
+- Saldos inconsistentes; classificação de receitas e despesas; princípios contábeis.
+## 3. Conformidade legal
+- Lei 4.320/64; limites da LRF (art. 19/20 pessoal, art. 29 dívida); mínimos de saúde e educação (CF art. 198 e 212).
+## 4. Riscos para fornecedores
+- Capacidade de pagamento, restos a pagar, atraso típico.
+## 5. Impacto na precificação
+- Margem de segurança e prazo de pagamento a considerar na proposta.
+## 6. Recomendações
+Toda afirmação com nota de origem; número sem fonte é "(a confirmar)".`;
 
 export default function AnaliseBalancoIA() {
   const [dados, setDados] = useState('');
+  const [perfil, setPerfil] = useState<Perfil>('empresa');
   const [orgao, setOrgao] = useState('');
   const [exercicio, setExercicio] = useState(new Date().getFullYear().toString());
   const [resultado, setResultado] = useState('');
@@ -95,53 +144,21 @@ export default function AnaliseBalancoIA() {
     setAnalisando(true);
     setResultado('');
 
-    const prompt = `Você é um contador especialista em contabilidade pública e tributária brasileira, com profundo conhecimento da Lei 14.133/2021, NBC TSP, Lei 4.320/64, Lei Complementar 101/2000 (LRF) e normas do CFC.
+    const prompt = perfil === 'empresa' ? PROMPT_EMPRESA(orgao, exercicio, dados) : PROMPT_ENTE(orgao, exercicio, dados);
 
-Analise os seguintes dados contábeis do órgão "${orgao || 'Não informado'}" referente ao exercício ${exercicio}:
-
-${dados}
-
-Realize uma análise completa e estruturada com os seguintes tópicos:
-
-## 1. DIAGNÓSTICO GERAL
-- Situação patrimonial líquida
-- Indicadores de liquidez (corrente, seca, geral)
-- Grau de endividamento
-
-## 2. DIVERGÊNCIAS E IRREGULARIDADES
-- Inconsistências nos saldos contábeis
-- Violações de princípios contábeis (competência, oportunidade, prudência)
-- Descumprimento de normas NBC TSP
-- Irregularidades na classificação de receitas e despesas
-
-## 3. CONFORMIDADE LEGAL
-- Conformidade com a Lei 4.320/64
-- Atendimento aos limites da LRF (Art. 19/20 - pessoal, Art. 29 - dívida)
-- Aplicação mínima em saúde e educação (CF Art. 198 e 212)
-
-## 4. RISCOS PARA FORNECEDORES
-- Capacidade de pagamento do ente
-- Risco de inadimplência contratual
-- Indicadores de alerta para licitantes
-
-## 5. IMPACTO NA PRECIFICAÇÃO
-- Recomendações para composição de preços em licitações deste ente
-- Sugestão de margem de segurança considerando o perfil financeiro
-- Alertas sobre possíveis aditivos e reequilíbrios
-
-## 6. RECOMENDAÇÕES
-- Pontos de atenção prioritários
-- Sugestões de consultas adicionais (CAUC, CADIN, certidões)
-
-Seja técnico, objetivo e cite as normas aplicáveis.`;
-
-    await streamAIChat({
+    const chamar = (endpoint: 'juridico' | 'ai-chat') => streamAIChat({
       messages: [{ role: 'user', content: prompt }],
-      action: 'analise_balanco',
+      action: 'contabilidade_tributaria',
+      endpoint,
+      extra: { dominio: 'contabil', modelo: { titulo: perfil === 'empresa' ? 'Análise de Qualificação Econômico-Financeira' : 'Análise de balanço do ente contratante', categoria: 'Habilitação', fundamentacao: perfil === 'empresa' ? 'Art. 69, Lei 14.133/2021' : 'Lei 4.320/1964; LC 101/2000' } },
       onDelta: (text) => setResultado(prev => prev + text),
       onDone: () => setAnalisando(false),
-      onError: (err) => { toast.error(err); setAnalisando(false); },
+      onError: (err) => {
+        if (endpoint === 'juridico' && /404|not found|n[aã]o encontrad/i.test(err)) { setResultado(''); void chamar('ai-chat'); return; }
+        toast.error(err); setAnalisando(false);
+      },
     });
+    await chamar('juridico');
   };
 
   return (
@@ -161,10 +178,20 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="ab-orgao">Órgão / Entidade</Label>
-            <Input id="ab-orgao" value={orgao} onChange={e => setOrgao(e.target.value)} placeholder="Prefeitura de Belém, Governo do Pará..." />
+            <Label htmlFor="ab-perfil">De quem é o balanço</Label>
+            <Select value={perfil} onValueChange={(v) => setPerfil(v as Perfil)}>
+              <SelectTrigger id="ab-perfil"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="empresa">Empresa (habilitação art. 69 e precificação)</SelectItem>
+                <SelectItem value="ente">Ente público (capacidade de pagamento)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ab-orgao">{perfil === 'empresa' ? 'Empresa' : 'Órgão / Entidade'}</Label>
+            <Input id="ab-orgao" value={orgao} onChange={e => setOrgao(e.target.value)} placeholder={perfil === 'empresa' ? 'A sua empresa ou o concorrente' : 'Prefeitura de Belém, Governo do Pará...'} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="ab-exercicio">Exercício</Label>
@@ -224,11 +251,7 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge variant="muted">NBC TSP</Badge>
-          <Badge variant="muted">Lei 4.320/64</Badge>
-          <Badge variant="muted">LRF - LC 101/2000</Badge>
-          <Badge variant="muted">Lei 14.133/2021</Badge>
-          <Badge variant="muted">CFC/CRC</Badge>
+          {(perfil === 'empresa' ? ['Lei 14.133/2021, art. 69', 'NBC TG 26', 'NBC TG 1000 / ITG 1000', 'CFC/CRC'] : ['Lei 4.320/64', 'LRF - LC 101/2000', 'NBC TSP', 'CF art. 198 e 212']).map((b) => <Badge key={b} variant="muted">{b}</Badge>)}
         </div>
 
         <Button onClick={handleAnalisar} disabled={analisando}>
@@ -246,7 +269,7 @@ Seja técnico, objetivo e cite as normas aplicáveis.`;
             </Button>
           </div>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-            <ReactMarkdown>{resultado}</ReactMarkdown>
+            <ReactMarkdown components={{ a: NotaDeOrigem }}>{marcarNotasComoLinks(resultado)}</ReactMarkdown>
           </div>
         </section>
       )}

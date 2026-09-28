@@ -53,6 +53,28 @@ Distinções que não se confundem: reajustamento em sentido estrito (índice; a
 
 Peça judicial é MINUTA para advogado inscrito na OAB: deixe campos de advogado, OAB e juízo em branco e não afirme protocolo.`;
 
+/** Apoio Contábil (28/09/2026): mesma edge, mesmas ferramentas, outra persona. */
+const SISTEMA_CONTABIL = `Você é contador com registro no CRC e mais de quinze anos em empresas que vendem para a Administração Pública: habilitação econômico-financeira, formação de preço para licitação, encargos, tributos e reequilíbrio. Registro técnico, impessoal, com números conferidos e memória de cálculo. Estrutura em seções numeradas (1, 2, 3…) com premissas, cálculos, conclusão e recomendações, no padrão que o sistema formata depois.
+
+VOCÊ TEM FERRAMENTAS. Use-as ANTES de afirmar qualquer fato:
+- consultar_contrato: o contrato, os termos aditivos e os itens como estão no sistema.
+- serie_oficial: a variação exata de um índice (IPCA, INPC, IGP-M, IGP-DI, INCC-DI) entre duas datas, pela série do Banco Central.
+- buscar_base_juridica: documentos que a empresa guardou (Base Jurídica e Base Contábil: balanços, DREs, pareceres) e a base normativa.
+- normas_conferidas: dispositivos conferidos contra o texto oficial.
+- texto_da_norma: o artigo INTEIRO e literal de uma norma acompanhada — Lei 14.133/2021, LC 123/2006, Lei 4.320/1964, IN SEGES/MP 5/2017 (planilha de custos e encargos, Anexo VII-D), IN SEGES/ME 65/2021 (pesquisa de preços). Prefira-o a citar de memória.
+- jurisprudencia_tcu: acórdãos do TCU ao vivo (BDI, sobrepreço, inexequibilidade, qualificação econômico-financeira), guardados na base antes de citar.
+
+REGRA DE OURO — NOTAS DE ORIGEM. Toda afirmação de fato, de direito ou de norma contábil leva um marcador ao fim da frase:
+- [[norma:Lei 14.133/2021, art. 69, § 4º]] para lei, IN, acórdão ou norma do CFC. Cite SOMENTE o que normas_conferidas, texto_da_norma, jurisprudencia_tcu ou documento anexado traga literalmente. Norma do CFC (NBC TG 26, NBC TG 03, NBC TG 1000, ITG 1000) pode ser citada pelo número e nome, sem transcrever texto que você não leu, e sempre como "(a confirmar)" quando não estiver na base.
+- [[fonte:sistema]] para dado lido pelas ferramentas.
+- [[fonte:anexo|nome do documento e linha]] para número tirado de balanço, DRE ou planilha anexada.
+- [[fonte:base|id|título]] para documento da base.
+É PROIBIDO inventar número de artigo, de acórdão, alíquota, índice, saldo ou percentual. Cálculo sem dado de entrada é apresentado como fórmula com campos em branco, nunca com número suposto.
+
+Regras que não se confundem: habilitação econômico-financeira é o art. 69 (índices e coeficientes previstos no edital; vedado exigir faturamento mínimo ou índice de lucratividade, § 2º; capital ou patrimônio líquido mínimo até 10% do valor estimado, § 4º; regularidade fiscal é o art. 68). Preço estimado é o art. 23 (pesquisa de preços na IN 65/2021). Inexequibilidade: art. 59, III e IV, com diligência do § 2º; o piso de 75% do § 4º vale SÓ para obras e serviços de engenharia. BDI: Acórdão TCU 2.622/2013-Plenário (faixas por tipo de obra; itens que não entram no BDI: IRPJ e CSLL). Encargos sociais e planilha de custos de serviços com mão de obra: IN 5/2017, Anexo VII-D. Reequilíbrio por álea extraordinária: art. 124, II, "d"; reajuste por índice: art. 92, § 3º; repactuação: art. 135. Simples Nacional: LC 123/2006, art. 18 (anexos e Fator R). Não cite a Lei 8.666/1993 como vigente.
+
+Parecer contábil é MINUTA para contador responsável: deixe nome, CRC e assinatura em branco.`;
+
 const TOOLS = [
   {
     name: 'consultar_contrato',
@@ -187,15 +209,18 @@ async function executarTool(nome: string, args: Record<string, unknown>, db: Db)
     const termo = String(args.termo ?? '').trim().slice(0, 80);
     if (!termo) return { erro: 'termo vazio' };
     const like = `%${termo.replace(/[%_,]/g, ' ')}%`;
-    const [b, j, n] = await Promise.all([
+    const [b, j, n, c] = await Promise.all([
       db.from('base_juridica').select('id, titulo, tipo, tribunal, numero_processo, data_documento, ementa').or(`titulo.ilike.${like},ementa.ilike.${like}`).limit(8),
       db.from('agent_jurisprudencia').select('id, fonte, numero, ementa, data_pub').or(`numero.ilike.${like},ementa.ilike.${like}`).limit(8),
       db.rpc('buscar_base_normativa', { p_termo: termo, p_limite: 8 }),
+      db.from('base_contabil').select('id, titulo, tipo, orgao_emissor, numero_documento, data_documento, ementa, texto_integral').or(`titulo.ilike.${like},ementa.ilike.${like},numero_documento.ilike.${like}`).limit(6),
     ]);
     const normativa = (n.error ? [] : (n.data ?? [])) as Array<Record<string, unknown>>;
-    const total = (b.data ?? []).length + (j.data ?? []).length + normativa.length;
+    const contabil = (c.error ? [] : (c.data ?? [])) as Array<Record<string, unknown>>;
+    const total = (b.data ?? []).length + (j.data ?? []).length + normativa.length + contabil.length;
     return {
       base_juridica: (b.data ?? []).map((d) => ({ ...d, ementa: String(d.ementa ?? '').slice(0, 1200) })),
+      base_contabil: contabil.map((d) => ({ id: d.id, titulo: d.titulo, tipo: d.tipo, orgao_emissor: d.orgao_emissor, numero_documento: d.numero_documento, data_documento: d.data_documento, ementa: String(d.ementa ?? '').slice(0, 1200), texto: String(d.texto_integral ?? '').slice(0, 6000) })),
       jurisprudencia_coletada: (j.data ?? []).map((d) => ({ ...d, ementa: String(d.ementa ?? '').slice(0, 1200) })),
       base_normativa: normativa.map((d) => ({ id: d.id, fonte: d.fonte, identificador: d.identificador, dispositivo: d.dispositivo, titulo: d.titulo, ementa: d.ementa, trecho: d.trecho, url: d.url, data_publicacao: d.data_publicacao })),
       aviso: total === 0 ? 'Nada na base para este termo: não cite acórdão nem ato que não esteja aqui.' : undefined,
@@ -240,7 +265,8 @@ Deno.serve(async (req) => {
     // As ferramentas leem com o JWT da pessoa: o RLS decide o que ela vê.
     const db = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
 
-    const { messages, context, modelo, contratoId } = await req.json();
+    const { messages, context, modelo, contratoId, dominio } = await req.json();
+    const sistema = dominio === 'contabil' ? SISTEMA_CONTABIL : SISTEMA;
     const cabecalho = [
       modelo ? `Peça: ${modelo.titulo} (${modelo.categoria}). Fundamento de referência: ${modelo.fundamentacao}.` : '',
       contratoId ? `Contrato do caso no sistema: ${contratoId} — chame consultar_contrato antes de escrever.` : '',
@@ -255,7 +281,7 @@ Deno.serve(async (req) => {
       async start(controller) {
         try {
           for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
-            const r = await chamarAnthropic(apiKey, { max_tokens: 8000, system: SISTEMA, messages: conversa, tools: TOOLS, temperature: 0.2 });
+            const r = await chamarAnthropic(apiKey, { max_tokens: 8000, system: sistema, messages: conversa, tools: TOOLS, temperature: 0.2 });
             if (!r.ok) {
               const t = await r.text();
               sse(controller, { choices: [{ delta: { content: `\n\n[Falha na IA (${r.status}): ${t.slice(0, 300)}]` } }] });

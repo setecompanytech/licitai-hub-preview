@@ -13,6 +13,10 @@ import { toast } from 'sonner';
 import { Sparkles, Loader2, BookOpen, Copy, Upload, FileText, Archive, X } from 'lucide-react';
 import { streamAIChat } from '@/lib/ai-stream';
 import ReactMarkdown from 'react-markdown';
+import NotaDeOrigem from '@/components/apoio-juridico/NotaDeOrigem';
+import { marcarNotasComoLinks, textoParaExportacao } from '@/lib/juridico/notas-de-origem';
+import { roteiroEmTexto, type ModeloContabil } from '@/lib/contabil/modelos';
+import { Download } from 'lucide-react';
 
 type DocRef = { id: string; titulo: string; tipo: string; ementa: string | null; texto_integral: string | null };
 
@@ -28,10 +32,24 @@ const TIPOS_ANALISE = [
   'Análise de Fluxo de Caixa',
 ];
 
-export default function GeradorContabilIA() {
+/**
+ * Gerador contábil (28/09/2026): roda na mesma edge do Apoio Jurídico
+ * (Claude com ferramentas, persona de contador, notas de origem
+ * obrigatórias); cai na edge antiga só se a nova não estiver no ar. O modelo
+ * escolhido em "Modelos e Templates" chega por `modeloInicial` e traz o
+ * roteiro e o fundamento.
+ */
+export default function GeradorContabilIA({ modeloInicial = null }: { modeloInicial?: ModeloContabil | null }) {
   const { user } = useAuth();
-  const [tipoDoc, setTipoDoc] = useState('Análise de Balanço Patrimonial');
-  const [referencia, setReferencia] = useState('');
+  const [tipoDoc, setTipoDoc] = useState(modeloInicial?.tipoGerador ?? 'Análise de Balanço Patrimonial');
+  const [referencia, setReferencia] = useState(modeloInicial?.fundamentacao ?? '');
+  const [modelo, setModelo] = useState<ModeloContabil | null>(modeloInicial);
+  useEffect(() => {
+    if (!modeloInicial) return;
+    setModelo(modeloInicial);
+    setTipoDoc(modeloInicial.tipoGerador);
+    setReferencia(modeloInicial.fundamentacao);
+  }, [modeloInicial]);
   const [contexto, setContexto] = useState('');
   const [resultado, setResultado] = useState('');
   const [gerando, setGerando] = useState(false);
@@ -139,16 +157,35 @@ export default function GeradorContabilIA() {
       }
     }
 
-    const prompt = `Tipo de análise: ${tipoDoc}\nReferência: ${referencia}\nContexto: ${contexto}${baseContext}`;
+    const roteiro = modelo ? `\n\nSiga este roteiro, seção por seção:\n${roteiroEmTexto(modelo)}` : '';
+    const prompt = `Tipo de análise: ${tipoDoc}\nReferência: ${referencia || '—'}${roteiro}\n\nContexto e dados informados pela pessoa:\n${contexto}${baseContext}`;
 
-    await streamAIChat({
+    const chamar = (endpoint: 'juridico' | 'ai-chat') => streamAIChat({
       messages: [{ role: 'user', content: prompt }],
-      action: 'gerador_contabil',
+      action: 'contabilidade_tributaria',
       context: baseContext,
+      endpoint,
+      extra: { dominio: 'contabil', modelo: modelo ? { titulo: modelo.titulo, categoria: modelo.categoria, fundamentacao: modelo.fundamentacao } : { titulo: tipoDoc, categoria: 'Contábil', fundamentacao: referencia } },
       onDelta: (text) => setResultado(prev => prev + text),
       onDone: () => setGerando(false),
-      onError: (err) => { toast.error(err); setGerando(false); },
+      onError: (err) => {
+        if (endpoint === 'juridico' && /404|not found|n[aã]o encontrad/i.test(err)) { setResultado(''); void chamar('ai-chat'); return; }
+        toast.error(err); setGerando(false);
+      },
     });
+    await chamar('juridico');
+  };
+
+  const baixarWord = () => {
+    if (!resultado) return;
+    const corpo = textoParaExportacao(resultado).split('\n').map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).map((l) => (l.startsWith('# ') ? `<h1>${l.slice(2)}</h1>` : l.startsWith('## ') ? `<h2>${l.slice(3)}</h2>` : l.startsWith('### ') ? `<h3>${l.slice(4)}</h3>` : l.trim() ? `<p>${l}</p>` : '')).join('\n');
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${tipoDoc}</title><style>body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.5}h1{font-size:16pt}h2{font-size:13pt}</style></head><body>${corpo}<p style="color:#555">Minuta gerada pelo Praefectus IA em ${new Date().toLocaleDateString('pt-BR')} — para revisão do contador responsável; fontes entre parênteses.</p></body></html>`;
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${tipoDoc.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-')}.doc`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -163,6 +200,12 @@ export default function GeradorContabilIA() {
           <SeloPraefectusIA />
         </div>
 
+        {modelo && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-3" data-testid="modelo-escolhido">
+            <p className="text-sm text-foreground"><b>{modelo.titulo}</b> · {modelo.fundamentacao} · roteiro de {modelo.roteiro.length} seções</p>
+            <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => { setModelo(null); setReferencia(''); }}>Sem modelo</Button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="gc-tipo">Tipo de Análise</Label>
@@ -264,12 +307,18 @@ export default function GeradorContabilIA() {
         <section className="rounded-lg border border-border bg-card p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold leading-6 text-foreground">Resultado da Análise</h2>
-            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(resultado); toast.success('Copiado!'); }}>
-              <Copy aria-hidden="true" /> Copiar
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => { navigator.clipboard.writeText(textoParaExportacao(resultado)); toast.success('Copiado!'); }}>
+                <Copy aria-hidden="true" /> Copiar
+              </Button>
+              <Button variant="outline" onClick={baixarWord}>
+                <Download aria-hidden="true" /> Baixar Word
+              </Button>
+            </div>
           </div>
+          <p className="g-meta text-muted-foreground">Minuta para o contador responsável. Cada afirmação traz a origem (norma, dado do sistema, anexo ou base); "a confirmar" é o que a IA não achou em fonte.</p>
           <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-            <ReactMarkdown>{resultado}</ReactMarkdown>
+            <ReactMarkdown components={{ a: NotaDeOrigem }}>{marcarNotasComoLinks(resultado)}</ReactMarkdown>
           </div>
         </section>
       )}

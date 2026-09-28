@@ -20,7 +20,7 @@ import PesquisaNormativa from './PesquisaNormativa';
  */
 type Coleta = { fonte: string; iniciado_em: string; concluido_em: string | null; documentos: number; novos: number; alterados: number; erros: string[]; detalhe: { disparo?: 'cron' | 'manual' } | null };
 
-const NOME_DA_FONTE: Record<string, string> = { planalto: 'Planalto — leis acompanhadas', tcu: 'TCU — acórdãos guardados', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
+const NOME_DA_FONTE: Record<string, string> = { planalto: 'Legislação — leis e INs acompanhadas', tcu: 'TCU — acórdãos guardados', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
 const dataBr = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 
 type Leitor = {

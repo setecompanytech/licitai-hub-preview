@@ -56,3 +56,36 @@ export function artigosDoPlanalto(html: string): ArtigoDoPlanalto[] {
 
 /** "art. 92" a partir do número da âncora ("92", "44-A"). */
 export const rotuloDoArtigo = (numero: string) => `art. ${numero}`;
+
+/**
+ * Artigos de uma norma publicada como texto corrido (gov.br, in.gov.br): sem
+ * âncoras, o corte é pelo "Art. N" no começo da linha. Serve para as INs da
+ * SEGES; o Planalto continua com `artigosDoPlanalto` (âncoras, revogado em
+ * <strike>). Anexos ficam depois do último artigo — ver `trechoEntre`.
+ */
+export function artigosPorTexto(html: string): ArtigoDoPlanalto[] {
+  const texto = textoLimpo(html);
+  const re = /(?:^|\n)\s*Art\.\s*(\d+(?:-[A-Z])?)\s*[ºo°]?\s*[-–.]?\s*/g;
+  const cortes: Array<{ numero: string; inicio: number; fimDoTitulo: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texto)) !== null) cortes.push({ numero: m[1], inicio: m.index, fimDoTitulo: m.index + m[0].length });
+  const artigos: ArtigoDoPlanalto[] = [];
+  for (let i = 0; i < cortes.length; i++) {
+    // Um "Art. 5º" citado dentro de outro artigo não é um artigo novo: o número tem de crescer.
+    if (artigos.length > 0 && parseInt(cortes[i].numero, 10) <= parseInt(artigos[artigos.length - 1].numero, 10)) continue;
+    const fim = i + 1 < cortes.length ? cortes[i + 1].inicio : texto.search(/\n\s*ANEXO\s+[IVXL]+/) > cortes[i].inicio ? texto.search(/\n\s*ANEXO\s+[IVXL]+/) : texto.length;
+    const corpo = texto.slice(cortes[i].fimDoTitulo, fim).replace(/\s+/g, ' ').trim();
+    if (corpo.length > 0) artigos.push({ numero: cortes[i].numero, texto: `Art. ${cortes[i].numero}º ${corpo}`.replace(/^Art\. (\d+)º/, (_m, n: string) => (parseInt(n, 10) >= 10 ? `Art. ${n}.` : `Art. ${n}º`)) });
+  }
+  return artigos;
+}
+
+/** O texto entre dois títulos (ex.: "ANEXO VII-D" até "ANEXO VII-E"), em texto corrido; vazio se não achar o início. */
+export function trechoEntre(html: string, inicio: RegExp, fim: RegExp): string {
+  const texto = textoLimpo(html);
+  const a = texto.search(inicio);
+  if (a < 0) return '';
+  const resto = texto.slice(a);
+  const b = resto.slice(1).search(fim);
+  return (b >= 0 ? resto.slice(0, b + 1) : resto).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}

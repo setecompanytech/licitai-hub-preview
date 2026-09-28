@@ -12,52 +12,37 @@ import {
   Calculator, FileText, Download, Copy, Sparkles, Search,
   BookOpen, BarChart3, ClipboardList, DollarSign, FileWarning
 } from 'lucide-react';
+import { CATEGORIAS_CONTABEIS, MODELOS_CONTABEIS, REFERENCIAS_CONTABEIS, htmlDoRoteiro, nomeDoArquivoDoModelo, roteiroEmTexto, type ModeloContabil } from '@/lib/contabil/modelos';
+import { toast } from 'sonner';
+import { ExternalLink } from 'lucide-react';
 import AnaliseBalancoIA from '@/components/apoio-contabil/AnaliseBalancoIA';
 import GeradorContabilIA from '@/components/apoio-contabil/GeradorContabilIA';
 import BaseContabilUpload from '@/components/apoio-contabil/BaseContabilUpload';
 
-type Modelo = {
-  id: string;
-  titulo: string;
-  categoria: string;
-  descricao: string;
-  icon: typeof FileText;
-  fundamentacao: string;
-};
-
-const modelos: Modelo[] = [
-  { id: '1', titulo: 'Composição de Custos Unitários', categoria: 'Precificação', descricao: 'Planilha analítica de custos e formação de preços para licitações', icon: DollarSign, fundamentacao: 'Art. 58, Lei 14.133/2021' },
-  { id: '2', titulo: 'Cálculo de BDI', categoria: 'Precificação', descricao: 'Bonificação e Despesas Indiretas conforme Acórdão TCU 2.622/2013', icon: Calculator, fundamentacao: 'Acórdão TCU 2.622/2013' },
-  { id: '3', titulo: 'Análise de Inexequibilidade', categoria: 'Precificação', descricao: 'Verificação de preços inexequíveis conforme critérios legais', icon: FileWarning, fundamentacao: 'Art. 59, §4º, Lei 14.133/2021' },
-  { id: '4', titulo: 'Parecer de Viabilidade Econômica', categoria: 'Pareceres', descricao: 'Análise de viabilidade econômico-financeira para contratação', icon: BarChart3, fundamentacao: 'Art. 18, Lei 14.133/2021' },
-  { id: '5', titulo: 'Demonstrativo de Encargos Sociais', categoria: 'Precificação', descricao: 'Cálculo detalhado de encargos sociais e trabalhistas', icon: ClipboardList, fundamentacao: 'IN SEGES/ME 65/2021' },
-  { id: '6', titulo: 'Parecer sobre Reequilíbrio Financeiro', categoria: 'Pareceres', descricao: 'Fundamentação contábil para pedido de reequilíbrio econômico-financeiro', icon: Calculator, fundamentacao: 'Art. 124, II, d, Lei 14.133/2021' },
-  { id: '7', titulo: 'Análise de Qualificação Econômico-Financeira', categoria: 'Habilitação', descricao: 'Verificação de índices contábeis para habilitação em licitação', icon: BarChart3, fundamentacao: 'Art. 69, Lei 14.133/2021' },
-  { id: '8', titulo: 'Memorial de Cálculo Tributário', categoria: 'Tributário', descricao: 'Detalhamento de alíquotas e carga tributária incidente na contratação', icon: Calculator, fundamentacao: 'LC 123/2006, Art. 18' },
-  { id: '9', titulo: 'Certidão de Regularidade Fiscal', categoria: 'Habilitação', descricao: 'Checklist de certidões fiscais e previdenciárias obrigatórias', icon: FileText, fundamentacao: 'Art. 68, Lei 14.133/2021' },
-  { id: '10', titulo: 'Análise de Fluxo de Caixa Projetado', categoria: 'Pareceres', descricao: 'Projeção de fluxo de caixa para execução contratual', icon: BarChart3, fundamentacao: 'NBC TG 03' },
-];
-
-const categorias = [...new Set(modelos.map((m) => m.categoria))];
-
-const referenciasLegais = [
-  { lei: 'Lei 14.133/2021', desc: 'Nova Lei de Licitações – qualificação econômico-financeira e precificação' },
-  { lei: 'Lei 4.320/1964', desc: 'Normas Gerais de Direito Financeiro e Contabilidade Pública' },
-  { lei: 'LC 101/2000 (LRF)', desc: 'Lei de Responsabilidade Fiscal – limites e gestão fiscal' },
-  { lei: 'NBC TSP (CFC)', desc: 'Normas Brasileiras de Contabilidade do Setor Público' },
-  { lei: 'NBC TG 26', desc: 'Apresentação das Demonstrações Contábeis' },
-  { lei: 'IN SEGES/ME 65/2021', desc: 'Procedimentos para contratação de serviços continuados' },
-  { lei: 'LC 123/2006', desc: 'Simples Nacional – regime tributário de ME/EPP' },
-  { lei: 'Acórdão TCU 2.622/2013', desc: 'Referencial de BDI para obras e serviços de engenharia' },
-  { lei: 'CPC 00 (R2)', desc: 'Estrutura Conceitual para Relatório Financeiro' },
-  { lei: 'Lei 6.404/1976', desc: 'Lei das Sociedades por Ações – demonstrações financeiras' },
-];
+const ICONE_DA_CATEGORIA: Record<string, typeof FileText> = { 'Precificação': DollarSign, 'Pareceres': BarChart3, 'Habilitação': ClipboardList, 'Tributário': Calculator };
+const ICONE_DO_MODELO: Record<string, typeof FileText> = { '2': Calculator, '3': FileWarning, '5': ClipboardList, '9': FileText };
 
 export default function ApoioContabil() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('modelos');
+  // O modelo escolhido em "Gerar com IA" vai pré-preenchido para o Gerador.
+  const [modeloParaGerar, setModeloParaGerar] = useState<ModeloContabil | null>(null);
 
-  const filteredModelos = modelos.filter(
+  // Os três botões de cada modelo (28/09/2026): antes não faziam nada.
+  const baixar = (m: ModeloContabil) => {
+    const blob = new Blob(['\ufeff', htmlDoRoteiro(m)], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nomeDoArquivoDoModelo(m);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const copiar = async (m: ModeloContabil) => {
+    try { await navigator.clipboard.writeText(roteiroEmTexto(m)); toast.success('Roteiro copiado'); } catch { toast.info('Copie o roteiro', { description: roteiroEmTexto(m) }); }
+  };
+  const gerar = (m: ModeloContabil) => { setModeloParaGerar(m); setActiveTab('gerador'); };
+
+  const filteredModelos = MODELOS_CONTABEIS.filter(
     (m) =>
       m.titulo.toLowerCase().includes(search.toLowerCase()) ||
       m.categoria.toLowerCase().includes(search.toLowerCase())
@@ -119,7 +104,7 @@ export default function ApoioContabil() {
               />
             )}
 
-            {categorias.map((cat) => {
+            {CATEGORIAS_CONTABEIS.map((cat) => {
               const items = filteredModelos.filter((m) => m.categoria === cat);
               if (items.length === 0) return null;
               return (
@@ -128,31 +113,36 @@ export default function ApoioContabil() {
                     <BookOpen className="w-5 h-5 text-primary" aria-hidden="true" /> {cat}
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {items.map((m) => (
-                      <div key={m.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
-                            <m.icon className="w-5 h-5" aria-hidden="true" />
+                    {items.map((m) => {
+                      const Icone = ICONE_DO_MODELO[m.id] ?? ICONE_DA_CATEGORIA[m.categoria] ?? FileText;
+                      return (
+                        <div key={m.id} className="rounded-lg border border-border bg-card p-4 shadow-sm" data-testid={`modelo-${m.id}`}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-md bg-primary-tint text-primary flex items-center justify-center flex-shrink-0">
+                              <Icone className="w-5 h-5" aria-hidden="true" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-base text-foreground">{m.titulo}</p>
+                              <p className="text-sm text-muted-foreground mt-1">{m.descricao}</p>
+                              <a href={m.fundamentacaoUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex" title="Abrir o texto oficial">
+                                <Badge variant="muted" className="gap-1">{m.fundamentacao} <ExternalLink className="h-3 w-3" aria-hidden="true" /></Badge>
+                              </a>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-base text-foreground">{m.titulo}</p>
-                            <p className="text-sm text-muted-foreground mt-1">{m.descricao}</p>
-                            <Badge variant="muted" className="mt-2">{m.fundamentacao}</Badge>
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            <Button variant="outline" className="flex-1" onClick={() => baixar(m)} title="Baixa o roteiro do modelo em Word, com o fundamento">
+                              <Download aria-hidden="true" /> Baixar
+                            </Button>
+                            <Button variant="outline" aria-label={`Copiar roteiro de ${m.titulo}`} onClick={() => copiar(m)}>
+                              <Copy aria-hidden="true" />
+                            </Button>
+                            <Button onClick={() => gerar(m)}>
+                              <Sparkles aria-hidden="true" /> Gerar com IA
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          <Button variant="outline" className="flex-1">
-                            <Download aria-hidden="true" /> Baixar
-                          </Button>
-                          <Button variant="outline" aria-label={`Copiar modelo ${m.titulo}`}>
-                            <Copy aria-hidden="true" />
-                          </Button>
-                          <Button>
-                            <Sparkles aria-hidden="true" /> Gerar com IA
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -164,7 +154,7 @@ export default function ApoioContabil() {
           </TabsContent>
 
           <TabsContent value="gerador" className="space-y-4">
-            <GeradorContabilIA />
+            <GeradorContabilIA modeloInicial={modeloParaGerar} />
           </TabsContent>
 
           <TabsContent value="base-contabil">
@@ -173,16 +163,17 @@ export default function ApoioContabil() {
 
           <TabsContent value="legislacao">
             <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold leading-6 text-foreground">Referências Legais e Normativas</h2>
+              <h2 className="mb-1 text-lg font-semibold leading-6 text-foreground">Referências Legais e Normativas</h2>
+              <p className="mb-4 text-sm text-muted-foreground">Os fundamentos dos modelos, cada um ligado ao texto oficial. A Lei 14.133, a LC 123, a Lei 4.320 e as INs 5/2017 e 65/2021 também estão na base normativa (Apoio Jurídico › Base Jurídica), lidas todo dia, e a IA cita só o que está lá.</p>
               <div className="space-y-3">
-                {referenciasLegais.map((l) => (
-                  <div key={l.lei} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
+                {REFERENCIAS_CONTABEIS.map((l) => (
+                  <div key={l.rotulo} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 transition-colors duration-150 hover:bg-muted/60">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{l.lei}</p>
-                      <p className="text-sm text-muted-foreground">{l.desc}</p>
+                      <p className="text-sm font-medium text-foreground">{l.rotulo}</p>
+                      <p className="text-sm text-muted-foreground">{l.descricao}</p>
                     </div>
-                    <Button size="sm" variant="outline">
-                      <BookOpen aria-hidden="true" /> Consultar
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={l.url} target="_blank" rel="noreferrer"><BookOpen aria-hidden="true" /> Texto oficial <ExternalLink aria-hidden="true" /></a>
                     </Button>
                   </div>
                 ))}

@@ -13,7 +13,7 @@
 // rastro em `base_normativa_coletas`, inclusive o erro (princípio 3).
 // Dispara pelo cron (CRON_SECRET) ou por admin da plataforma logado.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { artigosDoPlanalto, textoLimpo } from '../_shared/planalto-parser.ts';
+import { artigosDoPlanalto, artigosPorTexto, textoLimpo, trechoEntre } from '../_shared/planalto-parser.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +22,14 @@ const corsHeaders = {
 const TETO_POR_EXECUCAO = 200;
 const UA = 'Mozilla/5.0 (compatible; PraefectusNormativo/1.0)';
 
-const LEIS: Array<{ identificador: string; tipo: string; url: string }> = [
+type Fonte = {
+  identificador: string; tipo: string; url: string;
+  /** 'planalto' = HTML com âncoras em windows-1252; 'texto' = página corrida em UTF-8 (gov.br). */
+  formato?: 'planalto' | 'texto';
+  /** Anexos guardados como dispositivo próprio (ex.: planilha de custos da IN 5/2017). */
+  anexos?: Array<{ dispositivo: string; inicio: RegExp; fim: RegExp }>;
+};
+const LEIS: Fonte[] = [
   { identificador: 'Lei 14.133/2021', tipo: 'lei', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
   { identificador: 'Lei 10.192/2001', tipo: 'lei', url: 'https://www.planalto.gov.br/ccivil_03/leis/leis_2001/l10192.htm' },
   { identificador: 'Lei Complementar 123/2006', tipo: 'lc', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm' },
@@ -30,6 +37,10 @@ const LEIS: Array<{ identificador: string; tipo: string; url: string }> = [
   { identificador: 'Lei 12.016/2009', tipo: 'lei', url: 'https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2009/lei/l12016.htm' },
   { identificador: 'Lei 4.320/1964', tipo: 'lei', url: 'https://www.planalto.gov.br/ccivil_03/leis/l4320.htm' },
   { identificador: 'Decreto 11.462/2023', tipo: 'decreto', url: 'https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/decreto/d11462.htm' },
+  // Apoio Contábil (28/09/2026): planilha de custos e encargos (Anexo VII-D) e pesquisa de preços.
+  { identificador: 'IN SEGES/MP 5/2017', tipo: 'in', formato: 'texto', url: 'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-no-5-de-26-de-maio-de-2017-atualizada',
+    anexos: [{ dispositivo: 'Anexo VII-D', inicio: /\n\s*ANEXO VII\s*-\s*D\b/, fim: /\n\s*ANEXO VII\s*-\s*E\b/ }] },
+  { identificador: 'IN SEGES/ME 65/2021', tipo: 'in', formato: 'texto', url: 'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-65-de-7-de-julho-de-2021' },
 ];
 
 const TEMA_TCU = /licita|contrat|preg[aã]o|reajust|repactua|reequil|habilita|inabilita|registro de pre|ata de registro|impugna|recurso|san[cç][aã]o|inidon|aditiv|apostil|14\.133|8\.666|dispensa|inexigib/i;
@@ -88,14 +99,22 @@ async function coletarPlanalto(db: Db, alteracoes: string[]) {
     try {
       const res = await fetch(lei.url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(40000) });
       if (!res.ok) { erros.push(`${lei.identificador}: HTTP ${res.status}`); continue; }
-      const html = new TextDecoder('windows-1252').decode(await res.arrayBuffer());
-      const artigos = artigosDoPlanalto(html);
+      const bruto = await res.arrayBuffer();
+      const html = lei.formato === 'texto' ? new TextDecoder('utf-8').decode(bruto) : new TextDecoder('windows-1252').decode(bruto);
+      const artigos = lei.formato === 'texto' ? artigosPorTexto(html) : artigosDoPlanalto(html);
       if (artigos.length === 0) { erros.push(`${lei.identificador}: nenhum artigo reconhecido — a página mudou de formato?`); continue; }
       contagem.documentos += artigos.length + 1;
       const inteiro = textoLimpo(html);
-      await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: null, titulo: lei.identificador, ementa: inteiro.slice(0, 600), texto: inteiro, url: lei.url, data_publicacao: null, detalhe: { lei: lei.identificador, artigos: artigos.length } }, contagem, alteracoes);
+      await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: null, titulo: lei.identificador, ementa: inteiro.slice(0, 600), texto: inteiro, url: lei.url, data_publicacao: null, detalhe: { lei: lei.identificador, artigos: artigos.length, origem: lei.formato === 'texto' ? 'gov.br' : 'planalto' } }, contagem, alteracoes);
       for (const a of artigos) {
-        await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: `art. ${a.numero}`, titulo: `${lei.identificador} — art. ${a.numero}`, ementa: null, texto: a.texto, url: `${lei.url}#art${a.numero.toLowerCase().replace('-', '')}`, data_publicacao: null, detalhe: { lei: lei.identificador, artigo: a.numero } }, contagem, alteracoes);
+        const ancora = lei.formato === 'texto' ? '' : `#art${a.numero.toLowerCase().replace('-', '')}`;
+        await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: `art. ${a.numero}`, titulo: `${lei.identificador} — art. ${a.numero}`, ementa: null, texto: a.texto, url: `${lei.url}${ancora}`, data_publicacao: null, detalhe: { lei: lei.identificador, artigo: a.numero } }, contagem, alteracoes);
+      }
+      for (const anexo of lei.anexos ?? []) {
+        const texto = trechoEntre(html, anexo.inicio, anexo.fim);
+        if (!texto) { erros.push(`${lei.identificador}: ${anexo.dispositivo} não encontrado na página`); continue; }
+        contagem.documentos += 1;
+        await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: anexo.dispositivo, titulo: `${lei.identificador} — ${anexo.dispositivo}`, ementa: texto.slice(0, 600), texto, url: lei.url, data_publicacao: null, detalhe: { lei: lei.identificador, anexo: anexo.dispositivo } }, contagem, alteracoes);
       }
     } catch (e) {
       erros.push(`${lei.identificador}: ${e instanceof Error ? e.message : String(e)}`);
