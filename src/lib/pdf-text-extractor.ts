@@ -53,6 +53,37 @@ function normalizeExtractedText(text: string): string {
  * é digitalizado. O padrão de 5 páginas serve a certidão; não serve a uma ATA
  * de 156 páginas escaneada, onde a tabela de itens pode estar em qualquer lugar.
  */
+/**
+ * Olhada rápida (28/09/2026): quantas páginas e se as primeiras têm texto
+ * nativo. Decide o caminho ANTES de ler tudo — escaneado vai inteiro para a
+ * IA numa chamada só; nato-digital segue pelo texto. Custa um getTextContent
+ * por página olhada, nada de renderizar.
+ */
+export async function inspecionarPdf(file: File, paginasOlhadas = 3): Promise<{ paginas: number; comTexto: number; olhadas: number }> {
+  const pdfjsLib = await import('pdfjs-dist');
+  const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const olhadas = Math.min(pdf.numPages, paginasOlhadas);
+  let comTexto = 0;
+  for (let i = 1; i <= olhadas; i++) {
+    const content = await (await pdf.getPage(i)).getTextContent();
+    const texto = content.items.map((it) => ('str' in it && typeof it.str === 'string' ? it.str : '')).join(' ');
+    if (texto.trim().length >= 50) comTexto += 1;
+  }
+  return { paginas: pdf.numPages, comTexto, olhadas };
+}
+
+export async function arquivoParaBase64(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ''));
+    r.onerror = () => reject(r.error ?? new Error('não foi possível ler o arquivo'));
+    r.readAsDataURL(file);
+  });
+  return dataUrl.slice(dataUrl.indexOf(',') + 1);
+}
+
 export async function extractTextFromFile(file: File, maxPages = DEFAULT_MAX_PAGES, isEdital = false, paginasDeOcr?: number, aoProgredir?: (msg: string) => void): Promise<string> {
   return extractTextFromBlob(file, file.name, maxPages, isEdital, paginasDeOcr, aoProgredir);
 }

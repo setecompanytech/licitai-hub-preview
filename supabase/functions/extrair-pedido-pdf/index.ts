@@ -1,62 +1,9 @@
 ﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { chamarClaude, parsearJson } from "../_shared/claude-client.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  try {
-    const { texto_pdf, tipo_documento, images } = await req.json();
-
-    const hasText = texto_pdf && texto_pdf.trim().length >= 30;
-    const hasImages = Array.isArray(images) && images.length > 0;
-
-    if (!hasText && !hasImages) {
-      return new Response(JSON.stringify({ error: "Texto do documento muito curto ou vazio. Se o PDF for escaneado, o sistema tentará via visão automáticamente." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
-
-    const tipoLabel = tipo_documento || "Ordem de Fornecimento / Empenho / PRD";
-    const systemContent = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho, PRDs e documentos similares. A ESPÉCIE do empenho (ordinário, global ou estimativo) é um campo ROTULADO na nota — leia o rótulo, não deduza pelo conteúdo; sem rótulo, devolva null. Itens divididos em COTA PRINCIPAL e COTA RESERVADA (LC 123/2006) devem vir como linhas separadas, cada uma com a sua cota marcada. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null. IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma; em 08/09 uma observação saiu vertida para o inglês e foi parar no registro oficial do empenho.`;
-
-    // Build user message — text or vision
-    let userContent: any;
-    if (hasImages) {
-      // PDF escaneado: usa visão (gpt-4o)
-      userContent = [
-        { type: "text", text: `Extraia TODAS as informações deste documento (${tipoLabel}). Retorne os dados via tool call 'extrair_pedido'.` },
-        ...images.slice(0, 5).map((img: any) => ({
-          type: "image_url",
-          image_url: { url: img.dataUrl ?? img, detail: "high" },
-        })),
-      ];
-    } else {
-      const truncated = texto_pdf.slice(0, 60000);
-      userContent = `Extraia TODAS as informações deste documento (${tipoLabel}):\n\n${truncated}`;
-    }
-
-    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userContent },
-        ],
-        tools: [
+// A ferramenta (esquema do que se extrai) fica fora do handler: o mesmo
+// esquema serve ao gpt-4o-mini (texto nativo) e ao Claude (PDF escaneado).
+const FERRAMENTAS = [
           {
             type: "function",
             function: {
@@ -123,7 +70,87 @@ serve(async (req) => {
               }
             }
           }
+        ];
+
+const SISTEMA = `Você é um especialista em documentos de licitações e contratos públicos brasileiros. Extraia TODAS as informações de pedidos/ordens de fornecimento, notas de empenho, PRDs e documentos similares. A ESPÉCIE do empenho (ordinário, global ou estimativo) é um campo ROTULADO na nota — leia o rótulo, não deduza pelo conteúdo; sem rótulo, devolva null. Itens divididos em COTA PRINCIPAL e COTA RESERVADA (LC 123/2006) devem vir como linhas separadas, cada uma com a sua cota marcada. Identifique o tipo de documento, número, data, itens com descrição completa, quantidades, unidades, valores unitários e totais. Se houver múltiplos itens numa tabela, extraia CADA linha. Se uma informação não estiver disponível, retorne null. IDIOMA: todo texto extraído é TRANSCRIÇÃO do documento, no idioma em que ele está (português) — NUNCA traduza nem parafraseie em outro idioma; em 08/09 uma observação saiu vertida para o inglês e foi parar no registro oficial do empenho.`;
+
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const { texto_pdf, tipo_documento, images, pdf_base64 } = await req.json();
+
+    const hasText = texto_pdf && texto_pdf.trim().length >= 30;
+    const hasImages = Array.isArray(images) && images.length > 0;
+    const hasPdf = typeof pdf_base64 === 'string' && pdf_base64.length > 100;
+
+    // ── PDF escaneado: UMA chamada, o Claude lê o PDF inteiro (28/09/2026) ──
+    // Antes: o navegador rasterizava página a página, mandava lotes de 4 ao
+    // OCR (uma chamada por lote, em sequência) e só então o texto vinha para
+    // cá numa segunda chamada de IA — 60 a 90 s numa nota de 10 páginas, e a
+    // tela só dizia "Extraindo dados com IA...". Agora o arquivo vai direto e
+    // volta estruturado.
+    if (hasPdf) {
+      if (!Deno.env.get("ANTHROPIC_API_KEY")) {
+        return new Response(JSON.stringify({ error: "leitura direta do PDF indisponível (ANTHROPIC_API_KEY ausente)" }), { status: 501, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const esquema = JSON.stringify(FERRAMENTAS[0].function.parameters);
+      const instrucao = `Leia este documento (${tipo_documento || "Ordem de Fornecimento / Empenho / PRD"}) e devolva SOMENTE um objeto JSON, sem markdown, exatamente com este esquema (campos ausentes = null):\n${esquema}`;
+      const resposta = await chamarClaude(instrucao, { pdfBase64: pdf_base64 }, { sistema: SISTEMA, maxTokens: 6000, timeoutMs: 120000, cacheEphemeral: false });
+      const extracted = parsearJson<Record<string, unknown>>(resposta);
+      if (!extracted || typeof extracted !== 'object') throw new Error("IA não retornou dados estruturados");
+      return new Response(JSON.stringify({ success: true, data: extracted, _motor: 'claude_pdf' }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (!hasText && !hasImages) {
+      return new Response(JSON.stringify({ error: "Texto do documento muito curto ou vazio. Se o PDF for escaneado, o sistema tentará via visão automáticamente." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+
+    const tipoLabel = tipo_documento || "Ordem de Fornecimento / Empenho / PRD";
+    const systemContent = SISTEMA;
+
+    // Build user message — text or vision
+    let userContent: any;
+    if (hasImages) {
+      // PDF escaneado: usa visão (gpt-4o)
+      userContent = [
+        { type: "text", text: `Extraia TODAS as informações deste documento (${tipoLabel}). Retorne os dados via tool call 'extrair_pedido'.` },
+        ...images.slice(0, 5).map((img: any) => ({
+          type: "image_url",
+          image_url: { url: img.dataUrl ?? img, detail: "high" },
+        })),
+      ];
+    } else {
+      const truncated = texto_pdf.slice(0, 60000);
+      userContent = `Extraia TODAS as informações deste documento (${tipoLabel}):\n\n${truncated}`;
+    }
+
+    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemContent },
+          { role: "user", content: userContent },
         ],
+        tools: FERRAMENTAS,
         tool_choice: { type: "function", function: { name: "extrair_pedido" } },
       }),
     });

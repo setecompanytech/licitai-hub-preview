@@ -414,6 +414,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [deleting, setDeleting] = useState(false);
 
   const [uploading, setUploading] = useState(false);
+  // O que a leitura está fazendo e há quanto tempo: "Extraindo dados com
+  // IA..." parado por um minuto parecia travamento (28/09/2026).
+  const [etapaLeitura, setEtapaLeitura] = useState('');
+  const [segundosLeitura, setSegundosLeitura] = useState(0);
+  useEffect(() => {
+    if (!uploading) { setSegundosLeitura(0); return; }
+    const inicio = Date.now();
+    const t = setInterval(() => setSegundosLeitura(Math.round((Date.now() - inicio) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [uploading]);
   const [extractedData, setExtractedData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1057,27 +1067,48 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       setArquivoPendente(file);
       setArquivoOrdem(null);
 
-      // Leitor da casa: página por página, OCR reencaixado no lugar. Era a
-      // quarta cópia do leitor antigo — e empenho/nota ESCANEADOS são o caso
-      // comum deste upload, não a exceção.
-      const { extractTextFromFile } = await import('@/lib/pdf-text-extractor');
-      const fullText = await extractTextFromFile(file, 30, false, 10);
-      if (fullText.trim().length < 30) {
-        toast.error('Não foi possível ler o PDF, nem por OCR.');
-        setUploading(false);
-        return;
+      // Dois caminhos (28/09/2026), decididos por uma olhada nas 3 primeiras
+      // páginas:
+      //  • nato-digital → texto do PDF no navegador + extração (rápido);
+      //  • escaneado → o ARQUIVO vai inteiro, numa chamada só, e volta
+      //    estruturado. Antes ele era rasterizado página a página, lido por
+      //    OCR em lotes sequenciais e só depois extraído: 60–90 s numa nota
+      //    de 10 páginas. O OCR por lotes ficou como reserva.
+      const { extractTextFromFile, inspecionarPdf, arquivoParaBase64 } = await import('@/lib/pdf-text-extractor');
+      setEtapaLeitura('Abrindo o PDF…');
+      const olhada = await inspecionarPdf(file, 3);
+      const escaneado = olhada.comTexto === 0;
+      const cabeInteiro = file.size <= 12 * 1024 * 1024 && olhada.paginas <= 60;
+
+      // O que a IA devolve segue o esquema da edge (extrair_pedido); o consumo abaixo já lidava com ele sem tipo.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let result: { data?: any; error?: string } | null = null;
+      if (escaneado && cabeInteiro) {
+        setEtapaLeitura(`PDF escaneado (${olhada.paginas} página${olhada.paginas === 1 ? '' : 's'}): a IA está lendo o arquivo inteiro…`);
+        const r = await supabase.functions.invoke('extrair-pedido-pdf', {
+          body: { pdf_base64: await arquivoParaBase64(file), tipo_documento: form.tipo_documento },
+        });
+        if (!r.error && !r.data?.error) result = r.data;
+        else console.warn('leitura direta do PDF falhou; caindo para o OCR por lotes:', r.error?.message ?? r.data?.error);
+      }
+      if (!result) {
+        const fullText = await extractTextFromFile(file, 30, false, escaneado ? 5 : 0, (msg) => setEtapaLeitura(msg));
+        if (fullText.trim().length < 30) {
+          toast.error('Não foi possível ler o PDF, nem por OCR.');
+          setUploading(false);
+          return;
+        }
+        setEtapaLeitura('Extraindo número, itens, quantidades e valores…');
+        const { data, error } = await supabase.functions.invoke('extrair-pedido-pdf', {
+          body: { texto_pdf: fullText, tipo_documento: form.tipo_documento },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        result = data;
       }
 
-      const { data: result, error } = await supabase.functions.invoke('extrair-pedido-pdf', {
-        body: {
-          texto_pdf: fullText,
-          tipo_documento: form.tipo_documento,
-        },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
-
-      const extracted = result.data;
+      const extracted = result?.data;
+      if (!extracted) throw new Error('A IA não devolveu dados do documento.');
       setExtractedData(extracted);
       setForm(f => ({
         ...f,
@@ -1156,6 +1187,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       toast.error(err.message || 'Erro ao processar documento');
     } finally {
       setUploading(false);
+      setEtapaLeitura('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -3290,7 +3322,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <div className="flex flex-col items-center gap-2 rounded-lg border border-primary-line bg-primary-tint p-4 text-center">
                   <SeloPraefectusIA />
                   <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" />
-                  <p className="g-meta text-muted-foreground">Extraindo dados com IA...</p>
+                  <p className="g-meta text-muted-foreground" role="status">{etapaLeitura || 'Extraindo dados com IA…'}{segundosLeitura >= 5 ? ` (${segundosLeitura} s)` : ''}</p>
                 </div>
               )}
 
