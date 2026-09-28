@@ -40,7 +40,7 @@ export type AcordaoDaTela = {
   data_sessao: string | null; data_sessao_br: string | null; numero_ata: string | null; processo: string | null; situacao: string | null;
   fragmentos: string[]; url_pdf: string | null; url_doc: string | null; url_portal: string;
 };
-export type Faceta = { valor: string; quantidade: number };
+export type Faceta = { valor: string; quantidade: number; grupo?: string };
 export type RespostaDaTela = {
   total: number; inicio: number; documentos: AcordaoDaTela[];
   facetas: { tipo: Faceta[]; colegiado: Faceta[]; relator: Faceta[]; ano: Faceta[] };
@@ -94,3 +94,33 @@ export function resumoDaPagina(total: number, pagina: number, porPagina = POR_PA
   const paginas = Math.max(1, Math.ceil(total / porPagina));
   return `${total.toLocaleString('pt-BR')} acórdão(s) · página ${Math.min(pagina, paginas).toLocaleString('pt-BR')} de ${paginas.toLocaleString('pt-BR')}`;
 }
+
+/** Os filtros em uso, como fichas removíveis. `limpar` é o pedaço que zera aquele filtro. */
+export type Ficha = { chave: string; rotulo: string; limpar: Partial<FiltrosTcuTela> };
+export function fichasAtivas(f: FiltrosTcuTela): Ficha[] {
+  const r: Ficha[] = [];
+  const br = (iso: string) => iso.split('-').reverse().join('/');
+  if (f.numero.trim()) r.push({ chave: 'numero', rotulo: `nº ${f.numero.trim()}`, limpar: { numero: '' } });
+  if (f.ano.trim()) r.push({ chave: 'ano', rotulo: `ano ${f.ano.trim()}`, limpar: { ano: '' } });
+  for (const c of f.colegiado) r.push({ chave: `colegiado:${c}`, rotulo: c, limpar: { colegiado: f.colegiado.filter((v) => v !== c) } });
+  if (f.relator.trim()) r.push({ chave: 'relator', rotulo: `relator ${f.relator.trim()}`, limpar: { relator: '' } });
+  if (f.processo.trim()) r.push({ chave: 'processo', rotulo: `TC ${f.processo.trim()}`, limpar: { processo: '' } });
+  if (f.entidade.trim()) r.push({ chave: 'entidade', rotulo: f.entidade.trim(), limpar: { entidade: '' } });
+  for (const t of f.tipo) r.push({ chave: `tipo:${t}`, rotulo: t.toLowerCase(), limpar: { tipo: f.tipo.filter((v) => v !== t) } });
+  if (f.dataDe || f.dataAte) r.push({ chave: 'periodo', rotulo: `sessão ${f.dataDe ? br(f.dataDe) : '…'} a ${f.dataAte ? br(f.dataAte) : 'hoje'}`, limpar: { dataDe: '', dataAte: '' } });
+  return r;
+}
+
+/** Citação pronta para a peça: "Acórdão 2418/2026-Plenário, rel. Min. Benjamin Zymler, sessão de 09/09/2026 (TC 015.392/2026-0)". */
+export function citacaoDoAcordao(d: Pick<AcordaoDaTela, 'tipo' | 'numero' | 'ano' | 'colegiado' | 'relator' | 'data_sessao_br' | 'processo'>): string {
+  const nome = d.relator ? d.relator.toLowerCase().replace(/(^|\s)(\S)/g, (_m, sp: string, c: string) => sp + c.toUpperCase()).replace(/\b(De|Do|Da|Dos|Das)\b/g, (m) => m.toLowerCase()) : null;
+  return [identificadorDoResumo(d), nome ? `rel. Min. ${nome}` : null, d.data_sessao_br ? `sessão de ${d.data_sessao_br}` : null].filter(Boolean).join(', ') + (d.processo ? ` (TC ${d.processo})` : '');
+}
+
+/** Pesquisas de exemplo para a tela vazia — cada uma mostra um operador. */
+export const EXEMPLOS_TCU: Array<{ termo: string; porque: string }> = [
+  { termo: '"atestado de capacidade técnica" e quantitativo', porque: 'expressão exata + outra palavra' },
+  { termo: 'reajust$ e "data-base"', porque: 'radical com $ pega reajuste e reajustamento' },
+  { termo: 'repactuação prox "convenção coletiva"', porque: 'palavras próximas, em qualquer ordem' },
+  { termo: '"registro de preços" não adesão', porque: 'exclui uma palavra' },
+];

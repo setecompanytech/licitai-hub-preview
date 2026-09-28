@@ -11,6 +11,7 @@
 //   { acao: 'pesquisar', termo, filtros: {numero, ano, colegiado[], relator,
 //     processo, anoProcesso, entidade, tipo[], dataDe, dataAte}, ordem,
 //     pagina, porPagina }  → { total, inicio, documentos, facetas, na_base }
+//   { acao: 'ler', key }      → { titulo, sumario, acordao, voto… } (só leitura, nada gravado)
 //   { acao: 'guardar', key }  → { id, identificador, situacao }
 // Qualquer usuário logado. Sem IA, sem crédito pago: só a porta pública do TCU.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -58,6 +59,12 @@ Deno.serve(async (req) => {
         (l.detalhe?.texto_completo ? completos : soSumario).add(l.identificador);
       }
       return json({ ...r, filtro, na_base: [...completos], so_sumario: [...soSumario] });
+    }
+
+    if (acao === 'ler') {
+      const doc = await documentoTcu(String(corpo.key ?? '').trim());
+      if (!doc) return json({ error: 'O portal não devolveu este acórdão.' }, 404);
+      return json({ ok: true, titulo: doc.titulo, assunto: doc.assunto, entidade: doc.entidade, tipo_processo: doc.tipo_processo, sumario: doc.sumario, acordao: doc.acordao, voto: doc.voto.slice(0, 12000), voto_cortado: doc.voto.length > 12000, relatorio_chars: doc.relatorio.length });
     }
 
     if (acao === 'guardar') {

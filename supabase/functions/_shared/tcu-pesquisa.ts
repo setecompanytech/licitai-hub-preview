@@ -101,23 +101,31 @@ export function termoDoTcu(termo: string | null | undefined): string {
   return t.length > 0 ? t : '*';
 }
 
-export type Faceta = { valor: string; quantidade: number };
+export type Faceta = { valor: string; quantidade: number; grupo?: string };
 export type FacetasTcu = { tipo: Faceta[]; colegiado: Faceta[]; relator: Faceta[]; ano: Faceta[] };
 const NOME_DA_FACETA: Record<string, keyof FacetasTcu> = { COPIATIPO: 'tipo', COPIACOLEGIADO: 'colegiado', COPIARELATOR: 'relator', ANOACORDAO: 'ano' };
 
-/** As facetas do portal vêm como lista achatada [valor, quantidade, valor, quantidade…]. */
-export function facetasDoTcu(campos: Array<{ nome: string; itens?: unknown[] | null }> | null | undefined): FacetasTcu {
+/**
+ * As facetas do portal vêm como lista achatada [valor, quantidade, valor,
+ * quantidade…]. A de relator é em NÍVEIS: `filhos: { Ativos: [...],
+ * Aposentados: [...] }` — cada item guarda o grupo.
+ */
+export function facetasDoTcu(campos: Array<{ nome: string; itens?: unknown[] | null; filhos?: Record<string, unknown[]> | null }> | null | undefined): FacetasTcu {
   const r: FacetasTcu = { tipo: [], colegiado: [], relator: [], ano: [] };
+  const ler = (chave: keyof FacetasTcu, itens: unknown[], grupo?: string) => {
+    for (let i = 0; i + 1 < itens.length; i += 2) {
+      const valor = String(itens[i] ?? '').trim(); const quantidade = Number(itens[i + 1]);
+      if (valor && Number.isFinite(quantidade) && quantidade >= 0) r[chave].push(grupo ? { valor, quantidade, grupo } : { valor, quantidade });
+    }
+  };
   for (const c of campos ?? []) {
     const chave = NOME_DA_FACETA[c.nome];
     if (!chave) continue;
-    const itens = c.itens ?? [];
-    for (let i = 0; i + 1 < itens.length; i += 2) {
-      const valor = String(itens[i] ?? '').trim(); const quantidade = Number(itens[i + 1]);
-      if (valor && Number.isFinite(quantidade)) r[chave].push({ valor, quantidade });
-    }
+    if (c.itens && c.itens.length) ler(chave, c.itens);
+    for (const [grupo, itens] of Object.entries(c.filhos ?? {})) if (Array.isArray(itens)) ler(chave, itens, grupo);
   }
   r.ano.sort((a, b) => b.valor.localeCompare(a.valor));
+  r.relator.sort((a, b) => (a.grupo === b.grupo ? b.quantidade - a.quantidade : a.grupo === 'Ativos' ? -1 : 1));
   return r;
 }
 
@@ -196,7 +204,7 @@ export async function pesquisarTcu(p: { termo?: string | null; filtro?: string; 
   q.set('sinonimos', 'true');
   const res = await fetchFn(`${TCU_PESQUISA_URL}/documentosResumidos?${q.toString()}`, { headers: CABECALHOS, signal: prazo(30000) });
   const j = await lerJson(res, 'pesquisa');
-  const facetas = (j.facetas as { campos?: Array<{ nome: string; itens?: unknown[] }> } | undefined)?.campos;
+  const facetas = (j.facetas as { campos?: Array<{ nome: string; itens?: unknown[] | null; filhos?: Record<string, unknown[]> | null }> } | undefined)?.campos;
   const spell = j.spell as { sugestao?: string; termoSugerido?: string } | string | null | undefined;
   return {
     total: Number(j.quantidadeEncontrada ?? 0), inicio: Number(j.inicio ?? 0),

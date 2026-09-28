@@ -47,17 +47,17 @@ describe('leitura do que o portal devolve', () => {
     expect(processoFormatado('')).toBeNull();
     expect(processoFormatado('12')).toBe('12');
   });
-  it('facetas: lista achatada [valor, quantidade…] vira pares; ano do mais novo para o mais velho', () => {
+  it('facetas: lista achatada vira pares; relator em níveis (ativos antes dos aposentados); ano do mais novo para o mais velho', () => {
     const f = facetasDoTcu([
       { nome: 'COPIATIPO', itens: ['ACÓRDÃO', 718, 'ACÓRDÃO DE RELAÇÃO', 105] },
       { nome: 'COPIACOLEGIADO', itens: ['Plenário', 331, 'Primeira Câmara', 245] },
-      { nome: 'COPIARELATOR', itens: null },
+      { nome: 'COPIARELATOR', itens: null, filhos: { Aposentados: ['UBIRATAN AGUIAR', 500], Ativos: ['BENJAMIN ZYMLER', 1920, 'ODAIR CUNHA', 28] } },
       { nome: 'ANOACORDAO', itens: ['2024', 10, '2025', 823] },
       { nome: 'OUTRA', itens: ['x', 1] },
     ]);
     expect(f.tipo).toEqual([{ valor: 'ACÓRDÃO', quantidade: 718 }, { valor: 'ACÓRDÃO DE RELAÇÃO', quantidade: 105 }]);
     expect(f.colegiado[1]).toEqual({ valor: 'Primeira Câmara', quantidade: 245 });
-    expect(f.relator).toEqual([]);
+    expect(f.relator).toEqual([{ valor: 'BENJAMIN ZYMLER', quantidade: 1920, grupo: 'Ativos' }, { valor: 'ODAIR CUNHA', quantidade: 28, grupo: 'Ativos' }, { valor: 'UBIRATAN AGUIAR', quantidade: 500, grupo: 'Aposentados' }]);
     expect(f.ano.map((a) => a.valor)).toEqual(['2025', '2024']);
   });
   it('HTML do portal vira texto: parágrafos em linhas, notas de rodapé fora, entidades resolvidas', () => {
