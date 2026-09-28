@@ -39,6 +39,8 @@ type Db = ReturnType<typeof createClient>;
 type Registro = {
   fonte: string; tipo: string; identificador: string; dispositivo: string | null; titulo: string | null;
   ementa: string | null; texto: string; url: string | null; data_publicacao: string | null;
+  /** Metadados estruturados (relator, colegiado, órgão, edição…): a pesquisa filtra e mostra por eles. */
+  detalhe: Record<string, unknown>;
 };
 
 async function sha256(texto: string): Promise<string> {
@@ -51,15 +53,21 @@ async function gravar(db: Db, r: Registro, contagem: { novos: number; alterados:
   const hash = await sha256(r.texto);
   // Dispositivo nulo é o documento inteiro: filtro `is null`, não `eq ''`.
   const lido = r.dispositivo === null
-    ? (await db.from('base_normativa').select('id, versao_hash, texto').eq('fonte', r.fonte).eq('identificador', r.identificador).is('dispositivo', null).maybeSingle()).data
-    : (await db.from('base_normativa').select('id, versao_hash, texto').eq('fonte', r.fonte).eq('identificador', r.identificador).eq('dispositivo', r.dispositivo).maybeSingle()).data;
+    ? (await db.from('base_normativa').select('id, versao_hash, texto, detalhe').eq('fonte', r.fonte).eq('identificador', r.identificador).is('dispositivo', null).maybeSingle()).data
+    : (await db.from('base_normativa').select('id, versao_hash, texto, detalhe').eq('fonte', r.fonte).eq('identificador', r.identificador).eq('dispositivo', r.dispositivo).maybeSingle()).data;
   if (!lido) {
     const { error } = await db.from('base_normativa').insert({ ...r, versao_hash: hash });
     if (error) throw new Error(`${r.identificador} ${r.dispositivo ?? ''}: ${error.message}`);
     contagem.novos += 1;
     return;
   }
-  if (lido.versao_hash === hash) return;
+  if (lido.versao_hash === hash) {
+    // Texto igual, metadados novos (a coluna `detalhe` nasceu depois da 1ª carga): completa sem contar como alteração.
+    if (JSON.stringify(lido.detalhe ?? {}) !== JSON.stringify(r.detalhe)) {
+      await db.from('base_normativa').update({ detalhe: r.detalhe }).eq('id', lido.id);
+    }
+    return;
+  }
   await db.from('base_normativa_alteracoes').insert({
     norma_id: lido.id, identificador: r.identificador, dispositivo: r.dispositivo,
     hash_anterior: lido.versao_hash, hash_novo: hash, texto_anterior: lido.texto,
@@ -82,9 +90,9 @@ async function coletarPlanalto(db: Db, alteracoes: string[]) {
       if (artigos.length === 0) { erros.push(`${lei.identificador}: nenhum artigo reconhecido — a página mudou de formato?`); continue; }
       contagem.documentos += artigos.length + 1;
       const inteiro = textoLimpo(html);
-      await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: null, titulo: lei.identificador, ementa: inteiro.slice(0, 600), texto: inteiro, url: lei.url, data_publicacao: null }, contagem, alteracoes);
+      await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: null, titulo: lei.identificador, ementa: inteiro.slice(0, 600), texto: inteiro, url: lei.url, data_publicacao: null, detalhe: { lei: lei.identificador, artigos: artigos.length } }, contagem, alteracoes);
       for (const a of artigos) {
-        await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: `art. ${a.numero}`, titulo: `${lei.identificador} — art. ${a.numero}`, ementa: null, texto: a.texto, url: `${lei.url}#art${a.numero.toLowerCase().replace('-', '')}`, data_publicacao: null }, contagem, alteracoes);
+        await gravar(db, { fonte: 'planalto', tipo: lei.tipo, identificador: lei.identificador, dispositivo: `art. ${a.numero}`, titulo: `${lei.identificador} — art. ${a.numero}`, ementa: null, texto: a.texto, url: `${lei.url}#art${a.numero.toLowerCase().replace('-', '')}`, data_publicacao: null, detalhe: { lei: lei.identificador, artigo: a.numero } }, contagem, alteracoes);
       }
     } catch (e) {
       erros.push(`${lei.identificador}: ${e instanceof Error ? e.message : String(e)}`);
@@ -97,22 +105,35 @@ async function coletarTcu(db: Db, alteracoes: string[], restante: () => number) 
   const contagem = { documentos: 0, novos: 0, alterados: 0 };
   const erros: string[] = [];
   try {
-    const res = await fetch('https://dados-abertos.apps.tcu.gov.br/api/acordao/recupera-acordaos?inicio=0&quantidade=200', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
-    if (!res.ok) { erros.push(`TCU: HTTP ${res.status}`); return { ...contagem, erros }; }
-    const lista = await res.json() as Array<Record<string, string>>;
-    contagem.documentos = lista.length;
-    for (const a of lista) {
-      if (restante() <= 0) { erros.push('TCU: teto da execução atingido; o restante fica para amanhã'); break; }
-      if (!TEMA_TCU.test(a.sumario ?? '')) continue;
-      const [d, m, y] = String(a.dataSessao ?? '').split('/');
-      const data = y && m && d ? `${y}-${m}-${d}` : null;
-      const identificador = `Acórdão ${a.numeroAcordao}/${a.anoAcordao}-${a.colegiado ?? 'TCU'}`;
-      await gravar(db, {
-        fonte: 'tcu', tipo: 'acordao', identificador, dispositivo: null, titulo: a.titulo ?? identificador,
-        ementa: (a.sumario ?? '').slice(0, 2000),
-        texto: `${a.titulo ?? identificador}\nRelator: ${a.relator ?? '—'} · Sessão: ${a.dataSessao ?? '—'} · Situação: ${a.situacao ?? '—'}\n\n${a.sumario ?? ''}`,
-        url: a.urlAcordao ?? a.urlArquivoPdf ?? null, data_publicacao: data,
-      }, contagem, alteracoes);
+    // A API lista do mais recente para trás, em páginas. Anda até o teto do
+    // dia ou até uma página inteira já conhecida: a base recua no tempo um
+    // pouco por dia, sem pesar na fonte.
+    const PAGINA = 200;
+    let inicio = 0;
+    let paginasSemNovidade = 0;
+    while (inicio < 5000 && paginasSemNovidade < 2 && restante() > 0) {
+      const res = await fetch(`https://dados-abertos.apps.tcu.gov.br/api/acordao/recupera-acordaos?inicio=${inicio}&quantidade=${PAGINA}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
+      if (!res.ok) { erros.push(`TCU (inicio=${inicio}): HTTP ${res.status}`); break; }
+      const lista = await res.json() as Array<Record<string, string>>;
+      if (lista.length === 0) break;
+      contagem.documentos += lista.length;
+      const novosAntes = contagem.novos;
+      for (const a of lista) {
+        if (restante() <= 0) { erros.push('TCU: teto da execução atingido; o restante fica para amanhã'); break; }
+        if (!TEMA_TCU.test(a.sumario ?? '')) continue;
+        const [d, m, y] = String(a.dataSessao ?? '').split('/');
+        const data = y && m && d ? `${y}-${m}-${d}` : null;
+        const identificador = `Acórdão ${a.numeroAcordao}/${a.anoAcordao}-${a.colegiado ?? 'TCU'}`;
+        await gravar(db, {
+          fonte: 'tcu', tipo: 'acordao', identificador, dispositivo: null, titulo: a.titulo ?? identificador,
+          ementa: (a.sumario ?? '').slice(0, 2000),
+          texto: `${a.titulo ?? identificador}\nRelator: ${a.relator ?? '—'} · Sessão: ${a.dataSessao ?? '—'} · Situação: ${a.situacao ?? '—'}\n\n${a.sumario ?? ''}`,
+          url: a.urlAcordao ?? a.urlArquivoPdf ?? null, data_publicacao: data,
+          detalhe: { numero: a.numeroAcordao, ano: a.anoAcordao, colegiado: a.colegiado ?? null, relator: a.relator ?? null, situacao: a.situacao ?? null, numero_ata: a.numeroAta ?? null, data_sessao: data, url_pdf: a.urlArquivoPdf ?? null },
+        }, contagem, alteracoes);
+      }
+      paginasSemNovidade = contagem.novos === novosAntes ? paginasSemNovidade + 1 : 0;
+      inicio += lista.length;
     }
   } catch (e) {
     erros.push(`TCU: ${e instanceof Error ? e.message : String(e)}`);
@@ -145,6 +166,7 @@ async function coletarDou(db: Db, alteracoes: string[], restante: () => number) 
           titulo: it.title ?? null, ementa: conteudo.slice(0, 600),
           texto: `${it.title ?? ''}\n${it.hierarchyStr ?? ''}\nDOU ${it.pubName ?? ''} de ${it.pubDate ?? ''}${it.numberPage ? `, p. ${it.numberPage}` : ''}\n\n${conteudo}`,
           url: `https://www.in.gov.br/web/dou/-/${it.urlTitle}`, data_publicacao: y && mm && d ? `${y}-${mm}-${d}` : null,
+          detalhe: { orgao: it.hierarchyStr ?? null, tipo_ato: it.artType ?? null, secao: it.pubName ?? null, edicao: it.editionNumber ?? null, pagina: it.numberPage ?? null },
         }, contagem, alteracoes);
       }
     } catch (e) {
