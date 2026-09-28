@@ -14,6 +14,7 @@ import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
+import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -347,7 +348,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * mais, ambas de uso corrente no resto do módulo.
    */
   const [contratoInfo, setContratoInfo] = useState<{
-    numero_contrato: string | null; orgao_contratante: string | null;
+    numero_contrato: string | null; orgao_contratante: string | null; valor_global: number | null;
   } | null>(null);
   /**
    * O contrato foi DECLARADO encerrado (21/09): pedido novo não entra — as
@@ -816,9 +817,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       .map((l): LinhaAplicada => ({ contrato_item_id: l.contrato_item_id, aditivo_id: l.aditivo_id, aplicado_em: l.aplicado_em, numero_aditivo: l.aditivo?.numero_aditivo ?? null }))));
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
     setSaldoDoContrato(Number((contratoRes.data as any)?.saldo_remanescente ?? 0));
+    const cabecalho = contratoRes.data as unknown as { numero_contrato?: string | null; orgao_contratante?: string | null; valor_global?: number | string | null } | null;
     setContratoInfo({
-      numero_contrato: (contratoRes.data as any)?.numero_contrato ?? null,
-      orgao_contratante: (contratoRes.data as any)?.orgao_contratante ?? null,
+      numero_contrato: cabecalho?.numero_contrato ?? null,
+      orgao_contratante: cabecalho?.orgao_contratante ?? null,
+      valor_global: cabecalho?.valor_global != null ? Number(cabecalho.valor_global) : null,
     });
     const fimDeclarado = contratoRes.data as unknown as {
       status?: string | null; data_encerramento?: string | null; motivo_encerramento?: string | null;
@@ -2536,11 +2539,17 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             tom: 'ok',
           },
           {
-            rotulo: 'Empenhos registrados',
-            valor: empenhosDoContrato.length,
-            detalhe: 'autorizam as entregas — consulte na subaba Empenhos',
+            // "13 empenhos" sem soma não dizia quanto o órgão já reservou
+            // (28/09): agora o valor empenhado (vigente, sem os cancelados),
+            // a cobertura do global e o que falta empenhar.
+            rotulo: 'Valor empenhado',
+            valor: empenhosDoContrato.length > 0 ? fmt(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).empenhado) : null,
+            razaoIndisponivel: 'Nenhum empenho registrado',
+            detalhe: empenhosDoContrato.length > 0
+              ? detalheDosEmpenhos(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global))
+              : 'o empenho autoriza as entregas — registre pela nota',
             icone: FileText,
-            tom: empenhosDoContrato.some(e => e.cancelado) ? 'aviso' : 'neutro',
+            tom: empenhosDoContrato.some(e => e.cancelado) || resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).excesso > 0 ? 'aviso' : 'neutro',
           },
         ]}
       />
@@ -3128,7 +3137,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 recolhidaPorPadrao
                 classNameTitulo="text-base font-semibold leading-6 text-foreground"
                 icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-                titulo={<>Empenhos registrados ({empenhosDoContrato.length}) — autorizam os pedidos acima</>}
+                titulo={<>Empenhos registrados ({empenhosDoContrato.length}) — {fmt(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).empenhado)} empenhados, autorizam os pedidos acima</>}
               >
                 <div className="mt-2">{listaDeEmpenhos}</div>
               </SecaoRecolhivel>
