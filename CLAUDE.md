@@ -772,3 +772,20 @@ docs/                  notas de infra e roteiros de teste
 scripts/               utilitários de edge functions
 SQL_MIGRATIONS.md      log de SQL para colar no SQL Editor
 ```
+
+## Tabela CEST — só do Convênio ICMS 142/18 (28/09/2026)
+
+`src/data/cest-codes.ts` é GERADO do texto consolidado do CONFAZ
+(https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/CV142_18,
+Anexos II a XXVI): redação vigente de cada item (o CONFAZ imprime a redação
+anterior em classes `*verde`/`RedacaoAnt`, que ficam fora), com NCM do
+convênio, `ncmPrefixos` (só dígitos; "Capítulos 33 e 34" vira ['33','34']),
+segmento e `revogado`. Nunca editar à mão; regerar a partir do convênio
+(script na sessão de 28/09: região entre "ANEXO II" e "ANEXO XXVII", primeira
+linha vigente por código, NCMs das linhas seguintes com a mesma descrição).
+A tabela antiga (257 códigos, sem fonte) numerava os segmentos de outro jeito
+e inventava descrições — nunca reaproveitar. Artigos de blog (Contabilizei)
+seguem o Conv. 52/17, superado: servem só como segunda conferência.
+`lib/fiscal/cest.ts` casa CEST × NCM por prefixo e `avaliarCest` alimenta o
+aviso do cadastro de produto (inexistente, revogado, incompatível, sem CEST
+com sugestão).
