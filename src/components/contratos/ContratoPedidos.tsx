@@ -13,6 +13,7 @@ import { proximoNumeroDePedido } from '@/lib/contratos/numero-do-pedido';
 import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/lib/contratos/casar-pedido';
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
+import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
@@ -493,6 +494,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [arquivoPendente, setArquivoPendente] = useState<File | null>(null);
   /** O empenho cuja vida — reforços e anulações — está aberta. */
   const [movimentando, setMovimentando] = useState<EmpenhoParaMovimentar | null>(null);
+  // Editar/apagar o empenho na íntegra (28/09/2026). `?empenho=<id>` abre
+  // direto — é o atalho que o dossiê (Arquivos e Aditivos) usa.
+  const [editandoEmpenho, setEditandoEmpenho] = useState<EmpenhoParaEditar | null>(null);
+  const [abriuPelaUrl, setAbriuPelaUrl] = useState(false);
 
   /**
    * Guarda o PDF da Ordem/Empenho e devolve o id em `contrato_arquivos`.
@@ -2165,6 +2170,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * função só evita o defeito clássico de duas cópias que divergem na primeira
    * regra que mudar.
    */
+  useEffect(() => {
+    if (abriuPelaUrl || empenhosDoContrato.length === 0) return;
+    const alvo = new URLSearchParams(window.location.search).get('empenho');
+    if (!alvo) return;
+    const e = empenhosDoContrato.find((x) => x.id === alvo);
+    if (e) setEditandoEmpenho({ id: e.id, numero: e.numero });
+    setAbriuPelaUrl(true);
+  }, [empenhosDoContrato, abriuPelaUrl]);
+
   const listaDeEmpenhos = (
     <div className="flex flex-col gap-2">
       {empenhosDoContrato.map(e => {
@@ -2194,6 +2208,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     estimativo nasce pequeno e é reforçado — sem isto,
                     aumentá-lo exigiria sobrescrever o valor e apagar que
                     houve reforço. */}
+                <Button size="sm" variant="ghost"
+                  onClick={() => setEditandoEmpenho({ id: e.id, numero: e.numero })}
+                  title="Editar número, espécie, data, valor, linhas — ou apagar">
+                  <Pencil aria-hidden="true" /> Editar
+                </Button>
                 <Button size="sm" variant="ghost"
                   onClick={() => setMovimentando({
                     id: e.id, numero: e.numero, tipo: e.tipo, contratoId,
@@ -4165,6 +4184,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       <MovimentosDoEmpenho
         empenho={movimentando}
         onFechar={() => setMovimentando(null)}
+        onMudou={() => load()}
+      />
+
+      <EditarEmpenhoDialog
+        empenho={editandoEmpenho}
+        contratoId={contratoId}
+        empresaId={empresaAtiva?.id}
+        itensDoContrato={itens}
+        podeApagar={isAdmin}
+        onFechar={() => setEditandoEmpenho(null)}
         onMudou={() => load()}
       />
 

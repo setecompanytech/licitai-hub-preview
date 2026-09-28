@@ -1211,6 +1211,28 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     // acusando o que a pessoa jura ter removido.
     const vinculados = aditivos.filter((a: any) => a.arquivo_id === arquivo.id);
 
+    // O EMPENHO também aponta para o arquivo com SET NULL (28/09/2026): apagar
+    // a nota deixava o empenho vivo em Pedidos, sem documento, autorizando.
+    const { data: empenhosDoArquivo } = await supabase
+      .from('contrato_empenhos' as never)
+      .select('id, numero, tipo')
+      .eq('arquivo_id', arquivo.id);
+    const empenhos = (empenhosDoArquivo ?? []) as unknown as Array<{ id: string; numero: string; tipo: string }>;
+    if (empenhos.length > 0) {
+      const lista = empenhos.map((e) => `• Empenho ${e.numero} (${e.tipo})`).join('\n');
+      const juntos = confirm(
+        `Este PDF é a nota de ${empenhos.length} empenho(s) registrado(s) em Pedidos:\n\n${lista}\n\n` +
+        'OK — apagar o arquivo E o(s) empenho(s): as linhas e os reforços/anulações caem junto; pedidos que consumiam dele ficam sem empenho.\n' +
+        'Cancelar — não apagar nada. (Para trocar só os dados do empenho, use Editar em Pedidos › Empenhos.)',
+      );
+      if (!juntos) return;
+      const { error: empErr } = await supabase
+        .from('contrato_empenhos' as never)
+        .delete()
+        .in('id', empenhos.map((e) => e.id));
+      if (empErr) { toast.error('Não foi possível apagar o empenho', { description: /policy|permission|row-level/i.test(empErr.message) ? 'Só o administrador da empresa apaga empenho.' : empErr.message }); return; }
+    }
+
     if (vinculados.length > 0) {
       const lista = vinculados.map((a: any) => `• ${a.numero_aditivo || 'sem número'} (${TIPOS_ADITIVO_LABEL[a.tipo] || a.tipo})`).join('\n');
       const juntos = confirm(
@@ -1224,14 +1246,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         .delete()
         .in('id', vinculados.map((a: any) => a.id));
       if (aditErr) { toast.error('Erro ao excluir o aditivo', { description: aditErr.message }); return; }
-    } else if (!confirm('Excluir este arquivo permanentemente?')) {
+    } else if (empenhos.length === 0 && !confirm('Excluir este arquivo permanentemente?')) {
       return;
     }
 
     try {
       await supabase.storage.from('contratos-docs').remove([arquivo.storage_path]);
       await supabase.from('contrato_arquivos').delete().eq('id', arquivo.id);
-      toast.success(vinculados.length > 0 ? 'Arquivo e aditivo(s) excluídos' : 'Arquivo excluído');
+      toast.success(empenhos.length > 0 ? 'Arquivo e empenho(s) excluídos' : vinculados.length > 0 ? 'Arquivo e aditivo(s) excluídos' : 'Arquivo excluído');
       loadData();
     } catch (err: any) {
       toast.error('Erro ao excluir', { description: err.message });
@@ -1245,7 +1267,14 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
     loadData();
   };
 
+  // O PDF de empenho: os dados (número, espécie, valor, linhas) moram no
+  // empenho, em Pedidos — o dossiê só guarda o arquivo. A edição daqui leva
+  // para lá, em vez de fingir que muda o que não muda.
+  const [empenhoDoArquivo, setEmpenhoDoArquivo] = useState<{ id: string; numero: string; tipo: string; valor: number | null } | null>(null);
   const openEdit = (arquivo: any) => {
+    setEmpenhoDoArquivo(null);
+    void supabase.from('contrato_empenhos' as never).select('id, numero, tipo, valor').eq('arquivo_id', arquivo.id).maybeSingle()
+      .then(({ data }) => { if (data) setEmpenhoDoArquivo(data as unknown as { id: string; numero: string; tipo: string; valor: number | null }); });
     setEditDialog({ open: true, arquivo });
     setEditTipo(arquivo.tipo);
     setEditDescricao(arquivo.descricao || '');
@@ -2521,6 +2550,21 @@ export default function ContratoArquivos({ contratoId, onCadastrarDerivado }: { 
         <DialogContent className="max-w-[min(96vw,84rem)] max-h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Documento</DialogTitle></DialogHeader>
           <div className="mt-2 space-y-4">
+            {empenhoDoArquivo && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-info-line bg-info-tint p-3 text-sm" data-testid="aviso-empenho-do-arquivo">
+                <p className="text-info-ink">
+                  Este PDF é a nota do <b>empenho {empenhoDoArquivo.numero}</b> ({empenhoDoArquivo.tipo}{empenhoDoArquivo.valor != null ? `, ${Number(empenhoDoArquivo.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}). Número, espécie, valor e linhas se editam no empenho — aqui só o arquivo e a descrição.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const n = new URLSearchParams(buscaParams);
+                  n.set('aba', 'pedidos'); n.set('empenho', empenhoDoArquivo.id);
+                  setEditDialog({ open: false, arquivo: null });
+                  setBuscaParams(n);
+                }}>
+                  <Pencil aria-hidden="true" /> Editar o empenho
+                </Button>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Tipo do Documento</Label>
               <Select value={editTipo} onValueChange={(v) => {
