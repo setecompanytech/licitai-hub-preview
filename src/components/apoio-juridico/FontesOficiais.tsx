@@ -18,7 +18,7 @@ import PesquisaNormativa from './PesquisaNormativa';
  * (`buscar_base_normativa`) que a redação usa. Admin da plataforma pode
  * disparar a ingestão pela tela.
  */
-type Coleta = { fonte: string; iniciado_em: string; concluido_em: string | null; documentos: number; novos: number; alterados: number; erros: string[] };
+type Coleta = { fonte: string; iniciado_em: string; concluido_em: string | null; documentos: number; novos: number; alterados: number; erros: string[]; detalhe: { disparo?: 'cron' | 'manual' } | null };
 
 const NOME_DA_FONTE: Record<string, string> = { planalto: 'Planalto — leis acompanhadas', tcu: 'TCU — acórdãos guardados', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
 const dataBr = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
@@ -37,7 +37,7 @@ export default function FontesOficiais() {
     queryKey: ['base-normativa-coletas'],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await db.from('base_normativa_coletas').select('fonte, iniciado_em, concluido_em, documentos, novos, alterados, erros').order('iniciado_em', { ascending: false }).limit(30);
+      const { data, error } = await db.from('base_normativa_coletas').select('fonte, iniciado_em, concluido_em, documentos, novos, alterados, erros, detalhe').order('iniciado_em', { ascending: false }).limit(30);
       if (error) throw error;
       return data as Coleta[];
     },
@@ -91,6 +91,7 @@ export default function FontesOficiais() {
       </div>
       <p className="text-sm text-muted-foreground">
         A base que a redação pode citar: leis acompanhadas lidas do Planalto artigo por artigo, acórdãos do TCU (os recentes chegam todo dia; qualquer outro você pesquisa ao vivo no portal e guarda) e atos da seção 1 do DOU. Sem IA. O que não está aqui a peça marca como "a confirmar".
+        <b className="text-foreground"> Leitura automática todo dia à 01h30 (horário de Belém)</b>, até 200 documentos novos por vez; "Atualizar agora" só antecipa a leitura do dia.
       </p>
       <div className="grid gap-3 md:grid-cols-3">
         {fontes.map((f) => {
@@ -104,7 +105,7 @@ export default function FontesOficiais() {
               </div>
               <p className="text-[1.5rem] font-semibold leading-8 tabular-nums text-foreground">{(totais?.[f] ?? 0).toLocaleString('pt-BR')}</p>
               <p className="g-meta text-muted-foreground">registro(s) na base</p>
-              <p className="g-meta text-muted-foreground">Última leitura: {dataBr(c?.concluido_em ?? c?.iniciado_em)}{c ? ` · ${c.documentos} lido(s), ${c.novos} novo(s), ${c.alterados} alterado(s)` : ''}</p>
+              <p className="g-meta text-muted-foreground">Última leitura: {dataBr(c?.concluido_em ?? c?.iniciado_em)}{c?.detalhe?.disparo ? (c.detalhe.disparo === 'cron' ? ' (automática)' : ' (pelo botão)') : ''}{c ? ` · ${c.documentos} lido(s), ${c.novos} novo(s), ${c.alterados} alterado(s)` : ''}</p>
               {comErro && <ul className="space-y-0.5">{c!.erros.slice(0, 3).map((e) => <li key={e} className="g-meta text-warning-ink">{e}</li>)}</ul>}
             </Card>
           );

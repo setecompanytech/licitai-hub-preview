@@ -19935,3 +19935,11 @@ $$;
 --   SELECT * FROM public.facetas_base_normativa(NULL, NULL);
 --   -- Sem termo, TCU por período: SELECT identificador, data_publicacao, total FROM public.pesquisar_base_normativa(NULL, 'tcu', NULL, NULL, '2026-09-01', '2026-09-30', 'data', 20, 0);
 ```
+
+## 20260928000001 — ingestão normativa: timeout do cron (28/09/2026)
+
+O job `ingestao-normativa-diaria` chamava a edge sem `timeout_milliseconds`
+(padrão 5 s do pg_net): a conexão caía e a execução morria antes da primeira
+coleta. Reagendado com 600.000 ms. A edge (v6+) também responde 202 ao cron e
+segue em segundo plano com `EdgeRuntime.waitUntil`. Sem tabela nova.
+Arquivo: `supabase/migrations/20260928000001_ingestao_normativa_cron_timeout.sql`.

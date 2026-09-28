@@ -49,7 +49,9 @@ async function sha256(texto: string): Promise<string> {
 }
 
 /** Grava um registro: novo, igual (nada) ou alterado (trilha + versão nova). */
-async function gravar(db: Db, r: Registro, contagem: { novos: number; alterados: number }, alteracoes: string[]): Promise<void> {
+type Orcamento = { inseridos: number };
+
+async function gravar(db: Db, r: Registro, contagem: { novos: number; alterados: number }, alteracoes: string[], orcamento?: Orcamento): Promise<void> {
   const hash = await sha256(r.texto);
   // Dispositivo nulo é o documento inteiro: filtro `is null`, não `eq ''`.
   const lido = r.dispositivo === null
@@ -59,6 +61,7 @@ async function gravar(db: Db, r: Registro, contagem: { novos: number; alterados:
     const { error } = await db.from('base_normativa').insert({ ...r, versao_hash: hash });
     if (error) throw new Error(`${r.identificador} ${r.dispositivo ?? ''}: ${error.message}`);
     contagem.novos += 1;
+    if (orcamento) orcamento.inseridos += 1;
     return;
   }
   if (lido.versao_hash === hash) {
@@ -101,7 +104,7 @@ async function coletarPlanalto(db: Db, alteracoes: string[]) {
   return { ...contagem, erros };
 }
 
-async function coletarTcu(db: Db, alteracoes: string[], restante: () => number) {
+async function coletarTcu(db: Db, alteracoes: string[], restante: () => number, orcamento: Orcamento) {
   const contagem = { documentos: 0, novos: 0, alterados: 0 };
   const erros: string[] = [];
   try {
@@ -130,7 +133,7 @@ async function coletarTcu(db: Db, alteracoes: string[], restante: () => number) 
           texto: `${a.titulo ?? identificador}\nRelator: ${a.relator ?? '—'} · Sessão: ${a.dataSessao ?? '—'} · Situação: ${a.situacao ?? '—'}\n\n${a.sumario ?? ''}`,
           url: a.urlAcordao ?? a.urlArquivoPdf ?? null, data_publicacao: data,
           detalhe: { numero: a.numeroAcordao, ano: a.anoAcordao, colegiado: a.colegiado ?? null, relator: a.relator ?? null, situacao: a.situacao ?? null, numero_ata: a.numeroAta ?? null, data_sessao: data, url_pdf: a.urlArquivoPdf ?? null },
-        }, contagem, alteracoes);
+        }, contagem, alteracoes, orcamento);
       }
       paginasSemNovidade = contagem.novos === novosAntes ? paginasSemNovidade + 1 : 0;
       inicio += lista.length;
@@ -141,7 +144,7 @@ async function coletarTcu(db: Db, alteracoes: string[], restante: () => number) 
   return { ...contagem, erros };
 }
 
-async function coletarDou(db: Db, alteracoes: string[], restante: () => number) {
+async function coletarDou(db: Db, alteracoes: string[], restante: () => number, orcamento: Orcamento) {
   const contagem = { documentos: 0, novos: 0, alterados: 0 };
   const erros: string[] = [];
   const vistos = new Set<string>();
@@ -158,7 +161,7 @@ async function coletarDou(db: Db, alteracoes: string[], restante: () => number) 
         if (!it.urlTitle || vistos.has(it.urlTitle)) continue;
         vistos.add(it.urlTitle);
         contagem.documentos += 1;
-        if (restante() <= 0) { erros.push('DOU: teto da execução atingido; o restante fica para amanhã'); break; }
+        if (restante() <= 0) { if (!erros.includes('DOU: teto da execução atingido; o restante fica para amanhã')) erros.push('DOU: teto da execução atingido; o restante fica para amanhã'); break; }
         const [d, mm, y] = String(it.pubDate ?? '').split('/');
         const conteudo = textoLimpo(String(it.content ?? ''));
         await gravar(db, {
@@ -167,7 +170,7 @@ async function coletarDou(db: Db, alteracoes: string[], restante: () => number) 
           texto: `${it.title ?? ''}\n${it.hierarchyStr ?? ''}\nDOU ${it.pubName ?? ''} de ${it.pubDate ?? ''}${it.numberPage ? `, p. ${it.numberPage}` : ''}\n\n${conteudo}`,
           url: `https://www.in.gov.br/web/dou/-/${it.urlTitle}`, data_publicacao: y && mm && d ? `${y}-${mm}-${d}` : null,
           detalhe: { orgao: it.hierarchyStr ?? null, tipo_ato: it.artType ?? null, secao: it.pubName ?? null, edicao: it.editionNumber ?? null, pagina: it.numberPage ?? null },
-        }, contagem, alteracoes);
+        }, contagem, alteracoes, orcamento);
       }
     } catch (e) {
       erros.push(`DOU ${termo}: ${e instanceof Error ? e.message : String(e)}`);
@@ -176,8 +179,8 @@ async function coletarDou(db: Db, alteracoes: string[], restante: () => number) 
   return { ...contagem, erros };
 }
 
-async function registrarColeta(db: Db, fonte: string, inicio: string, r: { documentos: number; novos: number; alterados: number; erros: string[] }) {
-  await db.from('base_normativa_coletas').insert({ fonte, iniciado_em: inicio, concluido_em: new Date().toISOString(), documentos: r.documentos, novos: r.novos, alterados: r.alterados, erros: r.erros });
+async function registrarColeta(db: Db, fonte: string, inicio: string, r: { documentos: number; novos: number; alterados: number; erros: string[] }, disparo: 'cron' | 'manual') {
+  await db.from('base_normativa_coletas').insert({ fonte, iniciado_em: inicio, concluido_em: new Date().toISOString(), documentos: r.documentos, novos: r.novos, alterados: r.alterados, erros: r.erros, detalhe: { disparo } });
 }
 
 Deno.serve(async (req) => {
@@ -199,28 +202,32 @@ Deno.serve(async (req) => {
       }
     }
     if (!autorizado) return json({ error: 'Unauthorized' }, 401);
+    const disparo: 'cron' | 'manual' = !!cronSecret && token === cronSecret ? 'cron' : 'manual';
 
-    const alteracoes: string[] = [];
-    let inseridos = 0;
-    const restante = () => TETO_POR_EXECUCAO - inseridos;
-    const conta = (r: { novos: number }) => { inseridos += r.novos; };
+    const executar = async () => {
+      const alteracoes: string[] = [];
+      // O teto conta a CADA inserção (antes só somava ao fim de cada fonte, e o
+      // TCU gravou 784 numa execução enquanto o DOU viu o teto já estourado).
+      const orcamento: Orcamento = { inseridos: 0 };
+      const restante = () => TETO_POR_EXECUCAO - orcamento.inseridos;
 
-    const t1 = new Date().toISOString();
-    const planalto = await coletarPlanalto(db, alteracoes);
-    await registrarColeta(db, 'planalto', t1, planalto);
+      const t1 = new Date().toISOString();
+      const planalto = await coletarPlanalto(db, alteracoes);
+      await registrarColeta(db, 'planalto', t1, planalto, disparo);
 
-    const t2 = new Date().toISOString();
-    const tcu = await coletarTcu(db, alteracoes, restante);
-    conta(tcu);
-    await registrarColeta(db, 'tcu', t2, tcu);
+      // DOU antes do TCU: é pequeno (uma semana) e perecível; o TCU fica com o resto do teto.
+      const t2 = new Date().toISOString();
+      const dou = await coletarDou(db, alteracoes, restante, orcamento);
+      await registrarColeta(db, 'dou', t2, dou, disparo);
 
-    const t3 = new Date().toISOString();
-    const dou = await coletarDou(db, alteracoes, restante);
-    conta(dou);
-    await registrarColeta(db, 'dou', t3, dou);
+      const t3 = new Date().toISOString();
+      const tcu = await coletarTcu(db, alteracoes, restante, orcamento);
+      await registrarColeta(db, 'tcu', t3, tcu, disparo);
 
-    // Redação de lei que mudou: quem opera a plataforma precisa saber no dia.
-    if (alteracoes.length > 0) {
+      return { planalto, tcu, dou, alteracoes, inseridos: orcamento.inseridos };
+    };
+    const avisarAdmins = async (alteracoes: string[]) => {
+      if (alteracoes.length === 0) return;
       const { data: admins } = await db.from('user_roles').select('user_id').eq('role', 'admin');
       const lista = alteracoes.slice(0, 12).join('; ') + (alteracoes.length > 12 ? ` e mais ${alteracoes.length - 12}` : '');
       for (const a of admins ?? []) {
@@ -231,9 +238,20 @@ Deno.serve(async (req) => {
           link: '/apoio-juridico?tab=base-juridica',
         });
       }
-    }
+    };
 
-    return json({ ok: true, planalto, tcu, dou, alteracoes, inseridos, teto: TETO_POR_EXECUCAO });
+    if (disparo === 'cron') {
+      // O pg_net não espera minutos: responde já e segue em segundo plano.
+      // Sem isto a execução morria com a conexão (28/09: cron "succeeded" à
+      // 01:30 e nenhuma coleta registrada).
+      const tarefa = executar().then((r) => avisarAdmins(r.alteracoes)).catch((e) => console.error('ingestao-normativa (cron):', e));
+      const runtime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
+      if (runtime?.waitUntil) runtime.waitUntil(tarefa); else await tarefa;
+      return json({ ok: true, disparo, em_segundo_plano: Boolean(runtime?.waitUntil), teto: TETO_POR_EXECUCAO }, 202);
+    }
+    const r = await executar();
+    await avisarAdmins(r.alteracoes);
+    return json({ ok: true, disparo, ...r, teto: TETO_POR_EXECUCAO });
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
   }
