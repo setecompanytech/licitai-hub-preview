@@ -395,6 +395,41 @@ antes de exportar. Regras que valem no código:
   `notificar_radar_juridico` (migration `20260927000001`) leva só preclusão,
   vigência, saldo negativo e recurso em prazo, sem repetir em 30 dias.
 
+### TCU ao vivo — a Pesquisa Integrada dentro do sistema (27/09/2026, à noite)
+
+A base local do TCU (ingestão diária, `recupera-acordaos`) só cresce do mais
+recente para trás. O dono mostrou o portal
+https://pesquisa.apps.tcu.gov.br/pesquisa/acordao-completo como referência:
+operadores, filtros por número/ano/colegiado/relator/processo/órgão/data,
+facetas, 20 por página, trecho marcado. A porta pública que o portal usa é
+`GET https://pesquisa.apps.tcu.gov.br/rest/publico/base/acordao-completo/documentosResumidos?termo=&filtro=&ordenacao=&quantidade=&inicio=&sinonimos=true`
+(nome da base em minúsculas; documento inteiro em `/documento?termo=<KEY>.KEY`).
+Gramática do `filtro` lida do bundle do portal e conferida ao vivo:
+`NUMACORDAO:"2991" ANOACORDAO:"2025" DTRELEVANCIA:[20250101 to 20250630]
+PROC:"02170620255" RELATOR:"BRUNO DANTAS" COLEGIADO:("Plenário" OU "Primeira
+Câmara") ENTIDADE:"…" COPIATIPO:"ACÓRDÃO"`. Ordens: `DTRELEVANCIA desc,
+NUMACORDAOINT desc, COPIACOLEGIADO desc` / `asc` / `score desc`, sempre com
+`,KEY asc`. **O firewall do TCU recusa cliente sem User-Agent de navegador e
+Accept** — devolve HTML "Requisição rejeitada" com HTTP 200; o módulo trata.
+
+- `supabase/functions/_shared/tcu-pesquisa.ts` (sem Deno; testado pelo
+  vitest): `filtroDoTcu`, `pesquisarTcu`, `documentoTcu`, `facetasDoTcu`,
+  `resumirAcordao` (identificador no padrão da ingestão, "Acórdão
+  2991/2025-Plenário"; processo "021.706/2025-5"), `textoParaBase`,
+  `guardarAcordao` (insere/atualiza `base_normativa` fonte `tcu`, `detalhe`
+  com key, processo, origem e `texto_completo: true`).
+- Edge `tcu-pesquisa` (qualquer usuário logado): `pesquisar` devolve total,
+  documentos, facetas e quais já estão na base; `guardar` traz o acórdão
+  inteiro (sumário, acórdão, voto, relatório) para a base com service role.
+- Tela: `PesquisaTcu.tsx` (dentro de `PesquisaNormativa`, fonte TCU, botão
+  "No portal do TCU (ao vivo)" é o padrão; "Guardados na base" é a busca
+  local). Ajuda de operadores, facetas clicáveis, `<mark>` no trecho, PDF/
+  documento/portal, "Guardar na base".
+- Redação (`juridico-redigir`): ferramenta `jurisprudencia_tcu` pesquisa ao
+  vivo (5 resultados), busca cada um inteiro e GUARDA na base antes de
+  devolver — por isso a IA pode citá-los (`na_base: true`). Nunca acórdão de
+  memória.
+
 ## Assinatura × Stripe — o preço se acha pelo valor e pelo ciclo (25/09/2026)
 
 Os doze ids `price_…` gravados em `src/data/stripe-config.ts` (março, pelo

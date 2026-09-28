@@ -9,7 +9,7 @@ export const NOME_DA_FONTE: Record<string, string> = {
 };
 export const DESCRICAO_DA_FONTE: Record<Fonte, string> = {
   planalto: 'leis acompanhadas, artigo por artigo, texto compilado',
-  tcu: 'acórdãos, pela API de dados abertos',
+  tcu: 'acórdãos — ao vivo no portal (Pesquisa Integrada) ou os guardados na base',
   dou: 'atos da seção 1 do Diário Oficial da União',
 };
 

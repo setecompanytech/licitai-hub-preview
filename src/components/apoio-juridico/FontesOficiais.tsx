@@ -20,7 +20,7 @@ import PesquisaNormativa from './PesquisaNormativa';
  */
 type Coleta = { fonte: string; iniciado_em: string; concluido_em: string | null; documentos: number; novos: number; alterados: number; erros: string[] };
 
-const NOME_DA_FONTE: Record<string, string> = { planalto: 'Planalto — leis acompanhadas', tcu: 'TCU — acórdãos (dados abertos)', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
+const NOME_DA_FONTE: Record<string, string> = { planalto: 'Planalto — leis acompanhadas', tcu: 'TCU — acórdãos guardados', dou: 'DOU — seção 1', ioepa: 'IOEPA — Diário do Pará', manual: 'Enviados à mão' };
 const dataBr = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 
 type Leitor = {
@@ -90,7 +90,7 @@ export default function FontesOficiais() {
         )}
       </div>
       <p className="text-sm text-muted-foreground">
-        A base que a redação pode citar: leis acompanhadas lidas do Planalto artigo por artigo, acórdãos recentes do TCU e atos da seção 1 do DOU. Lida todo dia, sem IA. O que não está aqui a peça marca como "a confirmar".
+        A base que a redação pode citar: leis acompanhadas lidas do Planalto artigo por artigo, acórdãos do TCU (os recentes chegam todo dia; qualquer outro você pesquisa ao vivo no portal e guarda) e atos da seção 1 do DOU. Sem IA. O que não está aqui a peça marca como "a confirmar".
       </p>
       <div className="grid gap-3 md:grid-cols-3">
         {fontes.map((f) => {

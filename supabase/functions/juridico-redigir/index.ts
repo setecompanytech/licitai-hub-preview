@@ -10,6 +10,7 @@
 // tool_event), então o front usa o mesmo leitor.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { NORMAS_CONFERIDAS } from '../_shared/normas-conferidas.ts';
+import { documentoTcu, filtroDoTcu, guardarAcordao, pesquisarTcu, type EscritorDaBase } from '../_shared/tcu-pesquisa.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,9 +40,10 @@ VOCÊ TEM FERRAMENTAS. Use-as ANTES de afirmar qualquer fato do caso:
 - buscar_base_juridica: documentos, acórdãos e pareceres que a empresa guardou na Base Jurídica.
 - normas_conferidas: a lista de dispositivos legais conferidos contra o texto oficial, com a síntese de cada um.
 - texto_da_norma: o artigo INTEIRO e literal de uma lei acompanhada (Lei 14.133/2021, 10.192/2001, LC 123/2006, 8.906/1994, 12.016/2009, 4.320/1964, Decreto 11.462/2023), lido do Planalto pela base normativa. Prefira-o a citar de memória.
+- jurisprudencia_tcu: pesquisa AO VIVO na Pesquisa Integrada do TCU (os mesmos 500 mil acórdãos do portal), com termo e filtros opcionais (ano, colegiado, relator). Devolve número, ano, colegiado, relator, data da sessão, sumário e o trecho do acórdão em que o termo aparece, e GUARDA cada acórdão devolvido na base normativa — por isso ele pode ser citado. Use-a sempre que a peça precisar de jurisprudência do TCU: nunca cite acórdão de memória.
 
 REGRA DE OURO — NOTAS DE ORIGEM. Toda afirmação de fato ou de direito leva um marcador ao fim da frase:
-- [[norma:Lei 14.133/2021, art. 136, I]] para dispositivo legal, súmula ou acórdão. Cite SOMENTE dispositivos que estejam em normas_conferidas, que texto_da_norma tenha devolvido, ou que buscar_base_juridica / documento anexado traga literalmente (acórdão do TCU só com número, ano e colegiado vindos da base). Fora disso, escreva "(a confirmar)" e o marcador mesmo assim — o sistema o mostrará como não conferido.
+- [[norma:Lei 14.133/2021, art. 136, I]] para dispositivo legal, súmula ou acórdão. Cite SOMENTE dispositivos que estejam em normas_conferidas, que texto_da_norma tenha devolvido, ou que buscar_base_juridica / jurisprudencia_tcu / documento anexado traga literalmente (acórdão do TCU só com número, ano e colegiado vindos de jurisprudencia_tcu ou da base — ex.: [[norma:Acórdão 2991/2025-Plenário]]). Fora disso, escreva "(a confirmar)" e o marcador mesmo assim — o sistema o mostrará como não conferido.
 - [[fonte:sistema]] para dado lido pelas ferramentas ou pelos "dados do caso lidos do sistema".
 - [[fonte:anexo|nome do documento, página ou cláusula]] para fato tirado de documento anexado.
 - [[fonte:base|id|título]] para documento da Base Jurídica.
@@ -74,6 +76,19 @@ const TOOLS = [
     name: 'buscar_base_juridica',
     description: 'Busca na Base Jurídica da empresa (documentos que ela guardou) e na jurisprudência coletada, por termo no título ou na ementa.',
     input_schema: { type: 'object', properties: { termo: { type: 'string' } }, required: ['termo'] },
+  },
+  {
+    name: 'jurisprudencia_tcu',
+    description: 'Pesquisa ao vivo na Pesquisa Integrada do TCU e guarda os acórdãos devolvidos na base normativa. Termo com os operadores do portal (e, ou, adj, não, prox, $ para radical; aspas para expressão exata). Filtros opcionais: ano, colegiado (Plenário, Primeira Câmara, Segunda Câmara), relator, número.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        termo: { type: 'string', description: 'ex.: "atestado de capacidade técnica" adj quantitativo' },
+        ano: { type: 'string' }, colegiado: { type: 'string' }, relator: { type: 'string' }, numero: { type: 'string' },
+        ordem: { type: 'string', enum: ['relevancia', 'recentes', 'antigos'] },
+      },
+      required: ['termo'],
+    },
   },
   {
     name: 'texto_da_norma',
@@ -142,6 +157,31 @@ async function executarTool(nome: string, args: Record<string, unknown>, db: Db)
     const linhas = (data ?? []) as Array<{ identificador: string; dispositivo: string | null; texto: string; url: string | null; atualizado_em: string }>;
     if (linhas.length === 0) return { erro: 'Dispositivo não está na base normativa: não o cite como certo. Verifique o número ou use normas_conferidas.' };
     return { normas: linhas.map((l) => ({ ...l, texto: l.texto.slice(0, 12000) })) };
+  }
+  if (nome === 'jurisprudencia_tcu') {
+    const termo = String(args.termo ?? '').trim().slice(0, 300);
+    const filtro = filtroDoTcu({ ano: String(args.ano ?? ''), colegiado: String(args.colegiado ?? ''), relator: String(args.relator ?? ''), numero: String(args.numero ?? '') });
+    if (!termo && !filtro) return { erro: 'informe um termo ou um filtro' };
+    const ordem = (['relevancia', 'recentes', 'antigos'].includes(String(args.ordem)) ? String(args.ordem) : 'relevancia') as 'relevancia' | 'recentes' | 'antigos';
+    const r = await pesquisarTcu({ termo, filtro, ordem, quantidade: 5, inicio: 0 });
+    if (r.total === 0) return { total: 0, aviso: 'O TCU não devolveu acórdão para esta pesquisa: não cite jurisprudência do TCU sobre este ponto sem outra fonte.', sugestao: r.sugestao };
+    // Cada acórdão devolvido vai inteiro para a base: a citação nasce lastreada.
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const escritor = serviceKey ? createClient(Deno.env.get('SUPABASE_URL')!, serviceKey) as unknown as EscritorDaBase : null;
+    const acordaos = await Promise.all(r.documentos.map(async (d) => {
+      try {
+        const completo = await documentoTcu(d.key);
+        if (!completo) return { identificador: `Acórdão ${d.numero}/${d.ano}-${d.colegiado}`, relator: d.relator, data_sessao: d.data_sessao_br, trechos: d.fragmentos, url: d.url_portal, na_base: false };
+        const g = escritor ? await guardarAcordao(escritor, completo, { origem: 'redacao' }) : null;
+        return {
+          identificador: g?.identificador ?? `Acórdão ${d.numero}/${d.ano}-${d.colegiado}`, relator: completo.relator, data_sessao: completo.data_sessao_br, processo: completo.processo,
+          sumario: completo.sumario.slice(0, 1500), acordao: completo.acordao.slice(0, 3000), trechos: d.fragmentos, url: d.url_portal, na_base: Boolean(g), id_na_base: g?.id ?? null,
+        };
+      } catch (e) {
+        return { identificador: `Acórdão ${d.numero}/${d.ano}-${d.colegiado}`, erro: e instanceof Error ? e.message : String(e), na_base: false };
+      }
+    }));
+    return { total: r.total, mostrados: acordaos.length, acordaos, aviso: 'Cite só os acórdãos com na_base=true, pelo identificador exato.' };
   }
   if (nome === 'buscar_base_juridica') {
     const termo = String(args.termo ?? '').trim().slice(0, 80);

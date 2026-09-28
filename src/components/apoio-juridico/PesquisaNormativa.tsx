@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SeloSituacao from '@/components/gestao/SeloSituacao';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Loader2, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Loader2, ExternalLink, ChevronLeft, ChevronRight, Radio } from 'lucide-react';
+import PesquisaTcu from './PesquisaTcu';
 import {
   DESCRICAO_DA_FONTE, FILTROS_INICIAIS, FONTES, NOME_DA_FONTE, POR_PAGINA, facetasPorNome, parametrosDaPesquisa, pesquisaValida, rotuloDoRegistro,
   type Faceta, type Filtros, type Fonte, type Registro,
@@ -32,6 +33,8 @@ export default function PesquisaNormativa({ totais }: { totais?: Record<string, 
   const [porFonte, setPorFonte] = useState<Record<string, Registro[]> | null>(null);
   const [facetas, setFacetas] = useState<Record<string, Array<{ valor: string; quantidade: number }>>>({});
   const [ultima, setUltima] = useState<Filtros | null>(null);
+  // TCU: o portal ao vivo (Pesquisa Integrada) é o padrão; "guardados" é a base local.
+  const [tcuAoVivo, setTcuAoVivo] = useState(true);
 
   const pesquisar = async (filtros: Filtros = f) => {
     const erro = pesquisaValida(filtros);
@@ -58,7 +61,7 @@ export default function PesquisaNormativa({ totais }: { totais?: Record<string, 
   };
   const mudar = (parte: Partial<Filtros>) => setF((atual) => ({ ...atual, ...parte, pagina: 1 }));
   const irPara = (pagina: number) => { const n = { ...f, pagina }; setF(n); void pesquisar(n); };
-  const escolherFonte = (fonte: Fonte | null) => { const n = { ...f, fonte, identificador: null, tipo: null, pagina: 1 }; setF(n); if (ultima) void pesquisar(n); };
+  const escolherFonte = (fonte: Fonte | null) => { const n = { ...f, fonte, identificador: null, tipo: null, pagina: 1 }; setF(n); if (ultima && !(fonte === 'tcu' && tcuAoVivo)) void pesquisar(n); };
 
   const totalDe = (fonte: string) => porFonte?.[fonte]?.[0]?.total ?? 0;
   const opcoesDeTipo = f.fonte === 'planalto' ? (facetas.diploma ?? []) : f.fonte === 'tcu' ? (facetas.colegiado ?? []) : f.fonte === 'dou' ? (facetas.tipo ?? []) : [];
@@ -117,7 +120,16 @@ export default function PesquisaNormativa({ totais }: { totais?: Record<string, 
             ))}
           </div>
         </div>
-        {f.fonte && (
+        {f.fonte === 'tcu' && (
+          <div className="space-y-1.5">
+            <Label>Onde</Label>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Onde pesquisar no TCU">
+              <Button size="sm" variant={tcuAoVivo ? 'default' : 'outline'} aria-pressed={tcuAoVivo} onClick={() => setTcuAoVivo(true)} title="A Pesquisa Integrada do TCU, ao vivo: todos os acórdãos, com operadores, filtros e facetas"><Radio aria-hidden="true" /> No portal do TCU (ao vivo)</Button>
+              <Button size="sm" variant={!tcuAoVivo ? 'default' : 'outline'} aria-pressed={!tcuAoVivo} onClick={() => setTcuAoVivo(false)} title="Só o que já está guardado na base normativa">Guardados na base{totais ? ` · ${(totais.tcu ?? 0).toLocaleString('pt-BR')}` : ''}</Button>
+            </div>
+          </div>
+        )}
+        {f.fonte && !(f.fonte === 'tcu' && tcuAoVivo) && (
           <div className="min-w-56 space-y-1.5">
             <Label htmlFor="pn-tipo">{rotuloDoTipo}</Label>
             <Select value={(f.fonte === 'planalto' ? f.identificador : f.tipo) ?? '__todos__'} onValueChange={(v) => mudar(f.fonte === 'planalto' ? { identificador: v === '__todos__' ? null : v } : { tipo: v === '__todos__' ? null : v })}>
@@ -130,10 +142,12 @@ export default function PesquisaNormativa({ totais }: { totais?: Record<string, 
             {opcoesDeTipo.length === 0 && <p className="g-meta text-muted-foreground">As opções aparecem depois da primeira pesquisa nesta fonte.</p>}
           </div>
         )}
-        <Button onClick={() => pesquisar()} disabled={buscando}>{buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />} Pesquisar</Button>
+        {!(f.fonte === 'tcu' && tcuAoVivo) && <Button onClick={() => pesquisar()} disabled={buscando}>{buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Search aria-hidden="true" />} Pesquisar</Button>}
       </div>
 
-      {porFonte && ultima && (
+      {f.fonte === 'tcu' && tcuAoVivo && <PesquisaTcu key={f.termo} termoInicial={f.termo} />}
+
+      {porFonte && ultima && !(f.fonte === 'tcu' && tcuAoVivo) && (
         ultima.fonte ? (
           <div className="space-y-2" data-testid="resultado-por-fonte">
             <p className="text-sm text-foreground">
@@ -159,7 +173,8 @@ export default function PesquisaNormativa({ totais }: { totais?: Record<string, 
                   <p className="text-sm font-semibold text-foreground">{NOME_DA_FONTE[fonte]} <span className="font-normal text-muted-foreground">· {DESCRICAO_DA_FONTE[fonte]}</span></p>
                   <div className="flex items-center gap-2">
                     <span className="g-meta tabular-nums text-muted-foreground">{totalDe(fonte).toLocaleString('pt-BR')} registro(s)</span>
-                    {totalDe(fonte) > (porFonte[fonte]?.length ?? 0) && <Button size="sm" variant="ghost" onClick={() => escolherFonte(fonte)}>Ver todos</Button>}
+                    {fonte === 'tcu' && <Button size="sm" variant="ghost" onClick={() => { setTcuAoVivo(true); escolherFonte('tcu'); }}><Radio aria-hidden="true" /> Pesquisar ao vivo no TCU</Button>}
+                    {totalDe(fonte) > (porFonte[fonte]?.length ?? 0) && <Button size="sm" variant="ghost" onClick={() => { if (fonte === 'tcu') setTcuAoVivo(false); escolherFonte(fonte); }}>Ver todos</Button>}
                   </div>
                 </div>
                 {totalDe(fonte) === 0
