@@ -14,6 +14,7 @@ import { ordenarCandidatos, PONTOS_PARA_SUGERIR, type TituloCandidato } from '@/
 import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
+import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
@@ -82,17 +83,9 @@ function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onS
 type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null; produto_id?: string | null };
 type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
 
-const getOrigemLabel = (item: ContratoItem, aditivos: AditivoRef[]): string => {
-  if (!item.origem_aditivo_id) return '📄 Contrato Original';
-  const ad = aditivos.find(a => a.id === item.origem_aditivo_id);
-  return ad ? `📎 ${ad.numero_aditivo}` : '📎 Aditivo';
-};
-
-/** Chave de agrupamento para identificar o mesmo item físico entre versões */
-function itemGroupKey(item: ContratoItem): string {
-  return item.codigo_item?.toLowerCase().trim()
-    || item.descricao.toLowerCase().trim();
-}
+// O rótulo do item nos seletores vem da SITUAÇÃO (último termo aplicado à
+// linha, `lib/contratos/situacao-do-item.ts`), não da camada que a criou:
+// "[Contrato Original]" em item reajustado por três termos foi o erro de 28/09.
 type Pedido = {
   id: string; numero_pedido: string; descricao: string | null;
   contrato_item_id: string | null; quantidade: number; valor_unitario: number;
@@ -439,7 +432,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     empenho_id: '',
     tipo_documento: 'ordem_fornecimento', origem_aditivo_id: '',
   });
-  const [origemFilter, setOrigemFilter] = useState<string>('__todos__');
+  const [origemFilter, setOrigemFilter] = useState<string>(FILTRO_TODOS);
+  const [situacaoDosItens, setSituacaoDosItens] = useState<Map<string, SituacaoDoItem>>(new Map());
   const [ataSrpId, setAtaSrpId] = useState<string | null>(null);
   // Forma de execução declarada da ATA — é o que permite apontar o parcelamento.
   const [dadosExecucao, setDadosExecucao] = useState<{ forma: string | null; fundamento: string | null }>(
@@ -812,6 +806,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
+    // As linhas de termo aplicadas: é o que diz "3º TA" no seletor de itens.
+    const { data: linhasAplicadas } = await supabase
+      .from('contrato_aditivo_itens' as never)
+      .select('contrato_item_id, aditivo_id, aplicado_em, aditivo:contrato_aditivos(numero_aditivo)')
+      .eq('contrato_id', contratoId)
+      .not('aplicado_em', 'is', null);
+    setSituacaoDosItens(situacaoPorItem(((linhasAplicadas ?? []) as unknown as Array<{ contrato_item_id: string | null; aditivo_id: string; aplicado_em: string | null; aditivo: { numero_aditivo: string | null } | null }>)
+      .map((l): LinhaAplicada => ({ contrato_item_id: l.contrato_item_id, aditivo_id: l.aditivo_id, aplicado_em: l.aplicado_em, numero_aditivo: l.aditivo?.numero_aditivo ?? null }))));
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
     setSaldoDoContrato(Number((contratoRes.data as any)?.saldo_remanescente ?? 0));
     setContratoInfo({
@@ -931,49 +933,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contratoId]);
 
-  /**
-   * Filtra itens de acordo com a origem selecionada, usando lógica de mesclagem:
-   * - "Todos": mostra todos os registros individuais
-   * - "Contrato Original": apenas itens sem origem_aditivo_id
-   * - "Aditivo X": mostra a versão EFETIVA de cada item físico no nível desse aditivo
-   *   (itens modificados pelo aditivo X com os novos valores + itens não tocados com valores originais)
-   *   Isso garante que o usuário veja TODOS os itens disponíveis com os preços corretos da época do aditivo.
-   */
-  const itensFiltrados = useMemo((): ContratoItem[] => {
-    if (origemFilter === '__todos__') return itens;
-    if (origemFilter === '__contrato__') return itens.filter(i => !i.origem_aditivo_id);
-
-    const aditivoIdx = aditivos.findIndex(a => a.id === origemFilter);
-    if (aditivoIdx < 0) return itens;
-
-    // Aditivos "em escopo" até o selecionado (inclusive)
-    const aditivoIdsEmEscopo = new Set(aditivos.slice(0, aditivoIdx + 1).map(a => a.id));
-
-    // Agrupa por item físico
-    const grupos = new Map<string, ContratoItem[]>();
-    for (const item of itens) {
-      const key = itemGroupKey(item);
-      if (!grupos.has(key)) grupos.set(key, []);
-      grupos.get(key)!.push(item);
-    }
-
-    const resultado: ContratoItem[] = [];
-    for (const grupo of grupos.values()) {
-      // Versões válidas até o aditivo selecionado: original + aditivos anteriores e o selecionado
-      const emEscopo = grupo.filter(i => !i.origem_aditivo_id || aditivoIdsEmEscopo.has(i.origem_aditivo_id));
-      if (emEscopo.length === 0) continue;
-
-      // Pega a versão mais recente em escopo: ordena por índice do aditivo (original = -1)
-      const ordenado = [...emEscopo].sort((a, b) => {
-        const ia = a.origem_aditivo_id ? aditivos.findIndex(x => x.id === a.origem_aditivo_id) : -1;
-        const ib = b.origem_aditivo_id ? aditivos.findIndex(x => x.id === b.origem_aditivo_id) : -1;
-        return ib - ia; // maior índice primeiro
-      });
-      resultado.push(ordenado[0]); // o mais recente em escopo
-    }
-
-    return resultado;
-  }, [itens, aditivos, origemFilter]);
+  /** Itens do seletor pelo filtro de situação: todos, nunca alterados, ou atualizados por um termo. */
+  const itensFiltrados = useMemo((): ContratoItem[] => filtrarPorSituacao(itens, situacaoDosItens, origemFilter), [itens, situacaoDosItens, origemFilter]);
+  const termosNoFiltro = useMemo(() => termosDoFiltro(situacaoDosItens), [situacaoDosItens]);
 
   const handleItemChange = (itemId: string) => {
     setForm(f => {
@@ -2332,7 +2294,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             {
               rotulo: 'Origem do item',
               valor: itemDoPedido
-                ? getOrigemLabel(itemDoPedido, aditivos)
+                ? (situacaoDosItens.get(itemDoPedido.id) ? `Atualizado pelo ${situacaoDosItens.get(itemDoPedido.id)!.rotulo}` : 'Contrato original, sem termo aplicado')
                 : <ValorIndisponivel razao="Pedido sem item vinculado" />,
             },
             {
@@ -3528,7 +3490,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   {itens.map(i => (
                                     <SelectItem key={i.id} value={i.id} className="g-meta">
                                       <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                        <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                        <span className="text-muted-foreground mr-1">[{rotuloDoItemNoSeletor(i, situacaoDosItens.get(i.id))}]</span>
                                         {i.descricao}
                                       </span>
                                     </SelectItem>
@@ -3638,14 +3600,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   )}
                   {fonteItens === 'contrato' && (
                     <div className="space-y-1.5">
-                      <Label>Origem do Pedido</Label>
-                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: v === '__todos__' || v === '__contrato__' ? '' : v })); }}>
-                        <SelectTrigger><SelectValue placeholder="Filtrar por origem" /></SelectTrigger>
+                      <Label>Situação do item</Label>
+                      <Select value={origemFilter} onValueChange={v => { setOrigemFilter(v); setForm(f => ({ ...f, contrato_item_id: '', origem_aditivo_id: '' })); }}>
+                        <SelectTrigger><SelectValue placeholder="Filtrar por situação" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__todos__">Todos os Itens</SelectItem>
-                          <SelectItem value="__contrato__">Contrato Original</SelectItem>
-                          {aditivos.map((a, idx) => (
-                            <SelectItem key={a.id} value={a.id}>{`${idx + 1}º Termo Aditivo`} ({a.tipo})</SelectItem>
+                          <SelectItem value={FILTRO_TODOS}>Todos os itens ({itens.length})</SelectItem>
+                          <SelectItem value={FILTRO_ORIGINAL}>Nunca alterados por termo ({itens.filter(i => !situacaoDosItens.has(i.id)).length})</SelectItem>
+                          {termosNoFiltro.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>Atualizados pelo {t.rotulo} ({t.itens})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -3673,7 +3635,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           {itensFiltrados.map(i => (
                             <SelectItem key={i.id} value={i.id}>
                               <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                                <span className="text-muted-foreground mr-1">[{situacaoDosItens.get(i.id)?.rotuloCurto ?? 'Original'}]</span>
                                 {i.descricao} ({i.unidade}) — {fmt(i.valor_unitario)}
                               </span>
                             </SelectItem>
@@ -3911,7 +3873,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     {itens.map(i => (
                       <SelectItem key={i.id} value={i.id}>
                         <span className="block max-w-[500px] truncate" title={i.descricao}>
-                          <span className="text-muted-foreground mr-1">[{getOrigemLabel(i, aditivos)}]</span>
+                          <span className="text-muted-foreground mr-1">[{situacaoDosItens.get(i.id)?.rotuloCurto ?? 'Original'}]</span>
                           {i.descricao} ({fmt(i.valor_unitario)}/{i.unidade})
                         </span>
                       </SelectItem>

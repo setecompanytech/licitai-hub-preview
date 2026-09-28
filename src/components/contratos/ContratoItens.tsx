@@ -759,8 +759,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
         aoLimpar={() => { setBusca(''); setSituacao('todas'); }}
         acao={
           <>
-            {/* Toggle de visão mesclada / todos os registros */}
-            {aditivos.length > 0 && (
+            {/* Toggle de visão mesclada / todos os registros — só faz sentido
+                quando há CAMADAS (linhas criadas por aditivo, modelo antigo).
+                O termo item a item altera a mesma linha; sem camada, o botão
+                prometia uma "atualização" que não mudava nada (28/09). */}
+            {itens.some((i) => i.origem_aditivo_id) && (
               <Button
                 size="sm"
                 variant={consolidado ? 'secondary' : 'outline'}

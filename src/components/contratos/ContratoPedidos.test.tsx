@@ -42,7 +42,7 @@ const { dados } = vi.hoisted(() => ({
 function consulta(linhas: Linha[] | Linha | null) {
   const resultado = { data: linhas, error: null };
   const builder: Record<string, unknown> = {};
-  for (const metodo of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq']) {
+  for (const metodo of ['select', 'eq', 'is', 'in', 'order', 'limit', 'neq', 'not', 'gte', 'lte']) {
     builder[metodo] = () => builder;
   }
   builder.single = () =>
