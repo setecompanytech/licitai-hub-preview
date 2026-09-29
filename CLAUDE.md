@@ -819,3 +819,18 @@ comum. Ao rodar testes de componente, NÃO mascarar o exit do vitest com
 `| tail` sem `set -o pipefail` — foi assim que um teste ficou vermelho de
 28.10 a 28.11 sem ninguém ver.
 
+### Nota com vários itens: partes sem título, título único do lote (29/09/2026)
+
+`FinExtracaoDocumentos` com 2+ itens marcados: cada parte nasce pela RPC
+`vincular_lancamento_a_pedido` com `p_criar_titulo: false`, todas com o mesmo
+`lote_id`; o título é UM (`financeiro_lancamentos.lote_id`, migration
+20260929000002), sem `contrato_pedido_id`; o gatilho
+`trg_titulo_do_lote_rateia` mantém `financeiro_lancamento_rateios`
+proporcionais às partes e recalcula a quitação (só conta rateio de título
+realizado/conciliado). Quantidade e unitário por item vêm de
+`VinculoContratoValue.partes` (`lib/financeiro/partes-do-vinculo.ts`:
+`partesCompletas`, `fatiasPorPartes`, `fatiasPorSaldo`, `sugerirPartes`);
+sem partes, rateio por saldo é só para cota principal + reservada, e a tela
+avisa a partir do 3º item. `ratear_lancamento_em_pedidos` (RPC) exige
+título baixado — por isso o rateio do lote é por gatilho, não pela RPC.
+
