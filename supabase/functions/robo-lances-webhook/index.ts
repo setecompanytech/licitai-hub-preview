@@ -2044,7 +2044,27 @@ serve(async (req) => {
         tentativas.push({ agente: null, motivo: "Nenhum agente configurado para esta sessão e segredo AGENTE_URL_BASE ausente" });
       }
 
+      // A SESSÃO QUE O AGENTE NÃO CONHECE JÁ ESTÁ PARADA (29/09/2026).
+      //
+      // O agente guarda as sessões em MEMÓRIA: um `pm2 restart` (deploy, queda,
+      // correção de código) apaga todas e o `/sessao/encerrar` passa a responder
+      // 404 "Sessão não encontrada". Até aqui esse 404 era tratado como "não
+      // confirmou", e o pedido de parada ficava órfão — esperando para sempre a
+      // resposta de alguém que não sabe mais do que se trata. A tela dizia
+      // "Parada solicitada — aguardando confirmação" sem nenhuma saída, e o
+      // único jeito era remover a disputa e recadastrar, perdendo os itens.
+      //
+      // Não estar no agente É estar parado: é o mesmo desfecho que o operador
+      // pediu. Mas só vale quando TODOS os agentes disseram não ter a sessão —
+      // ela pode viver no segundo da lista, e confirmar no primeiro 404 mataria
+      // o registro de um robô que segue operando. Por isso o 404 não interrompe
+      // o laço: anota e segue, e o veredito sai no fim.
+      //
+      // 404 de ROTA (agente antigo, sem `/sessao/encerrar`) não conta: exigimos
+      // que o corpo diga que foi a SESSÃO que não foi achada.
       let confirmadaEm: string | null = null;
+      let ausenteEm = 0;
+      let contactados = 0;
       for (const agente of agentes) {
         const base = String(agente.url_base || "").replace(/\/$/, "");
         try {
@@ -2058,22 +2078,42 @@ serve(async (req) => {
             signal: AbortSignal.timeout(15000),
           });
           const corpo = await resp.json().catch(() => ({}));
+          contactados++;
           if (resp.ok) {
             confirmadaEm = new Date().toISOString();
             tentativas.push({ agente: agente.nome, status: resp.status, confirmou: true });
             break;
           }
-          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
+          const naoTemASessao = resp.status === 404 &&
+            /sess[aã]o n[aã]o encontrada/i.test(String(corpo?.error ?? ""));
+          if (naoTemASessao) ausenteEm++;
+          tentativas.push({
+            agente: agente.nome,
+            status: resp.status,
+            motivo: corpo?.error ?? null,
+            ...(naoTemASessao ? { naoTemASessao: true } : {}),
+          });
         } catch (e) {
           tentativas.push({ agente: agente.nome, motivo: textoDoErro(e) });
         }
       }
 
+      // Todos responderam, e nenhum tem a sessão: ela não está rodando em lugar
+      // nenhum. O pedido do operador está cumprido.
+      const confirmadaPorAusencia = !confirmadaEm && contactados > 0 && ausenteEm === contactados;
+      if (confirmadaPorAusencia) confirmadaEm = new Date().toISOString();
+
       // 3. O desfecho no banco — "encerrado" SÓ com a confirmação.
       if (confirmadaEm) {
         const campos: Record<string, unknown> = {
           status: "encerrado",
-          erro: "Interrompida manualmente pelo operador",
+          // Dizer QUAL dos dois desfechos foi: o agente encerrou a sessão que
+          // tinha, ou ela já não existia nele. Os dois atendem ao pedido, mas
+          // quem for ler o histórico depois precisa saber a diferença.
+          erro: confirmadaPorAusencia
+            ? "Interrompida pelo operador — a sessão já não existia no agente " +
+              "(o serviço foi reiniciado e perdeu as sessões da memória)."
+            : "Interrompida manualmente pelo operador",
           updated_at: confirmadaEm,
         };
         if (colunasDaParada) campos.parada_confirmada_em = confirmadaEm;
