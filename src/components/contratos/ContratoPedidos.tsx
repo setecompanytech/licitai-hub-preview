@@ -2504,54 +2504,72 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     ? (agruparEmLotes(pedidos).find((l) => l.tipo === 'lote' && l.lote.id === loteSelecionado) as { tipo: 'lote'; lote: Lote<Pedido> } | undefined)?.lote ?? null
     : null;
   const empenhoDoLote = loteAberto?.empenho_id ? empenhosDoContrato.find(e => e.id === loteAberto.empenho_id) ?? null : null;
-  const painelDoLote = loteAberto ? (
-    <div className="flex flex-col gap-4" data-testid="painel-do-lote">
-      <BlocoDoPainel
-        titulo={`Lote ${loteAberto.numero}`}
-        acao={<SeloSituacao tom={tomDoStatus(loteAberto.status)}>{(statusCfg[loteAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>}
-      >
-        <p className="g-corpo leading-relaxed">{rotuloDoLote(loteAberto)}</p>
-        {loteAberto.progresso && <p className="g-meta text-muted-foreground">{loteAberto.progresso}</p>}
-      </BlocoDoPainel>
-      <BlocoDoPainel titulo="Origem">
-        <ListaDeCampos
-          campos={[
-            { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
-            { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
-            { rotulo: 'Empenho de origem', valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
-            { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
-            { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
-            { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
-            { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
-          ]}
-        />
-      </BlocoDoPainel>
-      <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
-        <p className="g-meta mb-2 text-muted-foreground">Cada parte é um pedido do item do contrato: consome o saldo dele e tem as próprias ações. Clique na parte para abri-la.</p>
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-2 py-1.5">Parte</th><th className="px-2 py-1.5">Item do contrato</th><th className="px-2 py-1.5 text-right">Qtd</th><th className="px-2 py-1.5 text-right">Valor</th><th className="px-2 py-1.5">Situação</th></tr></thead>
-            <tbody className="divide-y divide-border">
-              {loteAberto.partes.map((parte) => {
-                const item = parte.contrato_item_id ? itens.find(i => i.id === parte.contrato_item_id) ?? null : null;
-                return (
-                  <tr key={parte.id} className="hover:bg-muted/60">
-                    <td className="px-2 py-1.5 whitespace-nowrap">
-                      <button type="button" className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setPedidoSelecionado(parte.id)} title="Abrir esta parte: notas, custo e ações">{parte.numero_pedido}</button>
-                    </td>
-                    <td className="px-2 py-1.5 min-w-48"><span className="line-clamp-2" title={item?.descricao ?? parte.descricao ?? ''}>{item ? `${item.codigo_item ? `${item.codigo_item} · ` : ''}${item.descricao}` : (parte.descricao ?? '—')}</span></td>
-                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{item?.unidade ? ` ${unidadeLegivel(item.unidade)}` : ''}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmt(parte.valor_total)}</td>
-                    <td className="px-2 py-1.5"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </BlocoDoPainel>
-    </div>
-  ) : null;
+  // O lote abre numa CAIXA ampla no centro (29/09, pedido do dono), não na
+  // gaveta lateral: origem à esquerda, as partes à direita, com espaço para
+  // a tabela. A parte aberta vai para o painel do pedido, que tem as ações.
+  const abrirParteDoLote = (id: string) => { setLoteSelecionado(null); setPedidoSelecionado(id); };
+  const caixaDoLote = (
+    <Dialog open={!!loteAberto} onOpenChange={(v) => { if (!v) setLoteSelecionado(null); }}>
+      <DialogContent className="max-w-[min(96vw,84rem)] max-h-[92vh] overflow-y-auto" data-testid="painel-do-lote">
+        {loteAberto && (
+          <>
+            <DialogHeader>
+              <div className="flex flex-wrap items-center gap-3">
+                <DialogTitle>Lote {loteAberto.numero}</DialogTitle>
+                <SeloSituacao tom={tomDoStatus(loteAberto.status)}>{(statusCfg[loteAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>
+                {loteAberto.progresso && <span className="g-meta text-muted-foreground">{loteAberto.progresso}</span>}
+              </div>
+              <DialogDescription>{rotuloDoLote(loteAberto)} — cada parte é um pedido do item do contrato: consome o saldo dele e tem as próprias ações.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+              <BlocoDoPainel titulo="Origem">
+                <ListaDeCampos
+                  campos={[
+                    { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
+                    { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
+                    { rotulo: 'Empenho de origem', largo: true, valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
+                    { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
+                    { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
+                    { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
+                    { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
+                  ]}
+                />
+              </BlocoDoPainel>
+              <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-3 py-2">Parte</th><th className="px-3 py-2">Item do contrato</th><th className="px-3 py-2 text-right">Qtd</th><th className="px-3 py-2 text-right">Unitário</th><th className="px-3 py-2 text-right">Valor</th><th className="px-3 py-2">Situação</th><th className="px-3 py-2"></th></tr></thead>
+                    <tbody className="divide-y divide-border">
+                      {loteAberto.partes.map((parte) => {
+                        const item = parte.contrato_item_id ? itens.find(i => i.id === parte.contrato_item_id) ?? null : null;
+                        return (
+                          <tr key={parte.id} className="hover:bg-muted/60">
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <button type="button" className="rounded font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => abrirParteDoLote(parte.id)} title="Abrir esta parte: notas, custo e ações">{parte.numero_pedido}</button>
+                            </td>
+                            <td className="px-3 py-2 min-w-64"><span className="line-clamp-2" title={item?.descricao ?? parte.descricao ?? ''}>{item ? `${item.codigo_item ? `${item.codigo_item} · ` : ''}${item.descricao}` : (parte.descricao ?? '—')}</span></td>
+                            <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{item?.unidade ? ` ${unidadeLegivel(item.unidade)}` : ''}</td>
+                            <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(Number(parte.valor_unitario) || 0)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(parte.valor_total)}</td>
+                            <td className="px-3 py-2"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
+                            <td className="px-3 py-2 whitespace-nowrap"><Button size="sm" variant="outline" className="h-7" onClick={() => abrirParteDoLote(parte.id)}>Abrir</Button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-secondary"><tr className="text-sm font-semibold"><td className="px-3 py-2" colSpan={4}>Total do lote</td><td className="px-3 py-2 text-right tabular-nums">{fmt(loteAberto.valor_total)}</td><td colSpan={2}></td></tr></tfoot>
+                  </table>
+                </div>
+              </BlocoDoPainel>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLoteSelecionado(null)}>Fechar</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 
   // ── A auditoria dos lançamentos: o alerta que fica ────────────────────────
   // Política definida em 01/09 sobre o caso real: uma NF-e com VU errado
@@ -2722,9 +2740,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </Card>
           ) : (
             <AreaComPainel
-              painel={pedidoAberto ? painelDoPedido : painelDoLote}
-              tituloPainel={pedidoAberto ? 'Detalhe do pedido' : 'Detalhe do lote'}
-              aoFechar={() => { setPedidoSelecionado(null); setLoteSelecionado(null); }}
+              painel={painelDoPedido}
+              tituloPainel="Detalhe do pedido"
+              aoFechar={() => setPedidoSelecionado(null)}
             >
               {pedidosFiltrados.length === 0 ? (
                 <Card>
@@ -4275,6 +4293,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         onFechar={() => setMovimentando(null)}
         onMudou={() => load()}
       />
+
+      {caixaDoLote}
 
       <EditarEmpenhoDialog
         empenho={editandoEmpenho}
