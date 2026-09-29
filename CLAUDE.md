@@ -600,6 +600,19 @@ portais no ar, checklist — *"configurações internas do desenvolvedor do
 sistema"*. Ele não apontou a tela remota, e é ele quem clica o captcha toda
 manhã, pelo login da Santa Rosa; um segundo login para isso seria atrito
 diário, e captcha perdido é disputa perdida.
+
+> ⚠️ **A tela remota no login dele é decisão NOSSA, não pedido do Rafael.** Os
+> prints não eram dessa aba; lido ao pé da letra, *"esse email … teria toda
+> essa visualização"* também a levaria para o `engsoft@`. Perguntado a ele em
+> 23/09, sem resposta até agora. O Giovanny (23/09) lê a demanda do robô como
+> **permissão configurável** ("o próprio Santa Rosa pode ver se tiver
+> permissão") e separa dela a **restrição por e-mail**, que é sobre OUTRAS
+> funcionalidades e é frente dele. Enquanto o Rafael não responde, o corte
+> fica como está. Caminho da variante por permissão, se ele pedir: valor novo
+> em `app_role` + `sou_conta_de_engenharia()` como `has_role(…,'engenharia')
+> OR (regra atual)` — **sem** tocar nos gatilhos da `20260919000003`, que
+> precisam continuar na regra por fato, senão conceder a permissão técnica à
+> `comercial@gruposantarosa` a barraria de criar empresa.
 - **Operação — todo admin da plataforma**, a Santa Rosa sem segunda conta:
   Sessões e tela remota, Avisos aos clientes, Histórico do robô, o toast da
   tela remota e os avisos de captcha / "assistir ao vivo" / "robô entrando".
@@ -659,8 +672,10 @@ Passos da conta de engenharia:
      `20260919000007` **aplicada e conferida em 19/09** (a operação volta a
      todo admin; `pg_policies`: 4 regras de operação com `has_role`, 2 da
      oficina com `sou_conta_de_engenharia()` — agentes e registro de chamadas);
-   - **tela** — local: as abas da oficina, e o toast de volta a todo admin;
-   - **servidor** — **pronto local, pendente de deploy**:
+   - **tela** — as abas da oficina, e o toast de volta a todo admin. **No ar
+     desde 22/09**, de carona: a leva da XFIN (Design System v3, 94 commits)
+     nasceu em cima do commit `bcf9c068` e foi publicada com ele;
+   - **servidor** — **deploy feito em 19/09**:
      - `verDetalhe` para o cru, `ehAdmin` para a operação;
      - healthcheck: completo para a engenharia; reduzido para quem opera, com
        as sessões e os pedidos de toda empresa;
