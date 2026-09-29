@@ -346,6 +346,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   /** Pedido aberto no painel lateral — detalhe sem tirar a pessoa da lista. */
   const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null);
   const [loteSelecionado, setLoteSelecionado] = useState<string | null>(null);
+  // Ordem das partes na caixa do lote pelo NÚMERO do item do contrato (1, 2, 3…), crescente ou decrescente.
+  const [ordemDoLote, setOrdemDoLote] = useState<'asc' | 'desc'>('asc');
   /**
    * Identificação do contrato para o painel do pedido. Vem das MESMAS colunas
    * do `select` que a aba já fazia — nenhuma consulta nova; só duas colunas a
@@ -2538,26 +2540,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
-                    <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-3 py-2">Parte</th><th className="px-3 py-2">Item do contrato</th><th className="px-3 py-2 text-right">Qtd</th><th className="px-3 py-2 text-right">Unitário</th><th className="px-3 py-2 text-right">Valor</th><th className="px-3 py-2">Situação</th><th className="px-3 py-2"></th></tr></thead>
+                    <thead className="bg-secondary">
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="px-3 py-2 whitespace-nowrap" aria-sort={ordemDoLote === 'asc' ? 'ascending' : 'descending'}>
+                          <button type="button" className="inline-flex items-center gap-1 rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setOrdemDoLote((o) => (o === 'asc' ? 'desc' : 'asc'))} title="Ordenar pelo número do item">
+                            Item {ordemDoLote === 'asc' ? <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />}
+                          </button>
+                        </th>
+                        <th className="px-3 py-2 whitespace-nowrap">Itens do Processo</th>
+                        <th className="px-3 py-2">Descrição</th>
+                        <th className="px-3 py-2">Unidade</th>
+                        <th className="px-3 py-2 text-right">Qtd</th>
+                        <th className="px-3 py-2 text-right">Unitário</th>
+                        <th className="px-3 py-2 text-right">Valor</th>
+                        <th className="px-3 py-2">Situação</th>
+                        <th className="px-3 py-2"></th>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-border">
-                      {loteAberto.partes.map((parte) => {
-                        const item = parte.contrato_item_id ? itens.find(i => i.id === parte.contrato_item_id) ?? null : null;
-                        return (
+                      {[...loteAberto.partes]
+                        .map((parte) => ({ parte, item: parte.contrato_item_id ? itens.find(i => i.id === parte.contrato_item_id) ?? null : null }))
+                        .sort((a, b) => {
+                          // Número do item do contrato (1, 2, 3…); sem número, fica no fim, pela parte.
+                          const na = parseInt(String(a.item?.codigo_item ?? ''), 10); const nb = parseInt(String(b.item?.codigo_item ?? ''), 10);
+                          const va = Number.isFinite(na) ? na : Number.MAX_SAFE_INTEGER; const vb = Number.isFinite(nb) ? nb : Number.MAX_SAFE_INTEGER;
+                          const cmp = va - vb || a.parte.numero_pedido.localeCompare(b.parte.numero_pedido, 'pt-BR', { numeric: true });
+                          return ordemDoLote === 'asc' ? cmp : -cmp;
+                        })
+                        .map(({ parte, item }) => (
                           <tr key={parte.id} className="hover:bg-muted/60">
+                            <td className="px-3 py-2 whitespace-nowrap font-medium tabular-nums">{item?.codigo_item ?? '—'}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <button type="button" className="rounded font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => abrirParteDoLote(parte.id)} title="Abrir esta parte: notas, custo e ações">{parte.numero_pedido}</button>
                             </td>
-                            <td className="px-3 py-2 min-w-64"><span className="line-clamp-2" title={item?.descricao ?? parte.descricao ?? ''}>{item ? `${item.codigo_item ? `${item.codigo_item} · ` : ''}${item.descricao}` : (parte.descricao ?? '—')}</span></td>
-                            <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{item?.unidade ? ` ${unidadeLegivel(item.unidade)}` : ''}</td>
+                            <td className="px-3 py-2 min-w-64"><span className="line-clamp-2" title={item?.descricao ?? parte.descricao ?? ''}>{item ? item.descricao : (parte.descricao ?? '—')}</span></td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item?.unidade ? unidadeLegivel(item.unidade) : '—'}</td>
+                            <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</td>
                             <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(Number(parte.valor_unitario) || 0)}</td>
                             <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(parte.valor_total)}</td>
                             <td className="px-3 py-2"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
                             <td className="px-3 py-2 whitespace-nowrap"><Button size="sm" variant="outline" className="h-7" onClick={() => abrirParteDoLote(parte.id)}>Abrir</Button></td>
                           </tr>
-                        );
-                      })}
+                        ))}
                     </tbody>
-                    <tfoot className="bg-secondary"><tr className="text-sm font-semibold"><td className="px-3 py-2" colSpan={4}>Total do lote</td><td className="px-3 py-2 text-right tabular-nums">{fmt(loteAberto.valor_total)}</td><td colSpan={2}></td></tr></tfoot>
+                    <tfoot className="bg-secondary"><tr className="text-sm font-semibold"><td className="px-3 py-2" colSpan={6}>Total do lote</td><td className="px-3 py-2 text-right tabular-nums">{fmt(loteAberto.valor_total)}</td><td colSpan={2}></td></tr></tfoot>
                   </table>
                 </div>
               </BlocoDoPainel>

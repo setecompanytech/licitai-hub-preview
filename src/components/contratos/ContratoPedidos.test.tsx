@@ -294,7 +294,16 @@ describe('Lote de pedidos (29/09) — a nota rateada em N itens é uma linha só
     const painel = await screen.findByTestId('painel-do-lote');
     expect(within(painel).getByText('Lote 595')).toBeInTheDocument();
     expect(within(painel).getByText('Itens do lote (2)')).toBeInTheDocument();
-    expect(within(painel).getByText(/IT-2 · Segundo item/)).toBeInTheDocument();
+    expect(within(painel).getByText('Segundo item')).toBeInTheDocument();
+    expect(within(painel).getByText('Itens do Processo')).toBeInTheDocument();
+    expect(within(painel).getByText('Descrição')).toBeInTheDocument();
+    expect(within(painel).getByText('Unidade')).toBeInTheDocument();
+    // Ordem pelo número do item: IT-1/IT-2 não são numéricos → cai na parte; clicar em "Item" inverte.
+    const linhasAntes = within(painel).getAllByRole('row').slice(1, 3).map((r) => r.textContent ?? '');
+    expect(linhasAntes[0]).toContain('595-1');
+    fireEvent.click(within(painel).getByRole('button', { name: /^Item/ }));
+    const linhasDepois = within(painel).getAllByRole('row').slice(1, 3).map((r) => r.textContent ?? '');
+    expect(linhasDepois[0]).toContain('595-2');
     fireEvent.click(within(painel).getByText('595-2'));
     await waitFor(() => expect(screen.getByText('Pedido 595-2')).toBeInTheDocument());
     fireEvent.click(screen.getByText('← Voltar ao lote'));
