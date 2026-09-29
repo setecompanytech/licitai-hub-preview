@@ -804,3 +804,18 @@ entram na ingestão diária com `formato: 'texto'` (`artigosPorTexto`,
 (a coluna tem CHECK), com `detalhe.origem = 'gov.br'`. `texto_da_norma` só
 acha `art. N`; anexo entra pela busca textual.
 
+## Lote de pedidos — a nota rateada é uma linha (29/09/2026)
+
+`contrato_pedidos.lote_id` (migration 20260929000001) liga as partes que a
+Extração de Documentos do Financeiro cria ao ratear uma nota por N itens do
+contrato (`FinExtracaoDocumentos` grava o mesmo `lote_id` nas partes, via
+`pedido_id` devolvido pela RPC `vincular_lancamento_a_pedido`). Na aba
+Pedidos, `lib/contratos/lotes-de-pedidos.ts` (`agruparEmLotes`,
+`statusDoLote`, `rotuloDoLote`) junta as partes numa linha; o número abre o
+painel do lote (espelho + tabela das partes), e cada parte abre o painel do
+pedido com "← Voltar ao lote". O saldo continua por parte (cada uma consome
+o seu item): o lote é leitura, não registro. Lote de uma parte só é pedido
+comum. Ao rodar testes de componente, NÃO mascarar o exit do vitest com
+`| tail` sem `set -o pipefail` — foi assim que um teste ficou vermelho de
+28.10 a 28.11 sem ninguém ver.
+

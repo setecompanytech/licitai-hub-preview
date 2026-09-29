@@ -15,6 +15,7 @@ import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
+import { agruparEmLotes, rotuloDoLote, type Lote } from '@/lib/contratos/lotes-de-pedidos';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -111,6 +112,8 @@ type Pedido = {
   cota?: string | null;
   origem_aditivo_id?: string | null;
   arquivo_ordem_id?: string | null;
+  /** Partes de uma nota rateada em N itens (29/09): mesma linha na tabela, painel do lote. */
+  lote_id?: string | null;
 };
 /** O cruzamento do custo (tabela `contrato_pedidos_custo`, migration 20260923000001). */
 type CustoDoPedido = {
@@ -342,6 +345,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [filtroStatus, setFiltroStatus] = useState('__todos__');
   /** Pedido aberto no painel lateral — detalhe sem tirar a pessoa da lista. */
   const [pedidoSelecionado, setPedidoSelecionado] = useState<string | null>(null);
+  const [loteSelecionado, setLoteSelecionado] = useState<string | null>(null);
   /**
    * Identificação do contrato para o painel do pedido. Vem das MESMAS colunas
    * do `select` que a aba já fazia — nenhuma consulta nova; só duas colunas a
@@ -2280,6 +2284,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         {pedidoAberto.descricao
           ? <p className="g-corpo whitespace-pre-wrap leading-relaxed">{pedidoAberto.descricao}</p>
           : <p className="g-corpo text-muted-foreground">Sem descrição registrada.</p>}
+        {pedidoAberto.lote_id && (
+          <Button variant="link" size="sm" className="h-auto px-0" onClick={() => { const l = pedidoAberto.lote_id!; setPedidoSelecionado(null); setLoteSelecionado(l); }}>
+            ← Voltar ao lote
+          </Button>
+        )}
       </BlocoDoPainel>
 
       <BlocoDoPainel titulo="Origem">
@@ -2490,6 +2499,60 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     </div>
   ) : null;
 
+  /** O lote aberto: a nota rateada e as partes, item a item (29/09). */
+  const loteAberto: Lote<Pedido> | null = loteSelecionado
+    ? (agruparEmLotes(pedidos).find((l) => l.tipo === 'lote' && l.lote.id === loteSelecionado) as { tipo: 'lote'; lote: Lote<Pedido> } | undefined)?.lote ?? null
+    : null;
+  const empenhoDoLote = loteAberto?.empenho_id ? empenhosDoContrato.find(e => e.id === loteAberto.empenho_id) ?? null : null;
+  const painelDoLote = loteAberto ? (
+    <div className="flex flex-col gap-4" data-testid="painel-do-lote">
+      <BlocoDoPainel
+        titulo={`Lote ${loteAberto.numero}`}
+        acao={<SeloSituacao tom={tomDoStatus(loteAberto.status)}>{(statusCfg[loteAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>}
+      >
+        <p className="g-corpo leading-relaxed">{rotuloDoLote(loteAberto)}</p>
+        {loteAberto.progresso && <p className="g-meta text-muted-foreground">{loteAberto.progresso}</p>}
+      </BlocoDoPainel>
+      <BlocoDoPainel titulo="Origem">
+        <ListaDeCampos
+          campos={[
+            { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
+            { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
+            { rotulo: 'Empenho de origem', valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
+            { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
+            { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
+            { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
+            { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
+          ]}
+        />
+      </BlocoDoPainel>
+      <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
+        <p className="g-meta mb-2 text-muted-foreground">Cada parte é um pedido do item do contrato: consome o saldo dele e tem as próprias ações. Clique na parte para abri-la.</p>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary"><tr className="text-left text-xs text-muted-foreground"><th className="px-2 py-1.5">Parte</th><th className="px-2 py-1.5">Item do contrato</th><th className="px-2 py-1.5 text-right">Qtd</th><th className="px-2 py-1.5 text-right">Valor</th><th className="px-2 py-1.5">Situação</th></tr></thead>
+            <tbody className="divide-y divide-border">
+              {loteAberto.partes.map((parte) => {
+                const item = parte.contrato_item_id ? itens.find(i => i.id === parte.contrato_item_id) ?? null : null;
+                return (
+                  <tr key={parte.id} className="hover:bg-muted/60">
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      <button type="button" className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setPedidoSelecionado(parte.id)} title="Abrir esta parte: notas, custo e ações">{parte.numero_pedido}</button>
+                    </td>
+                    <td className="px-2 py-1.5 min-w-48"><span className="line-clamp-2" title={item?.descricao ?? parte.descricao ?? ''}>{item ? `${item.codigo_item ? `${item.codigo_item} · ` : ''}${item.descricao}` : (parte.descricao ?? '—')}</span></td>
+                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}{item?.unidade ? ` ${unidadeLegivel(item.unidade)}` : ''}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmt(parte.valor_total)}</td>
+                    <td className="px-2 py-1.5"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </BlocoDoPainel>
+    </div>
+  ) : null;
+
   // ── A auditoria dos lançamentos: o alerta que fica ────────────────────────
   // Política definida em 01/09 sobre o caso real: uma NF-e com VU errado
   // (22,50 num contrato de 22,55) seguiu "sem intervenção humana" e a entrega
@@ -2659,9 +2722,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             </Card>
           ) : (
             <AreaComPainel
-              painel={painelDoPedido}
-              tituloPainel="Detalhe do pedido"
-              aoFechar={() => setPedidoSelecionado(null)}
+              painel={pedidoAberto ? painelDoPedido : painelDoLote}
+              tituloPainel={pedidoAberto ? 'Detalhe do pedido' : 'Detalhe do lote'}
+              aoFechar={() => { setPedidoSelecionado(null); setLoteSelecionado(null); }}
             >
               {pedidosFiltrados.length === 0 ? (
                 <Card>
@@ -2716,7 +2779,62 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             return sortOrder === 'asc' ? cmp : -cmp;
                           })
                         : pedidosFiltrados;
-                      return sorted.map(p => {
+                      // Uma nota rateada em N itens é UMA linha (29/09): as partes
+                      // moram no painel do lote. Pedido solto segue como sempre.
+                      const linhas = agruparEmLotes(sorted);
+                      return linhas.map(linha => {
+                      if (linha.tipo === 'lote') {
+                        const lote = linha.lote;
+                        const cfgLote = statusCfg[lote.status] || statusCfg.pendente;
+                        const selecionadoLote = loteSelecionado === lote.id;
+                        return (
+                          <TableRow key={`lote-${lote.id}`} data-state={selecionadoLote ? 'selected' : undefined} className={selecionadoLote ? 'border-l-2 border-l-primary' : undefined} data-testid={`linha-lote-${lote.id}`}>
+                            <TableCell className="whitespace-nowrap font-medium tabular-nums">
+                              <button type="button" className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }} aria-expanded={selecionadoLote} title="Abrir o lote: as partes, item a item">
+                                {lote.numero}
+                              </button>
+                              <div className="g-meta text-muted-foreground">lote · {lote.partes.length} partes{lote.numero_empenho ? ` · emp. ${lote.numero_empenho}` : ''}</div>
+                            </TableCell>
+                            <TableCell className="min-w-[12rem] max-w-[17rem]">
+                              <button type="button" className="line-clamp-2 block w-full rounded text-left leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o lote no painel" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }}>
+                                {rotuloDoLote(lote)}
+                              </button>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right tabular-nums">
+                              <div>{lote.partes.length} itens</div>
+                              <div className="g-meta font-medium text-muted-foreground">{fmt(lote.valor_total)}</div>
+                            </TableCell>
+                            <TableCell className="min-w-[8rem] max-w-[10rem] text-center">
+                              <div className="whitespace-nowrap">{lote.data_pedido ? new Date(lote.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+                              <AvisoDePrazoDeEntrega compacto contrato={prazos} dataDoPedido={lote.data_pedido} dataDeEntrega={lote.status === 'entregue' ? (lote.partes[0]?.data_entrega ?? null) : null} />
+                            </TableCell>
+                            <TableCell className="text-center whitespace-nowrap">
+                              <SeloSituacao tom={tomDoStatus(lote.status)}>{cfgLote.label}</SeloSituacao>
+                              {lote.progresso && <div className="g-meta text-muted-foreground">{lote.progresso}</div>}
+                            </TableCell>
+                            <TableCell className="min-w-[12rem]">
+                              {lote.nota_fiscal ? (
+                                <div className="space-y-0.5">
+                                  <span className="inline-flex items-center rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium">
+                                    <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />{formatarNumeroNfe(lote.nota_fiscal) ?? lote.nota_fiscal}
+                                  </span>
+                                  <div className="g-meta text-muted-foreground">rateada em {lote.partes.length} partes — a nota e o arquivo ficam em cada parte</div>
+                                </div>
+                              ) : <span className="g-meta text-muted-foreground">sem nota</span>}
+                            </TableCell>
+                            {podeVerCustos && (
+                              <TableCell className="whitespace-nowrap text-right tabular-nums">
+                                {lote.custo_total != null ? <div className="font-medium">{fmt(lote.custo_total)}</div> : <span className="g-meta text-muted-foreground">Sem custo</span>}
+                              </TableCell>
+                            )}
+                            <TableCell className="hidden 2xl:table-cell text-center"><span className="g-meta text-muted-foreground">por parte</span></TableCell>
+                            <TableCell className="sticky right-0 z-10 whitespace-nowrap border-l border-border bg-card">
+                              <Button size="sm" variant="outline" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }}>Abrir lote</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      const p = linha.pedido;
                       const cfg = statusCfg[p.status] || statusCfg.pendente;
                       const linkedNfs = nfsSync.filter(nf => nf.contrato_pedido_id === p.id);
                       const selecionado = pedidoSelecionado === p.id;

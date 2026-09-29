@@ -19943,3 +19943,12 @@ O job `ingestao-normativa-diaria` chamava a edge sem `timeout_milliseconds`
 coleta. Reagendado com 600.000 ms. A edge (v6+) também responde 202 ao cron e
 segue em segundo plano com `EdgeRuntime.waitUntil`. Sem tabela nova.
 Arquivo: `supabase/migrations/20260928000001_ingestao_normativa_cron_timeout.sql`.
+
+## 20260929000001 — lote de pedidos (29/09/2026)
+
+`contrato_pedidos.lote_id uuid` (+ índice parcial): as partes de uma nota
+rateada em N itens compartilham o id; a aba Pedidos mostra uma linha por
+lote e o painel do lote lista as partes. A migration retroalimenta as partes
+antigas ("(parte n/N)") — hoje as 18 da NF-e 595 do 772/2024. Sem RLS nova
+(a política existente cobre a coluna). Arquivo:
+`supabase/migrations/20260929000001_lote_de_pedidos.sql`.

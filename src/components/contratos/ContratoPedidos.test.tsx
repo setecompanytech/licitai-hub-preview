@@ -253,7 +253,52 @@ describe('Aba Pedidos — indicadores declaram a base e não fingem zero', () =>
     await waitFor(() => expect(screen.getByText('Valor dos pedidos')).toBeInTheDocument());
     expect(screen.getByText('soma dos pedidos com situação diferente de cancelado')).toBeInTheDocument();
     expect(screen.getByText('todos os registros da aba, inclusive cancelados')).toBeInTheDocument();
-    expect(screen.getByText('autorizam as entregas — consulte na subaba Empenhos')).toBeInTheDocument();
+    // O terceiro indicador é o VALOR empenhado (28/09), com a base declarada.
+    expect(screen.getByText('Valor empenhado')).toBeInTheDocument();
+    expect(screen.getByText(/empenho\(s\) vigente\(s\)/)).toBeInTheDocument();
+  });
+});
+
+describe('Lote de pedidos (29/09) — a nota rateada em N itens é uma linha só', () => {
+  const comUmLoteDeDuasPartes = () => {
+    comUmPedidoEUmEmpenho();
+    dados.itens = [
+      ...dados.itens,
+      { id: 'i-2', codigo_item: 'IT-2', descricao: 'Segundo item', unidade: 'KG', valor_unitario: 5, origem_aditivo_id: null, produto_id: null },
+    ];
+    dados.pedidos = [
+      ...dados.pedidos,
+      { id: 'p-595-1', numero_pedido: '595-1', descricao: 'NF-e 595 · ACUC TRIT 1KG (parte 1/2)', contrato_item_id: 'i-1', quantidade: 30, valor_unitario: 5.2, valor_total: 156, data_pedido: '2024-06-28', data_entrega: null, status: 'pendente', nota_fiscal: '595', observacoes: null, nf_quitada: false, data_quitacao: null, pedido_id: null, numero_empenho: '0062352024', empenho_id: 'e-1', cota: null, lote_id: 'L-595' },
+      { id: 'p-595-2', numero_pedido: '595-2', descricao: 'NF-e 595 · ACUC TRIT 1KG (parte 2/2)', contrato_item_id: 'i-2', quantidade: 70, valor_unitario: 5.2, valor_total: 364, data_pedido: '2024-06-28', data_entrega: null, status: 'entregue', nota_fiscal: '595', observacoes: null, nf_quitada: false, data_quitacao: null, pedido_id: null, numero_empenho: '0062352024', empenho_id: 'e-1', cota: null, lote_id: 'L-595' },
+    ];
+  };
+
+  it('as partes viram uma linha de lote com valor somado e situação do conjunto; o pedido solto continua', async () => {
+    comUmLoteDeDuasPartes();
+    montar();
+    const linha = await screen.findByTestId('linha-lote-L-595');
+    expect(within(linha).getByText('595')).toBeInTheDocument();
+    expect(within(linha).getByText('NF-e 595 · 2 itens do contrato')).toBeInTheDocument();
+    expect(within(linha).getByText(/520,00/)).toBeInTheDocument();
+    expect(within(linha).getByText('Parcial')).toBeInTheDocument();
+    expect(within(linha).getByText('1 de 2 entregue(s)')).toBeInTheDocument();
+    expect(screen.queryByText('NF-e 595 · ACUC TRIT 1KG (parte 1/2)')).toBeNull();
+    expect(screen.getByText('Entrega de teste')).toBeInTheDocument();
+  });
+
+  it('abrir o lote mostra o espelho com as partes, e a parte abre o pedido com "voltar ao lote"', async () => {
+    comUmLoteDeDuasPartes();
+    montar();
+    const linha = await screen.findByTestId('linha-lote-L-595');
+    fireEvent.click(within(linha).getByText('595'));
+    const painel = await screen.findByTestId('painel-do-lote');
+    expect(within(painel).getByText('Lote 595')).toBeInTheDocument();
+    expect(within(painel).getByText('Itens do lote (2)')).toBeInTheDocument();
+    expect(within(painel).getByText(/IT-2 · Segundo item/)).toBeInTheDocument();
+    fireEvent.click(within(painel).getByText('595-2'));
+    await waitFor(() => expect(screen.getByText('Pedido 595-2')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('← Voltar ao lote'));
+    await waitFor(() => expect(screen.getByTestId('painel-do-lote')).toBeInTheDocument());
   });
 });
 

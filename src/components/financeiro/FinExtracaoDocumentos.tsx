@@ -601,6 +601,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
         let lancId: string | null = null;
         let restante = valorTotal;
+        // As partes de uma nota rateada nascem com o mesmo lote_id (29/09):
+        // na aba Pedidos do contrato elas viram uma linha só, com o painel do
+        // lote listando cada parte.
+        const loteId = itemIds.length > 1 ? crypto.randomUUID() : null;
+        const pedidosDoLote: string[] = [];
         // Todo título nasce com vencimento (`vencimento-do-titulo.ts`). A RPC
         // gravava nulo quando a NF-e não trazia duplicata, e o título sumia do
         // fluxo de caixa e do "Em atraso" (NF 736 da ETHOS, 21/09). O que foi
@@ -696,6 +701,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             return;
           }
           if (!lancId) lancId = (rpcData as any)?.lancamento_id ?? "ok";
+          const pedidoCriado = (rpcData as { pedido_id?: string | null } | null)?.pedido_id;
+          if (loteId && pedidoCriado) pedidosDoLote.push(String(pedidoCriado));
+        }
+        if (loteId && pedidosDoLote.length > 1) {
+          const { error: erroLote } = await supabase.from("contrato_pedidos").update({ lote_id: loteId } as never).in("id", pedidosDoLote);
+          if (erroLote) console.warn("lote_id não gravado nas partes:", erroLote.message);
         }
 
         // O documento já está guardado; agora ele aponta para o lançamento
