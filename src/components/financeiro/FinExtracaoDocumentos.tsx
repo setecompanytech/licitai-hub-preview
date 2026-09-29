@@ -6,6 +6,7 @@ import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
 import { numeroDaNota } from "@/lib/financeiro/recebimento-da-nota";
 import { vencimentoDoTitulo } from "@/lib/financeiro/vencimento-do-titulo";
+import { diferencaParaANota, fatiasPorPartes, fatiasPorSaldo, partesCompletas } from "@/lib/financeiro/partes-do-vinculo";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -600,12 +601,6 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         }
 
         let lancId: string | null = null;
-        let restante = valorTotal;
-        // As partes de uma nota rateada nascem com o mesmo lote_id (29/09):
-        // na aba Pedidos do contrato elas viram uma linha só, com o painel do
-        // lote listando cada parte.
-        const loteId = itemIds.length > 1 ? crypto.randomUUID() : null;
-        const pedidosDoLote: string[] = [];
         // Todo título nasce com vencimento (`vencimento-do-titulo.ts`). A RPC
         // gravava nulo quando a NF-e não trazia duplicata, e o título sumia do
         // fluxo de caixa e do "Em atraso" (NF 736 da ETHOS, 21/09). O que foi
@@ -624,23 +619,45 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         const descricaoBase = d.numero_documento && d.descricao
           ? `${tipoFormatado} ${d.numero_documento} · ${d.descricao}`
           : (d.descricao || `${tipoFormatado} ${d.numero_documento ?? ""}`.trim() || item.file.name);
+        // ── Nota com VÁRIOS itens do contrato (29/09) ──────────────────────
+        // As partes nascem com o mesmo lote_id e SEM título próprio; o título
+        // é um só, com o valor da nota, ligado ao lote — o órgão paga a nota
+        // uma vez. Cada parte recebe por rateio (gatilho da migration
+        // 20260929000002). Com quantidade e unitário por item informados no
+        // vínculo, cada parte nasce com o produto certo; sem eles, cai no
+        // rateio por saldo (cota principal + reservada) — e avisa.
+        const loteId = itemIds.length > 1 ? crypto.randomUUID() : null;
+        const pedidosDoLote: string[] = [];
+        const qtdInformada = numeroBr(v!.quantidade) || 0;
+        const vuRef = numeroBr(v!.valor_unitario) || valorTotal;
+        const usaPartes = itemIds.length > 1 && itemIds.every(Boolean) && partesCompletas(itemIds as string[], v!.partes);
+        const fatias = usaPartes
+          ? fatiasPorPartes(itemIds as string[], v!.partes!)
+          : fatiasPorSaldo(itemIds.map((id) => String(id ?? "")), pesos, valorTotal, qtdInformada, vuRef);
+        if (usaPartes) {
+          const conf = diferencaParaANota(fatias, valorTotal);
+          if (!conf.fecha) {
+            toast.error("A soma das partes não fecha com a nota — nada foi lançado.", { description: `Partes ${conf.soma.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} × nota ${valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Ajuste quantidade e unitário no vínculo.` });
+            return;
+          }
+        } else if (itemIds.length > 2) {
+          toast.warning(`${itemIds.length} itens sem quantidade e unitário por item: o valor foi rateado pelo saldo, com a descrição da nota em todas as partes. Prefira informar cada item no vínculo.`, { duration: 12000 });
+        }
+        const descricaoDaParte = (idx: number) => {
+          if (!usaPartes || itemIds.length === 1) return descricaoBase + (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : "");
+          // Com partes informadas, a descrição da parte é a do ITEM do contrato (resolvido no laço).
+          return `${tipoFormatado} ${d.numero_documento ?? ""} · item ${idx + 1}/${itemIds.length}`.trim();
+        };
+        let nomesDosItens = new Map<string, string>();
+        if (usaPartes) {
+          const { data: itensNomes } = await supabase.from("contrato_itens").select("id, descricao").in("id", itemIds as string[]);
+          nomesDosItens = new Map(((itensNomes ?? []) as Array<{ id: string; descricao: string }>).map((i) => [i.id, i.descricao]));
+        }
         for (let idx = 0; idx < itemIds.length; idx++) {
-          const isUltimo = idx === itemIds.length - 1;
-          const fatia = isUltimo
-            ? restante
-            : Math.round(((valorTotal * pesos[idx]) / somaPesos) * 100) / 100;
-          restante = Math.round((restante - fatia) * 100) / 100;
-
-          // A quantidade INFORMADA (da nota, ou ajustada pela pessoa) manda,
-          // rateada pela fatia quando há mais de um item. A divisão por preço
-          // é último recurso — era ela que produzia 498,8914 caixas.
-          const qtdInformada = numeroBr(v!.quantidade) || 0;
-          const vu = numeroBr(v!.valor_unitario) || valorTotal;
-          const qtd = qtdInformada > 0 && valorTotal > 0
-            ? Number(((qtdInformada * fatia) / valorTotal).toFixed(4))
-            : vu > 0 ? Number((fatia / vu).toFixed(4)) : 1;
-          // O VU gravado fecha com o par (fatia, qtd) — 500 × 22,50 = 11.250.
-          const vuCoerente = qtd > 0 ? Number((fatia / qtd).toFixed(4)) : vu;
+          const fatia = fatias[idx];
+          const descricaoParte = usaPartes && nomesDosItens.get(String(itemIds[idx]))
+            ? `${tipoFormatado} ${d.numero_documento ?? ""} · ${nomesDosItens.get(String(itemIds[idx]))!.slice(0, 80)} (item ${idx + 1}/${itemIds.length})`.trim()
+            : descricaoDaParte(idx);
 
           const { data: rpcData, error: rpcErr } = await supabase.rpc(
             "vincular_lancamento_a_pedido" as any,
@@ -652,11 +669,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 (d.numero_documento ||
                   `DOC-${hojeLocal().replace(/-/g, "")}`) +
                 (itemIds.length > 1 ? `-${idx + 1}` : ""),
-              p_descricao:
-                descricaoBase + (itemIds.length > 1 ? ` (parte ${idx + 1}/${itemIds.length})` : ""),
-              p_quantidade: qtd || 1,
-              p_valor_unitario: vuCoerente,
-              p_valor_total: fatia,
+              p_descricao: descricaoParte,
+              p_quantidade: fatia.quantidade || 1,
+              p_valor_unitario: fatia.valor_unitario,
+              p_valor_total: fatia.valor_total,
               p_data_pedido: d.data_emissao ?? hojeLocal(),
               p_tipo: tipo,
               p_natureza: tipo === "a_receber" ? "receita" : "despesa",
@@ -671,17 +687,20 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               // baixa pelo caminho da Extração (modelo de 30/08).
               p_empenho_id: v!.empenho_id ?? null,
               p_cota: v!.cota ?? null,
-              // Casa com o recebimento que já existe, ou cria o pedido sem
-              // título quando só há indício (migration 20260921000003).
-              p_lancamento_existente: idx === 0 ? lancamentoExistente : null,
-              p_criar_titulo: criarTitulo,
+              // Lote: nenhuma parte ganha título; o título único vem depois.
+              // Item só: casa com o recebimento que já existe, ou cria o
+              // pedido sem título quando só há indício (migration 20260921000003).
+              p_lancamento_existente: loteId ? null : (idx === 0 ? lancamentoExistente : null),
+              p_criar_titulo: loteId ? false : criarTitulo,
               p_pessoa_id: null,
               p_observacoes: [
                 d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
                 d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
                 item.motor ? `Extraído via ${item.motor}` : null,
                 itemIds.length > 1
-                  ? `Vinculado a ${itemIds.length} itens do contrato (cota principal + reservada — Lei 14.133/21).`
+                  ? (usaPartes
+                    ? `Parte de uma nota com ${itemIds.length} itens do contrato; título único do lote no Financeiro.`
+                    : `Vinculado a ${itemIds.length} itens do contrato por rateio de saldo (cota principal + reservada — Lei 14.133/21).`)
                   : null,
                 "Pedido criado automaticamente a partir de documento financeiro.",
                 vencimento.nota,
@@ -693,10 +712,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           if (rpcErr) {
             // O banco recusa estado impossível; a recusa tem de chegar em
             // português. `violates check constraint "chk_fl_chave_nfe_44"` não
-            // diz nada a quem está lançando uma nota de carne moída.
+            // diz nada a quem lança.
             toast.error(
               `Não foi possível vincular${itemIds.length > 1 ? ` o item ${idx + 1}/${itemIds.length}` : ""}`,
-              { description: mensagemDeErro(rpcErr), duration: 10000 },
+              { description: mensagemDeErro(rpcErr) },
             );
             return;
           }
@@ -707,6 +726,47 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         if (loteId && pedidosDoLote.length > 1) {
           const { error: erroLote } = await supabase.from("contrato_pedidos").update({ lote_id: loteId } as never).in("id", pedidosDoLote);
           if (erroLote) console.warn("lote_id não gravado nas partes:", erroLote.message);
+
+          // O título ÚNICO do lote: o recebimento que já existe, ou um novo.
+          if (lancamentoExistente) {
+            const { error: erroLig } = await supabase.from("financeiro_lancamentos").update({ lote_id: loteId, contrato_id: v!.contrato_id } as never).eq("id", lancamentoExistente);
+            if (erroLig) toast.warning("As partes nasceram, mas o recebimento existente não pôde ser ligado ao lote.", { description: mensagemDeErro(erroLig) });
+            lancId = lancamentoExistente;
+          } else if (criarTitulo) {
+            const { data: sessao } = await supabase.auth.getUser();
+            const { data: novo, error: erroTitulo } = await supabase.from("financeiro_lancamentos").insert({
+              empresa_id: empresaId,
+              tipo,
+              natureza: tipo === "a_receber" ? "receita" : "despesa",
+              status: "previsto",
+              descricao: `${tipoFormatado} ${d.numero_documento ?? ""} · lote de ${itemIds.length} itens do contrato`.trim(),
+              valor: valorTotal,
+              data_competencia: d.data_emissao ?? hojeLocal(),
+              data_vencimento: vencimento.data,
+              data_emissao: d.data_emissao ?? null,
+              tipo_documento: (d.tipo_documento as never) ?? "outro",
+              numero_documento: d.numero_documento ?? null,
+              chave_acesso_nfe: normalizarChaveNfe(d.chave_nfe),
+              contrato_id: v!.contrato_id,
+              contrato_pedido_id: null,
+              lote_id: loteId,
+              origem: "manual",
+              created_by: sessao?.user?.id ?? null,
+              observacoes: [
+                `Título único da nota, rateado entre ${itemIds.length} pedidos do contrato (lote).`,
+                d.emitente_nome ? `Emitente: ${d.emitente_nome}` : null,
+                d.destinatario_nome ? `Destinatário: ${d.destinatario_nome}` : null,
+                vencimento.nota,
+              ].filter(Boolean).join("\n"),
+            } as never).select("id").single();
+            if (erroTitulo) {
+              toast.error("As partes nasceram no contrato, mas o título único não pôde ser criado.", { description: mensagemDeErro(erroTitulo) });
+            } else {
+              lancId = (novo as { id: string } | null)?.id ?? lancId;
+            }
+          } else {
+            lancId = "ok";
+          }
         }
 
         // O documento já está guardado; agora ele aponta para o lançamento
@@ -721,7 +781,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         invalidarFinanceiro();
         toast.success(
           itemIds.length > 1
-            ? `Documento rateado entre ${itemIds.length} itens e vinculado ao contrato.`
+            ? `Nota lançada como lote de ${itemIds.length} itens do contrato, com um título único no Financeiro.`
             : "Lançamento criado e pedido vinculado ao contrato.",
         );
         return;
@@ -1169,6 +1229,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                       }
                                       valorTotal={d.dados?.valor_total ?? null}
                                       quantidadeDaNota={d.dados?.quantidade_total ?? null}
+                                      itensDaNota={Array.isArray(d.dados?.itens) ? d.dados.itens : null}
                                       value={d.vinculo ?? VINCULO_VAZIO}
                                       onChange={(v) => setVinculo(d.id, v)}
                                     />

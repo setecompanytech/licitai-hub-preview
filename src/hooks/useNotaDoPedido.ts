@@ -44,21 +44,39 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
     queryFn: async (): Promise<Record<string, NotaDoPedido>> => {
       const { data, error } = await supabase
         .from('financeiro_lancamentos')
-        .select('id, contrato_pedido_id, numero_documento')
+        .select('id, contrato_pedido_id, numero_documento, lote_id')
         .eq('empresa_id', empresaAtiva!.id)
         .eq('contrato_id', contratoId!)
-        .not('contrato_pedido_id', 'is', null);
+        .or('contrato_pedido_id.not.is.null,lote_id.not.is.null');
       // Falha aqui não pode derrubar a aba: a coluna é informação, e a tabela
       // de pedidos vale sem ela.
       if (error || !data?.length) return {};
 
-      const lancamentos = data as unknown as Array<{
-        id: string; contrato_pedido_id: string; numero_documento: string | null;
-      }>;
+      type Lido = { id: string; contrato_pedido_id: string | null; numero_documento: string | null; lote_id?: string | null };
+      const lidos = data as unknown as Lido[];
+      // Título ÚNICO de lote (29/09): vale para todas as partes do lote.
+      const lotes = [...new Set(lidos.map((l) => l.lote_id).filter((x): x is string => !!x))];
+      const partesPorLote = new Map<string, string[]>();
+      if (lotes.length > 0) {
+        // `lote_id` veio de migration colada à mão: o types.ts gerado não a conhece.
+        const consulta = supabase.from('contrato_pedidos' as never) as unknown as {
+          select: (c: string) => { eq: (c: string, v: string) => { in: (c: string, v: string[]) => PromiseLike<{ data: unknown }> } };
+        };
+        const { data: partes } = await consulta.select('id, lote_id').eq('contrato_id', contratoId!).in('lote_id', lotes);
+        for (const pt of (partes ?? []) as unknown as Array<{ id: string; lote_id: string }>) {
+          (partesPorLote.get(pt.lote_id) ?? partesPorLote.set(pt.lote_id, []).get(pt.lote_id)!).push(pt.id);
+        }
+      }
+      const lancamentos: Array<{ id: string; contrato_pedido_id: string; numero_documento: string | null }> = [];
+      for (const l of lidos) {
+        if (l.contrato_pedido_id) lancamentos.push({ id: l.id, contrato_pedido_id: l.contrato_pedido_id, numero_documento: l.numero_documento });
+        else if (l.lote_id) for (const pid of partesPorLote.get(l.lote_id) ?? []) lancamentos.push({ id: l.id, contrato_pedido_id: pid, numero_documento: l.numero_documento });
+      }
+      if (lancamentos.length === 0) return {};
       const { data: docs } = await supabase
         .from('financeiro_documentos_fiscais' as never)
         .select('id, lancamento_id, storage_path, arquivo_nome, numero, arquivo_xml')
-        .in('lancamento_id', lancamentos.map((l) => l.id));
+        .in('lancamento_id', [...new Set(lancamentos.map((l) => l.id))]);
 
       const porLancamento = new Map<string, {
         id: string; storage_path: string; arquivo_nome: string;

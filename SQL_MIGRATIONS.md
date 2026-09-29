@@ -19952,3 +19952,12 @@ lote e o painel do lote lista as partes. A migration retroalimenta as partes
 antigas ("(parte n/N)") — hoje as 18 da NF-e 595 do 772/2024. Sem RLS nova
 (a política existente cobre a coluna). Arquivo:
 `supabase/migrations/20260929000001_lote_de_pedidos.sql`.
+
+## 20260929000002 — título único do lote (29/09/2026)
+
+`financeiro_lancamentos.lote_id uuid` + gatilho `trg_titulo_do_lote_rateia`:
+o título único de uma nota rateada em N pedidos (mesmo `lote_id` de
+`contrato_pedidos`) tem as partes ligadas por `financeiro_lancamento_rateios`,
+proporcionais ao valor de cada pedido, refeitas quando o valor muda; a
+quitação de cada parte é recalculada a cada mudança de status. Depende da
+20260929000001. Arquivo: `supabase/migrations/20260929000002_titulo_unico_do_lote.sql`.

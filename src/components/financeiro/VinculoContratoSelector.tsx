@@ -33,6 +33,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
+import { avisoDeVariosItens, diferencaParaANota, fatiasPorPartes, partesCompletas, sugerirPartes, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,12 @@ export interface VinculoContratoValue {
   origem_aditivo_id: string | null;
   quantidade: number;
   valor_unitario: number;
+  /**
+   * Nota com VÁRIOS produtos (29/09): quantidade e unitário por item marcado.
+   * Preenchidas, a Extração cria cada parte com o produto certo e UM título;
+   * vazias, cai no rateio por saldo (só para cota principal + reservada).
+   */
+  partes?: ParteDoVinculo[];
 }
 
 export interface ContratoOpcao {
@@ -97,6 +104,8 @@ interface Props {
    * ATESTA; dividir dinheiro por preço é conta de cabeça, e fracionária.
    */
   quantidadeDaNota?: number | null;
+  /** As linhas de produto lidas da nota, para sugerir quantidade e unitário por item. */
+  itensDaNota?: ItemDaNota[] | null;
   value: VinculoContratoValue;
   onChange: (v: VinculoContratoValue) => void;
   /** Em a_receber, listamos contratos onde o órgão é o pagador (cliente). Em a_pagar, idem (fornecedor). */
@@ -108,6 +117,7 @@ export default function VinculoContratoSelector({
   hintCnpj,
   valorTotal,
   quantidadeDaNota,
+  itensDaNota,
   value,
   onChange,
   tipo,
@@ -466,8 +476,13 @@ export default function VinculoContratoSelector({
       ? Number((Number(valorTotal) / qtdDaNota).toFixed(4))
       : itensMarcados[0]?.valor_unitario ?? value.valor_unitario;
 
+    // As partes por item acompanham a marcação: entra com sugestão da nota, sai quando desmarca.
+    const partesNovas = novos.length >= 2
+      ? sugerirPartes(itensMarcados.map((i) => ({ id: i.id, descricao: i.descricao, valor_unitario: i.valor_unitario })), itensDaNota, value.partes ?? [])
+      : undefined;
     onChange({
       ...value,
+      partes: partesNovas,
       contrato_item_ids: novos,
       contrato_item_id: novos[0] ?? null,
       origem_aditivo_id:
@@ -857,11 +872,60 @@ export default function VinculoContratoSelector({
                   </span>
                 </div>
                 <div className="text-xs mt-1 italic text-muted-foreground">
-                  O valor do documento será rateado proporcionalmente ao saldo financeiro de cada
-                  item ao lançar.
+                  {partesCompletas(itemIds, value.partes)
+                    ? "Cada item entra com a quantidade e o unitário informados abaixo; o título a receber é um só."
+                    : "Sem quantidade e unitário por item, o valor do documento será rateado pelo saldo financeiro de cada item ao lançar."}
                 </div>
               </div>
             )}
+
+            {itensSelecionados.length > 1 && (() => {
+              const aviso = avisoDeVariosItens(itensSelecionados.length);
+              const partes = value.partes ?? [];
+              const parteDe = (id: string) => partes.find((p) => p.contrato_item_id === id) ?? { contrato_item_id: id, quantidade: 0, valor_unitario: 0 };
+              const mudarParte = (id: string, campo: "quantidade" | "valor_unitario", v: string) => {
+                const n = parseFloat(String(v).replace(",", ".")) || 0;
+                const resto = partes.filter((p) => p.contrato_item_id !== id);
+                onChange({ ...value, partes: [...resto, { ...parteDe(id), [campo]: n }] });
+              };
+              const completas = partesCompletas(itemIds, partes);
+              const conf = completas ? diferencaParaANota(fatiasPorPartes(itemIds, partes), Number(valorTotal) || 0) : null;
+              return (
+                <div className="space-y-2 rounded-md border border-border p-3" data-testid="partes-por-item">
+                  {aviso && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                      <AlertTitle>Nota com vários produtos?</AlertTitle>
+                      <AlertDescription>{aviso}</AlertDescription>
+                    </Alert>
+                  )}
+                  <p className="text-xs font-medium text-foreground">Quantidade e unitário por item{itensDaNota?.length ? " — sugeridos pelas linhas da nota, confira" : ""}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Item do contrato</th><th className="py-1 pr-2 text-right">Qtd</th><th className="py-1 pr-2 text-right">Unitário (R$)</th><th className="py-1 text-right">Valor</th></tr></thead>
+                      <tbody>
+                        {itensSelecionados.map((i) => {
+                          const pt = parteDe(i.id);
+                          return (
+                            <tr key={i.id} className="border-t border-border">
+                              <td className="py-1 pr-2 max-w-[18rem]"><span className="line-clamp-2" title={i.descricao}>{i.descricao}</span></td>
+                              <td className="py-1 pr-2"><Input type="number" step="0.0001" min="0" className="h-8 w-24 text-right tabular-nums" value={pt.quantidade || ""} onChange={(e) => mudarParte(i.id, "quantidade", e.target.value)} aria-label={`Quantidade de ${i.descricao}`} /></td>
+                              <td className="py-1 pr-2"><Input type="number" step="0.0001" min="0" className="h-8 w-28 text-right tabular-nums" value={pt.valor_unitario || ""} onChange={(e) => mudarParte(i.id, "valor_unitario", e.target.value)} aria-label={`Unitário de ${i.descricao}`} /></td>
+                              <td className="py-1 text-right tabular-nums whitespace-nowrap">{fmt(Math.round(pt.quantidade * pt.valor_unitario * 100) / 100)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {conf && (
+                    <p className={cn("text-xs tabular-nums", conf.fecha ? "text-success-ink" : "text-destructive-ink")} data-testid="soma-das-partes">
+                      Soma das partes {fmt(conf.soma)} · nota {fmt(Number(valorTotal) || 0)}{conf.fecha ? " — fecha." : ` — diferença de ${fmt(conf.diferenca)}; ajuste antes de lançar.`}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
         {value.contrato_id && itemSel && (
