@@ -2475,8 +2475,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
 
       <div className="xl:col-span-2 xl:order-3">
-      <BlocoDoPainel titulo="Ações">
+      <BlocoDoPainel titulo={pedidoAberto.lote_id ? 'Ações desta parte' : 'Ações'}>
         <div className="flex flex-col gap-2">
+          {/* Parte de um lote (30/09): o que é da NOTA (ordem, pré-NF, kit,
+              vínculo do título) mora na caixa do lote; aqui fica só o que é
+              desta parte — custo, quitação, editar, excluir. */}
+          {!pedidoAberto.lote_id && (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog}
               title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
@@ -2492,9 +2496,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <ShoppingCart aria-hidden="true" /> Criar no Kanban
             </Button>
           </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {/* Kit vale antes e depois da quitação: o órgão pede a segunda via,
                 e a fila do financeiro só mostra o que ainda não foi baixado. */}
+            {!pedidoAberto.lote_id && (
             <KitFaturamento
               pedido={{
                 id: pedidoAberto.id,
@@ -2504,6 +2510,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 contrato_id: contratoId,
               }}
             />
+            )}
             {podeVerCustos && (
               <Button size="sm" variant="outline" className="g-controle" onClick={() => setComprasDialog(pedidoAberto)}
                 title="Contas a pagar do contrato atribuídas a este pedido — o custo comprovado, contra o declarado">
@@ -2518,7 +2525,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <DollarSign aria-hidden="true" /> Quitar NF
               </Button>
             )}
-            {(isFinanceiro || isAdmin) && (
+            {(isFinanceiro || isAdmin) && !pedidoAberto.lote_id && (
               /* Pedido retroativo — cadastrado depois de o recebimento já estar
                  no Financeiro. Vincular em vez de gerar evita contar a receita
                  duas vezes. */
@@ -2534,11 +2541,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Link2 aria-hidden="true" /> Vincular lançamento
               </Button>
             )}
+            {!pedidoAberto.lote_id && (
             <Button size="sm" variant="outline" className="g-controle"
               onClick={() => void abrirOrdem(pedidoAberto)}
               title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este pedido">
               <FileText aria-hidden="true" /> Ordem / Empenho
             </Button>
+            )}
             {pedidoAberto.nf_quitada && (isFinanceiro || isAdmin) && (
               <Button size="sm" variant="outline" className="g-controle"
                 onClick={() => void openDesfazerDialog(pedidoAberto)}
@@ -2579,6 +2588,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // gaveta lateral: origem à esquerda, as partes à direita, com espaço para
   // a tabela. A parte aberta vai para o painel do pedido, que tem as ações.
   const abrirParteDoLote = (id: string) => { setLoteSelecionado(null); setPedidoSelecionado(id); };
+
+  /** O clique no número da nota (30/09): abre o DANFE; sem PDF, gera do XML e abre; sem XML, diz o que falta. */
+  const abrirNotaDoLote = async (lote: Lote<Pedido>) => {
+    const nd = lote.partes.map((p) => notaDoPedido?.[p.id]).find((x) => x && (x.storage_path || x.arquivo_xml)) ?? null;
+    if (!nd) { toast.info('Esta nota ainda não tem título ligado a este lote.', { description: 'Importe o XML pela Extração de Documentos; o DANFE nasce junto.' }); return; }
+    if (nd.tem_pdf && nd.storage_path) { await abrirDocumentoDoFinanceiro(nd.storage_path, nd.arquivo_nome ?? 'DANFE'); return; }
+    if (nd.arquivo_xml) {
+      await gerarDanfeDaNota(nd);
+      try { abrirEspelho(parseNFeXML(nd.arquivo_xml)); } catch { /* o DANFE guardado abre pela linha assim que a lista recarregar */ }
+      return;
+    }
+    if (nd.storage_path) await abrirDocumentoDoFinanceiro(nd.storage_path, nd.arquivo_nome ?? 'Arquivo');
+  };
 
   /** A nota do lote: o arquivo (DANFE em PDF, quando anexado) e o espelho lido do XML. Vive no título único; as partes a compartilham. */
   const notaDoLote = (lote: Lote<Pedido>, modo: 'links' | 'botoes' = 'links') => {
@@ -2654,9 +2676,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   campos={[
                     { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
                     { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
-                    { rotulo: 'Empenho de origem', largo: true, valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
-                    { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
-                    { rotulo: 'DANFE', largo: true, valor: notaDoLote(loteAberto, 'botoes') },
+                    { rotulo: 'Empenho de origem', largo: true, valor: empenhoDoLote
+                      ? (empenhoDoLote.arquivo_id
+                        ? <button type="button" className="inline-flex items-center gap-1 rounded text-left text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o documento deste empenho" onClick={() => void abrirDocumentoDoEmpenho(empenhoDoLote.arquivo_id!)}>
+                            <span className="tabular-nums">{empenhoDoLote.numero}</span> ({ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo}) <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+                          </button>
+                        : <span title="Empenho sem documento anexado">{empenhoDoLote.numero} ({ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo}) · sem documento</span>)
+                      : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
+                    { rotulo: 'Nota fiscal', largo: true, valor: loteAberto.nota_fiscal
+                      ? <span className="inline-flex flex-wrap items-center gap-2">
+                          <button type="button" className="inline-flex items-center gap-1 rounded text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o DANFE desta nota" onClick={() => void abrirNotaDoLote(loteAberto)}>
+                            <span className="tabular-nums">{formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal}</span> <FileText aria-hidden="true" className="h-3.5 w-3.5" />
+                          </button>
+                          {notaDoLote(loteAberto)}
+                        </span>
+                      : <ValorIndisponivel razao="Sem nota" /> },
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
                     { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
                     { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
@@ -2676,6 +2710,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   ]}
                 />
               </BlocoDoPainel>
+              <div className="xl:col-span-2">
+              {/* As ações da NOTA moram aqui (30/09): o lote é a nota; a parte é o item. */}
+              <BlocoDoPainel titulo="Ações do lote">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog} title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
+                    <Upload aria-hidden="true" /> Registrar ordem/empenho
+                  </Button>
+                  <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+                    <Receipt aria-hidden="true" /> Gerar pré-NF
+                  </Button>
+                  <Button size="sm" variant="outline" className="g-controle" title="Abrir Gestão de Compras para criar o pedido pelo funil comercial" onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
+                    <ShoppingCart aria-hidden="true" /> Criar no Kanban
+                  </Button>
+                  {loteAberto.partes[0] && (
+                    <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
+                  )}
+                  {loteAberto.partes[0] && (
+                    <Button size="sm" variant="outline" className="g-controle" onClick={() => void abrirOrdem(loteAberto.partes[0])} title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este lote">
+                      <FileText aria-hidden="true" /> Ordem / Empenho
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
+                    <Trash2 aria-hidden="true" /> Excluir lote
+                  </Button>
+                </div>
+              </BlocoDoPainel>
+              </div>
               <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
@@ -2727,10 +2788,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </div>
               </BlocoDoPainel>
             </div>
-            <DialogFooter className="gap-2 sm:justify-between">
-              <Button variant="ghost" className="text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
-                <Trash2 aria-hidden="true" className="h-4 w-4" />Excluir lote
-              </Button>
+            <DialogFooter>
               <Button variant="outline" onClick={() => setLoteSelecionado(null)}>Fechar</Button>
             </DialogFooter>
           </>

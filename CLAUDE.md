@@ -868,7 +868,11 @@ detalhe do pedido abre em caixa (Dialog em duas colunas), não mais no
 painel lateral. **Excluir lote é uma RPC** (`excluir_lote_de_pedidos`,
 migration 20260930000003, transação única): parte a parte pelo navegador
 parou no meio. Prazo nas linhas é `resumido` (ícone + palavra; a frase abre
-ao clicar). Na linha do lote só o número e "Abrir lote" abrem a caixa.
+ao clicar). Na linha do lote só o número e "Abrir lote" abrem a caixa. **O lote é a nota; a parte é o item (30/09):** as ações da nota
+(registrar ordem, pré-NF, Kanban, kit, ordem/empenho, excluir lote) moram
+na caixa do lote ("Ações do lote"); a parte de um lote mostra só custo,
+quitação, editar e excluir. Na Origem do lote, empenho e nota são links
+(documento do empenho; DANFE, gerado do XML se ainda não existir).
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 
