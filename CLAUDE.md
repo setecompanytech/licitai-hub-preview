@@ -972,6 +972,13 @@ configurar o proxy". O que existe no código:
   arquivo da mesma nota (DANFE gerado) entra SEM chave, ligado ao título
   (`chaveJaArquivada` em `useDocumentoFiscal`). O `aviso` da importação
   aparece na tela.
+- **Aba nova é Blob URL, nunca `window.open('', …, 'noopener')`** (devolve
+  null no Chrome: aba about:blank vazia + "bloqueou"). `abrirEspelho` e
+  `abrirDanfe` abrem assim. No diálogo do lançamento há UM botão "Abrir
+  DANFE" (PDF guardado, senão gerado do XML) e "XML" para baixar.
+- **SEFAZ 632 = nota com mais de 90 dias**: o DistribuicaoDFe por chave só
+  entrega notas recentes; nota antiga vem do sistema emissor. O proxy e a
+  edge dizem isso (137 idem: a empresa não é parte da nota).
 - **A página `/certificado-upload` é pública** (autoriza pelo token de uso
   único): `upload-certificado` precisa de `verify_jwt = false` no
   `config.toml`, senão o gateway recusa o envio antes de a função rodar —

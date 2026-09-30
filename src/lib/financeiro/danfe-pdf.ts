@@ -154,6 +154,14 @@ export function gerarDanfePdf(nfe: NFeData): ArrayBuffer {
   return doc.output('arraybuffer');
 }
 
+/** Abre o DANFE gerado numa aba nova (Blob URL). Falso quando o navegador bloqueou. */
+export function abrirDanfe(nfe: NFeData): boolean {
+  const url = URL.createObjectURL(new Blob([gerarDanfePdf(nfe)], { type: 'application/pdf' }));
+  const janela = window.open(url, '_blank');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return !!janela;
+}
+
 /** O DANFE como arquivo, para o cofre: `DANFE-<chave>.pdf`. */
 export function arquivoDanfe(nfe: NFeData): File {
   const chave = String(nfe.chave_acesso ?? '').replace(/\D/g, '');

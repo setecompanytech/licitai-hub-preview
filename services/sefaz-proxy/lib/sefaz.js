@@ -136,6 +136,7 @@ export function motivoDoStatus(cStat, xMotivo) {
     case '138': return 'Documento(s) localizado(s).';
     case '137': return 'Nenhum documento localizado para este CNPJ — a SEFAZ só entrega notas em que a empresa é destinatária, transportadora ou terceiro autorizado.';
     case '656': return 'Consumo indevido: a SEFAZ limita as consultas; aguarde uma hora e tente de novo.';
+    case '632': return 'A SEFAZ só entrega pela chave notas autorizadas nos últimos 90 dias (Rejeição 632). Para esta, anexe o XML do sistema emissor.';
     case '589': return 'Ambiente errado para este certificado/consulta.';
     default: return xMotivo ? `SEFAZ ${cStat}: ${xMotivo}` : `SEFAZ respondeu ${cStat ?? 'sem código'}.`;
   }

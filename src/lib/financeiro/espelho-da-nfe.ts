@@ -159,11 +159,10 @@ export function espelhoDaNfe(nfe: NFeData): string {
 
 /** Abre o espelho numa aba nova. */
 export function abrirEspelho(nfe: NFeData): boolean {
-  const janela = window.open('', '_blank', 'noopener,noreferrer');
-  // Bloqueador de pop-up devolve null. Dizer isso é melhor do que a aba não
-  // abrir e ninguém saber por quê.
-  if (!janela) return false;
-  janela.document.write(espelhoDaNfe(nfe));
-  janela.document.close();
-  return true;
+  // `window.open('', …, 'noopener')` devolve null no Chrome e deixa uma aba
+  // about:blank vazia (30/09): a página vai como Blob URL, numa aba comum.
+  const url = URL.createObjectURL(new Blob([espelhoDaNfe(nfe)], { type: 'text/html;charset=utf-8' }));
+  const janela = window.open(url, '_blank');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return !!janela;
 }

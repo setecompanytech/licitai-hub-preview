@@ -124,7 +124,12 @@ Deno.serve(async (req) => {
         motivo: `A SEFAZ entregou só o resumo da NF-e ${r.chave?.slice(25, 34).replace(/^0+/, "") ?? ""}: o XML inteiro sai depois da "Ciência da Operação" (manifestação do destinatário). Registre a ciência e busque de novo.`,
       });
     }
-    return json({ ok: false, cStat: ret.cStat, motivo: ret.mensagem ?? "A SEFAZ não devolveu a nota." });
+    const motivo = String(ret.cStat) === "632"
+      ? "A SEFAZ só entrega pela chave notas autorizadas nos últimos 90 dias (Rejeição 632). Para esta, anexe o XML do sistema emissor."
+      : String(ret.cStat) === "137"
+        ? "A SEFAZ não tem esta nota para o CNPJ da empresa: ela só entrega notas em que a empresa é destinatária, transportadora ou terceiro autorizado."
+        : ret.mensagem ?? "A SEFAZ não devolveu a nota.";
+    return json({ ok: false, cStat: ret.cStat, motivo });
   } catch (e) {
     console.error("[nfe-xml-por-chave] erro:", e instanceof Error ? e.message : e);
     return json({ error: `Erro interno: ${e instanceof Error ? e.message : String(e)}` }, 500);

@@ -14,7 +14,7 @@ import { acharLinhaDigitavel, lerLinhaDigitavel } from "@/lib/financeiro/boleto"
 import { chaveDeAcessoValida, dadosDaChave } from "@/lib/financeiro/danfe";
 import { hojeLocal as hojeISO } from "@/lib/financeiro/data-local";
 import { lerDanfeEmPdf, consolidar } from "@/lib/financeiro/ler-danfe";
-import { abrirEspelho } from "@/lib/financeiro/espelho-da-nfe";
+import { abrirDanfe } from "@/lib/financeiro/danfe-pdf";
 import { montarParDeTransferencia } from "@/lib/financeiro/transferencia-propria";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1410,26 +1410,38 @@ export default function LancamentoDialog({ open, onOpenChange, initial, defaultT
                           tem layout próprio do Manual de Orientação do
                           Contribuinte, e chamar uma leitura de DANFE
                           convidaria alguém a apresentá-la como se fosse. */}
-                      {docGuardado.arquivo_xml && (
-                        <Button type="button" variant="outline" size="sm"
+                      {/* Um botão só (30/09): o DANFE. Se o arquivo guardado é o
+                          PDF, abre ele; se só há o XML, o DANFE é gerado dele na hora. */}
+                      {(/\.pdf$/i.test(docGuardado.arquivo_nome ?? "") || docGuardado.arquivo_xml) && (
+                        <Button type="button" variant="outline" size="sm" disabled={abrindoDoc}
                           onClick={() => {
+                            if (/\.pdf$/i.test(docGuardado.arquivo_nome ?? "")) { void abrirDocGuardado(); return; }
                             try {
-                              if (!abrirEspelho(parseNFeXML(docGuardado.arquivo_xml!))) {
-                                toast.error("O navegador bloqueou a aba.", {
-                                  description: "Permita pop-ups para este site e tente de novo.",
-                                });
-                              }
+                              if (!abrirDanfe(parseNFeXML(docGuardado.arquivo_xml!))) toast.error("O navegador bloqueou a aba.", { description: "Permita pop-ups para este site e tente de novo." });
                             } catch {
                               toast.error("O XML guardado não pôde ser lido.");
                             }
                           }}>
-                          Ver a nota
+                          {abrindoDoc ? "abrindo…" : "Abrir DANFE"}
                         </Button>
                       )}
-                      <Button type="button" variant="outline" size="sm"
-                        onClick={abrirDocGuardado} disabled={abrindoDoc}>
-                        {abrindoDoc ? "abrindo…" : "Ver arquivo"}
-                      </Button>
+                      {!/\.pdf$/i.test(docGuardado.arquivo_nome ?? "") && !docGuardado.arquivo_xml && (
+                        <Button type="button" variant="outline" size="sm" onClick={abrirDocGuardado} disabled={abrindoDoc}>
+                          {abrindoDoc ? "abrindo…" : "Ver arquivo"}
+                        </Button>
+                      )}
+                      {docGuardado.arquivo_xml && (
+                        <Button type="button" variant="ghost" size="sm" title="Baixar o XML da nota"
+                          onClick={() => {
+                            const a = document.createElement("a");
+                            a.href = URL.createObjectURL(new Blob([docGuardado.arquivo_xml!], { type: "application/xml" }));
+                            a.download = `NFe-${(docGuardado.arquivo_nome ?? "nota").replace(/\.[^.]+$/, "")}.xml`;
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                          }}>
+                          XML
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
