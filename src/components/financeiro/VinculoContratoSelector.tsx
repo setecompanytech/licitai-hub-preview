@@ -508,7 +508,13 @@ export default function VinculoContratoSelector({
     const atuais = new Set(itemIds);
     if (checked) atuais.add(id);
     else atuais.delete(id);
-    const novos = Array.from(atuais);
+    aplicarMarcacao(Array.from(atuais));
+  };
+
+  /** "Selecionar todos" (30/09): a nota da cesta básica traz os 18 itens — marcar um a um era o trabalho. */
+  const marcarTodos = (marcar: boolean) => aplicarMarcacao(marcar ? itens.map((i) => i.id) : []);
+
+  const aplicarMarcacao = (novos: string[]) => {
     const itensMarcados = itens.filter((i) => novos.includes(i.id));
 
     // A quantidade da NOTA manda; a divisão por preço é último recurso.
@@ -829,19 +835,29 @@ export default function VinculoContratoSelector({
                   </Badge>
                 )}
               </Label>
-              {itemIds.length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 text-muted-foreground"
-                  onClick={() =>
-                    onChange({ ...value, contrato_item_ids: [], contrato_item_id: null })
-                  }
-                >
-                  <X aria-hidden="true" /> Limpar
-                </Button>
-              )}
+              <div className="flex shrink-0 items-center gap-2">
+                {itens.length > 1 && (
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={itemIds.length === 0 ? false : itemIds.length >= itens.length ? true : "indeterminate"}
+                      onCheckedChange={(v) => marcarTodos(v === true)}
+                      aria-label="Selecionar todos os itens do contrato"
+                    />
+                    Selecionar todos ({itens.length})
+                  </label>
+                )}
+                {itemIds.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-muted-foreground"
+                    onClick={() => marcarTodos(false)}
+                  >
+                    <X aria-hidden="true" /> Limpar
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="text-xs text-muted-foreground">
