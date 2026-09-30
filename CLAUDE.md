@@ -872,7 +872,10 @@ ao clicar). Na linha do lote só o número e "Abrir lote" abrem a caixa. **O lot
 (registrar ordem, pré-NF, Kanban, kit, ordem/empenho, excluir lote) moram
 na caixa do lote ("Ações do lote"); a parte de um lote mostra só custo,
 quitação, editar e excluir. Na Origem do lote, empenho e nota são links
-(documento do empenho; DANFE, gerado do XML se ainda não existir).
+(documento do empenho; DANFE, gerado do XML se ainda não existir). **O empenho é fato do pedido, não do título:** "Trocar empenho"
+(lote e pedido solto) atualiza `empenho_id/numero_empenho/tipo_empenho`
+nas partes; os saldos das RPCs `contrato_empenho_*` se recalculam; o
+Financeiro não guarda empenho, então nada muda lá.
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 

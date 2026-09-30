@@ -439,6 +439,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   // Delete audit dialog
   const [deleteDialog, setDeleteDialog] = useState<{ id: string; numero: string; lote?: { id: string; partes: string[] } } | null>(null);
+  /**
+   * Trocar o empenho (30/09): erro humano no vínculo não pode custar refazer o
+   * lançamento. O empenho é fato do PEDIDO (empenho_id/numero/tipo em
+   * contrato_pedidos); o título do Financeiro não o guarda. Trocar nas partes
+   * do lote (ou no pedido solto) basta: o saldo de cada empenho é recalculado
+   * pelas RPCs a partir dos pedidos.
+   */
+  const [trocaDeEmpenho, setTrocaDeEmpenho] = useState<{ rotulo: string; pedidos: string[]; atual: string | null } | null>(null);
+  const [novoEmpenhoId, setNovoEmpenhoId] = useState<string>('');
+  const [trocandoEmpenho, setTrocandoEmpenho] = useState(false);
+  const confirmarTrocaDeEmpenho = async () => {
+    if (!trocaDeEmpenho) return;
+    const alvo = novoEmpenhoId === 'nenhum' ? null : empenhosDoContrato.find((e) => e.id === novoEmpenhoId) ?? null;
+    if (novoEmpenhoId !== 'nenhum' && !alvo) return;
+    setTrocandoEmpenho(true);
+    const { error } = await supabase.from('contrato_pedidos')
+      .update({ empenho_id: alvo?.id ?? null, numero_empenho: alvo?.numero ?? null, tipo_empenho: alvo?.tipo ?? null } as never)
+      .in('id', trocaDeEmpenho.pedidos);
+    setTrocandoEmpenho(false);
+    if (error) { toast.error('Não foi possível trocar o empenho', { description: error.message }); return; }
+    toast.success(alvo ? `Empenho trocado para ${alvo.numero} em ${trocaDeEmpenho.pedidos.length} pedido(s). Os saldos dos dois empenhos foram recalculados.` : `Vínculo com empenho removido de ${trocaDeEmpenho.pedidos.length} pedido(s).`);
+    setTrocaDeEmpenho(null);
+    load();
+  };
   const [deleteReason, setDeleteReason] = useState('');
   // Desfazer quitação (21/09): o pedido em questão, o motivo e o que a
   // pré-leitura achou (títulos pagos, bonificações pagas/pendentes).
@@ -2569,6 +2593,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <Undo2 aria-hidden="true" /> Desfazer quitação
               </Button>
             )}
+            {!pedidoAberto.lote_id && empenhosDoContrato.length > 0 && (
+              <Button size="sm" variant="outline" className="g-controle" title="Trocar o empenho que autoriza este pedido"
+                onClick={() => { setNovoEmpenhoId(pedidoAberto.empenho_id ?? 'nenhum'); setTrocaDeEmpenho({ rotulo: `pedido ${pedidoAberto.numero_pedido}`, pedidos: [pedidoAberto.id], atual: pedidoAberto.empenho_id ?? null }); }}>
+                <FileText aria-hidden="true" /> Trocar empenho
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="g-controle"
               onClick={() => openEditDialog(pedidoAberto)}
               title={(isFinanceiro || isAdmin)
@@ -2795,6 +2825,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                       <FileText aria-hidden="true" /> Ordem / Empenho
                     </Button>
                   )}
+                  <Button size="sm" variant="outline" className="g-controle" title="Trocar o empenho que autoriza este lote — vale para as 18 partes e recalcula os saldos"
+                    onClick={() => { setNovoEmpenhoId(loteAberto.empenho_id ?? 'nenhum'); setTrocaDeEmpenho({ rotulo: `lote ${loteAberto.numero} (${loteAberto.partes.length} partes)`, pedidos: loteAberto.partes.map((p) => p.id), atual: loteAberto.empenho_id ?? null }); }}>
+                    <FileText aria-hidden="true" /> Trocar empenho
+                  </Button>
                   <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
                     <Trash2 aria-hidden="true" /> Excluir lote
                   </Button>
@@ -4217,6 +4251,38 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <DialogDescription>Origem, item, valores, nota e ações do pedido.</DialogDescription>
           </DialogHeader>
           {painelDoPedido}
+        </DialogContent>
+      </Dialog>
+
+      {/* Trocar empenho (30/09) */}
+      <Dialog open={!!trocaDeEmpenho} onOpenChange={(v) => { if (!v && !trocandoEmpenho) setTrocaDeEmpenho(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Trocar o empenho — {trocaDeEmpenho?.rotulo}</DialogTitle>
+            <DialogDescription>
+              O empenho autoriza a entrega e é dele que o saldo baixa. A troca vale para {trocaDeEmpenho?.pedidos.length === 1 ? 'este pedido' : `as ${trocaDeEmpenho?.pedidos.length} partes`}; o título no Financeiro não muda.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Empenho que autoriza (art. 60)</Label>
+            <Select value={novoEmpenhoId} onValueChange={setNovoEmpenhoId}>
+              <SelectTrigger><SelectValue placeholder="Escolha o empenho" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhum">Sem vínculo com empenho</SelectItem>
+                {empenhosDoContrato.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}{e.cancelado ? ' · CANCELADO' : ` · vigente ${fmt(e.vigente)}`}{e.id === trocaDeEmpenho?.atual ? ' (atual)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTrocaDeEmpenho(null)} disabled={trocandoEmpenho}>Cancelar</Button>
+            <Button onClick={() => void confirmarTrocaDeEmpenho()} disabled={trocandoEmpenho || !novoEmpenhoId || novoEmpenhoId === (trocaDeEmpenho?.atual ?? 'nenhum')}>
+              {trocandoEmpenho && <Loader2 aria-hidden="true" className="animate-spin" />}Trocar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
