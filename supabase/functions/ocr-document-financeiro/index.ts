@@ -51,6 +51,28 @@ function sanearNumerosBrasileiros(d: Record<string, unknown>): void {
 }
 
 /**
+ * As linhas de produto (30/09): o DANFE de 18 produtos chegava ao vínculo
+ * sem linha nenhuma, e a pessoa preenchia 18 quantidades à mão. Cada linha
+ * vira {descricao, quantidade, valor_unitario, valor_total} em número; linha
+ * sem descrição e sem valor é descartada; total ausente = qtd × unitário.
+ */
+function sanearItens(d: Record<string, unknown>): void {
+  const brutos = Array.isArray(d.itens) ? d.itens : [];
+  const itens = brutos
+    .map((raw) => {
+      const it = (raw ?? {}) as Record<string, unknown>;
+      const descricao = String(it.descricao ?? "").trim();
+      const quantidade = brParaNumero(it.quantidade_impressa ?? it.quantidade) ?? 0;
+      const valor_unitario = brParaNumero(it.valor_unitario_impresso ?? it.valor_unitario) ?? 0;
+      const lido = brParaNumero(it.valor_total_impresso ?? it.valor_total);
+      const valor_total = lido != null && lido > 0 ? lido : Math.round(quantidade * valor_unitario * 100) / 100;
+      return { descricao, quantidade, valor_unitario, valor_total };
+    })
+    .filter((it) => it.descricao || it.valor_total > 0);
+  d.itens = itens;
+}
+
+/**
  * Teste de coerência do valor (09/09): a NF-e 713 saiu como R$ 2.029,60
  * quando o total era R$ 2.029.600,00 — o milhar engolido pelo PRÓPRIO
  * literal lido, que a defesa acima não alcança. Quantidade × unitário é uma
@@ -167,6 +189,7 @@ CAMPOS A EXTRAIR (quando visíveis):
 - valor_unitario: o VALOR UNITÁRIO convertido para número ("22,5500" → 22.55).
 - codigo_barras: linha digitável de boleto (47/48 dígitos)
 - descricao: descrição do produto/serviço
+- itens: TODAS as linhas da tabela "DADOS DO PRODUTO/SERVIÇO" (ou dos itens do documento), na ordem impressa, uma por produto: [{ "descricao": texto da coluna DESCRIÇÃO, "quantidade_impressa": TEXTO EXATO da coluna QTDE., "valor_unitario_impresso": TEXTO EXATO da coluna V. UNIT., "valor_total_impresso": TEXTO EXATO da coluna V. TOTAL }]. Copie os caracteres como impressos; NÃO some, NÃO arredonde, NÃO invente linha. Documento sem tabela de itens → [].
 - impostos: { iss, icms, pis, cofins, ir } (quando visíveis)
 
 NUNCA invente dados ausentes. Use null para campos não encontrados.`;
@@ -197,6 +220,19 @@ const TOOL_SCHEMA = {
         valor_unitario_impresso: { type: "string" },
         codigo_barras: { type: "string" },
         descricao: { type: "string" },
+        itens: {
+          type: "array",
+          description: "Todas as linhas de produto/serviço, na ordem impressa; textos copiados como impressos.",
+          items: {
+            type: "object",
+            properties: {
+              descricao: { type: "string" },
+              quantidade_impressa: { type: "string" },
+              valor_unitario_impresso: { type: "string" },
+              valor_total_impresso: { type: "string" },
+            },
+          },
+        },
         confianca: { type: "number", description: "0-1, confiança na extração" },
       },
       required: ["tipo_documento", "confianca"],
@@ -245,11 +281,11 @@ async function callClaude(imageDataUrl: string) {
     headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 2000,
+      max_tokens: 6000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
-        { type: "text", text: "Extraia os campos estruturados em JSON puro (sem markdown). Use as chaves: tipo_documento, emitente_nome, emitente_cnpj, destinatario_nome, destinatario_cnpj_cpf, numero_documento, chave_nfe, data_emissao, data_vencimento, valor_total, quantidade_total, valor_unitario, quantidade_total_impressa, valor_total_impresso, valor_unitario_impresso, codigo_barras, descricao, confianca." },
+        { type: "text", text: "Extraia os campos estruturados em JSON puro (sem markdown). Use as chaves: tipo_documento, emitente_nome, emitente_cnpj, destinatario_nome, destinatario_cnpj_cpf, numero_documento, chave_nfe, data_emissao, data_vencimento, valor_total, quantidade_total, valor_unitario, quantidade_total_impressa, valor_total_impresso, valor_unitario_impresso, codigo_barras, descricao, itens (todas as linhas de produto: descricao, quantidade_impressa, valor_unitario_impresso, valor_total_impresso), confianca." },
       ]}],
     }),
   });
@@ -288,6 +324,7 @@ Deno.serve(async (req) => {
         const resultado = await tentativa.fn();
         if (resultado && resultado.tipo_documento) {
           sanearNumerosBrasileiros(resultado);
+          sanearItens(resultado);
           conferirValorTotal(resultado);
           sanearDatas(resultado);
           return new Response(JSON.stringify({ ok: true, motor: tentativa.motor, dados: resultado }), {

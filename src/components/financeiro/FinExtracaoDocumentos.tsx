@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { lerLinhaDigitavel } from '@/lib/financeiro/boleto';
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
-import { lerDanfe, pastaDaDirecao, type DanfeLido } from "@/lib/financeiro/danfe-texto";
+import { danfeDaChave, lerDanfe, pastaDaDirecao, type DanfeLido } from "@/lib/financeiro/danfe-texto";
 import { textoDasPaginas } from "@/lib/pdf-text-extractor";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -345,8 +345,14 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     return lanc?.id ? { id: lanc.id } : null;
   };
 
-  /** A leitura por imagem (OCR multi-IA) — o caminho antigo, agora só para o que não é DANFE ou por escolha. */
-  const lerPorImagem = async (item: DocItem, documentoId: string | null): Promise<DocItem> => {
+  /**
+   * A leitura por imagem (OCR multi-IA) — para o que não é DANFE, para o DANFE
+   * escaneado (sem texto) e por escolha. Desde 30/09 o OCR devolve as LINHAS
+   * de produto (`itens`) e a chave; chave válida num PDF sem texto ainda é um
+   * DANFE: a nota já lançada recebe o PDF, senão o cartão pede o XML — mas
+   * as linhas lidas ficam, para o vínculo não nascer vazio.
+   */
+  const lerPorImagem = async (item: DocItem, documentoId: string | null, forcarOcr = false): Promise<DocItem> => {
     try {
 
       // ---------- PDF / Imagem -> OCR ----------
@@ -369,7 +375,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
 
       // A chave que o DANFE já tinha dado vale mais do que a lida na imagem.
       const chaveCerta = item.danfe?.chave;
-      return { ...item, status: "ok", motor: data.motor, aguardandoXml: false, dados: chaveCerta ? { ...dados, chave_nfe: chaveCerta } : dados, documentoId };
+      const lido = { ...item, status: "ok" as const, motor: data.motor, aguardandoXml: false, dados: chaveCerta ? { ...dados, chave_nfe: chaveCerta } : dados, documentoId };
+      // PDF escaneado: o texto não tinha a chave, mas a imagem tinha.
+      if (!forcarOcr && !item.danfe && item.kind === "pdf") {
+        const danfe = danfeDaChave(dados?.chave_nfe, cnpjDaEmpresa, { valor_total: dados?.valor_total, data_emissao: dados?.data_emissao });
+        if (danfe) {
+          const existente = await lancamentoDaChave(danfe.chave);
+          if (existente) {
+            if (documentoId) await vincularLancamento(documentoId, existente.id);
+            invalidarFinanceiro();
+            return { ...lido, danfe, dados: { ...lido.dados, ...dadosDoDanfe(danfe, { _ja_lancada: true, _danfe_anexado: true }), itens: lido.dados?.itens ?? null }, lancamentoId: existente.id };
+          }
+          return { ...lido, danfe, aguardandoXml: true, dados: { ...lido.dados, ...dadosDoDanfe(danfe, { _precisa_xml: true }), valor_total: danfe.valor_total ?? lido.dados?.valor_total ?? null, itens: lido.dados?.itens ?? null } };
+        }
+      }
+      return lido;
     } catch (e) {
       // O arquivo já está guardado — o erro é da leitura, não do documento.
       return { ...item, status: "erro", erro: e instanceof Error ? e.message : "Erro inesperado", documentoId };
@@ -379,8 +399,13 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   /** "Ler por OCR mesmo assim": o DANFE sem XML vai para a leitura por imagem, por escolha de quem opera. */
   const lerDanfePorOcr = async (item: DocItem) => {
     setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "processando" } : d)));
-    const lido = await lerPorImagem({ ...item, aguardandoXml: false }, item.documentoId ?? null);
+    const lido = await lerPorImagem({ ...item, aguardandoXml: false }, item.documentoId ?? null, true);
     setDocs((prev) => prev.map((d) => (d.id === item.id ? lido : d)));
+  };
+
+  /** A leitura por imagem já aconteceu (PDF escaneado): seguir com ela é só liberar o cartão. */
+  const seguirComALeitura = (item: DocItem) => {
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, aguardandoXml: false, dados: { ...d.dados, _precisa_xml: false } } : d)));
   };
 
   /**
@@ -1366,9 +1391,15 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                     <Button size="sm" onClick={() => xmlInputs.current[d.id]?.click()}>
                                       <FileCode2 aria-hidden="true" />Anexar o XML desta nota
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => void lerDanfePorOcr(d)}>
-                                      <ScanLine aria-hidden="true" />Ler por OCR mesmo assim
-                                    </Button>
+                                    {Array.isArray(d.dados?.itens) && d.dados.itens.length > 0 ? (
+                                      <Button size="sm" variant="outline" onClick={() => seguirComALeitura(d)} title="A leitura por imagem já foi feita: usa o que ela leu, sem o XML">
+                                        <ScanLine aria-hidden="true" />Seguir com a leitura por imagem ({d.dados.itens.length} linhas)
+                                      </Button>
+                                    ) : (
+                                      <Button size="sm" variant="outline" onClick={() => void lerDanfePorOcr(d)}>
+                                        <ScanLine aria-hidden="true" />Ler por OCR mesmo assim
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               );

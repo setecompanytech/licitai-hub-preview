@@ -10,7 +10,7 @@
  * Valor e data saem do texto quando o layout permite; nunca por adivinhação.
  * Puro: a tela só chama.
  */
-import { chaveNfeDoTexto, dadosDaChaveNfe } from './chave-nfe';
+import { chaveNfeDoTexto, chaveNfeValida, dadosDaChaveNfe } from './chave-nfe';
 
 export type DanfeLido = {
   chave: string;
@@ -66,4 +66,28 @@ export function lerDanfe(texto: string, cnpjDaEmpresa?: string | null): DanfeLid
 /** A pasta certa para a nota, pela direção: saída é a receber; entrada, a pagar. */
 export function pastaDaDirecao(direcao: 'entrada' | 'saida' | null): 'a_receber' | 'a_pagar' | null {
   return direcao === 'saida' ? 'a_receber' : direcao === 'entrada' ? 'a_pagar' : null;
+}
+
+/**
+ * O DANFE a partir da CHAVE que a leitura por imagem devolveu (30/09): PDF
+ * sem texto (escaneado) não passa pelo texto, mas o OCR lê a chave — e a
+ * chave, se o dígito verificador fecha, vale tanto quanto a do texto. Valor
+ * e data vêm do que o OCR leu; número, série, emitente e mês, da chave.
+ */
+export function danfeDaChave(
+  chave: unknown,
+  cnpjDaEmpresa?: string | null,
+  lido: { valor_total?: number | null; data_emissao?: string | null } = {},
+): DanfeLido | null {
+  const c = dadosDaChaveNfe(chave);
+  if (!c || !chaveNfeValida(chave)) return null;
+  const empresa = apenasDigitos(cnpjDaEmpresa);
+  const data = lido.data_emissao ? String(lido.data_emissao).slice(0, 10) : null;
+  return {
+    chave: String(chave).replace(/\D/g, ''),
+    numero: c.numero, serie: c.serie, modelo: c.modelo, cnpj_emitente: c.cnpj_emitente, competencia: c.competencia,
+    direcao: empresa.length === 14 ? (c.cnpj_emitente === empresa ? 'saida' : 'entrada') : null,
+    valor_total: Number(lido.valor_total) > 0 ? Number(lido.valor_total) : null,
+    data_emissao: data && data.slice(0, 7) === c.competencia ? data : null,
+  };
 }

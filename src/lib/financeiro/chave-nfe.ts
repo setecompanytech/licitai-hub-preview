@@ -127,6 +127,15 @@ export function chaveNfeDoTexto(texto: string): string | null {
     const chave = m[0].replace(/\D/g, '');
     if (chaveNfeValida(chave)) return chave;
   }
+  // O texto de um PDF sai na ordem das caixas, não da leitura: os grupos de
+  // quatro da chave podem vir intercalados com rótulos de caixas vizinhas.
+  // Onze grupos de quatro dígitos, com até 40 caracteres sem dígito entre
+  // eles, ainda são a chave — o dígito verificador diz se são.
+  const grupos = /(?:\b\d{4}\b[^\d]{0,40}){10}\b\d{4}\b/g;
+  for (const m of texto.matchAll(grupos)) {
+    const chave = m[0].replace(/\D/g, '');
+    if (chaveNfeValida(chave)) return chave;
+  }
   return null;
 }
 

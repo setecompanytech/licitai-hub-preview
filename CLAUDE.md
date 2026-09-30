@@ -888,6 +888,12 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
   e o hook `useImportacaoNotas` devolve `{ ok: false, erro }` com o corpo da
   resposta (`motivoDaEdgeFunction`) em vez de "non-2xx". Enum novo em
   `origem` só por migration; nunca inventar valor.
+- **O OCR devolve as linhas** (`itens`: descrição, quantidade, unitário,
+  total, 30/09 à tarde) e a chave. PDF ESCANEADO (sem texto) não passa pelo
+  texto, mas a chave lida pelo OCR, com DV válido, ainda o torna DANFE
+  (`danfeDaChave`): nota já lançada recebe o PDF; senão o cartão pede o XML
+  e oferece "Seguir com a leitura por imagem (N linhas)". A detecção no
+  texto aceita grupos de quatro intercalados com rótulos vizinhos.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 
