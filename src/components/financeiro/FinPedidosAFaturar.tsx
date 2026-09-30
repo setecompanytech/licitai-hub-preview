@@ -422,7 +422,7 @@ export default function FinPedidosAFaturar() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-2 justify-end">
-                        <KitFaturamento
+                        <KitFaturamento compacto
                           pedido={{
                             id: r.id,
                             numero_pedido: r.numero_pedido,

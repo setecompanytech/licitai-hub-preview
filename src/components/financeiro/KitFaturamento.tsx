@@ -68,7 +68,7 @@ type Props = {
 
 type ContaBancaria = { id: string; nome: string; banco_nome: string | null; agencia: string | null; conta: string | null };
 
-export default function KitFaturamento({ pedido }: Props) {
+export default function KitFaturamento({ pedido, compacto = false }: Props & { /** Só o ícone (linha de tabela com cinco ações). Nas caixas, o botão tem nome. */ compacto?: boolean }) {
   const { empresaAtiva } = useEmpresa();
   const { user } = useAuth();
   const [aberto, setAberto] = useState(false);
@@ -282,16 +282,23 @@ export default function KitFaturamento({ pedido }: Props) {
       {/* Ícone, não rótulo: numa linha de tabela com cinco ações, os 120px
           do texto eram exatamente o que transbordava e cortava os botões
           seguintes. O título no hover mantém a descoberta. */}
-      <Button size="icon" variant="outline" className="h-7 w-7" aria-label="Kit de faturamento"
-        title="Kit de faturamento" onClick={() => setAberto(true)}>
-        <Package aria-hidden="true" />
-      </Button>
+      {compacto ? (
+        <Button size="icon" variant="outline" className="h-7 w-7" aria-label="Recibo e certidões para a NF-e"
+          title="Recibo de quitação e certidões negativas que acompanham a NF-e" onClick={() => setAberto(true)}>
+          <Package aria-hidden="true" />
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" className="g-controle"
+          title="Recibo de quitação e certidões negativas que acompanham a NF-e (PDF ou ZIP)" onClick={() => setAberto(true)}>
+          <Package aria-hidden="true" /> Recibo e certidões
+        </Button>
+      )}
 
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Kit de faturamento
+              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Recibo e certidões para a NF-e
             </DialogTitle>
             <DialogDescription>
               Recibo de quitação e certidões para acompanhar a NF-e do pedido{' '}

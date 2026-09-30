@@ -3452,7 +3452,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               {/* Kit vale antes e depois da quitação: o órgão pede a
                                   segunda via, e a fila do financeiro só mostra o que
                                   ainda não foi baixado. */}
-                              <KitFaturamento
+                              <KitFaturamento compacto
                                 pedido={{
                                   id: p.id,
                                   numero_pedido: p.numero_pedido,
