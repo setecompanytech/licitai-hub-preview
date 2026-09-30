@@ -508,6 +508,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // estoura o que sobrou, em vez de aceitar e deixar o consumo em 303%.
   const [saldoDoContrato, setSaldoDoContrato] = useState(0);
   // Saldo por cota dos empenhos deste contrato, para a checagem tripla.
+  /** Os empenhos chegam numa consulta própria depois dos pedidos: enquanto não chegam, a tela diz "carregando", não "nenhum". */
+  const [carregandoEmpenhos, setCarregandoEmpenhos] = useState(true);
   const [saldosDeEmpenho, setSaldosDeEmpenho] = useState<
     Array<{
       empenho_id: string; numero: string; tipo: string; arquivo_id: string | null;
@@ -873,41 +875,51 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Empenhos e o saldo de cada cota. Consulta separada e tolerante: as
     // tabelas vêm de migration colada à mão, e sem elas a checagem apenas não
     // avalia o empenho — não impede ninguém de trabalhar.
+    // Os saldos por empenho vinham um a um, em série (14 empenhos × 2 RPCs =
+    // 28 idas ao banco em fila): a faixa dizia "Nenhum empenho registrado"
+    // por segundos. Agora todos em paralelo, e a tela sabe que está esperando.
+    setCarregandoEmpenhos(true);
     supabase
       .from('contrato_empenhos' as never)
       .select('id, numero, tipo, arquivo_id')
       .eq('contrato_id', contratoId)
       .order('created_at', { ascending: true })
       .then(async ({ data: emps, error }) => {
-        if (error || !emps?.length) { setSaldosDeEmpenho([]); return; }
-        const linhas: typeof saldosDeEmpenho = [];
-        for (const e of emps as unknown as Array<{ id: string; numero: string; tipo: string; arquivo_id: string | null }>) {
-          const [{ data: saldo }, { data: vig }] = await Promise.all([
+        try {
+          if (error || !emps?.length) { setSaldosDeEmpenho([]); return; }
+          const lista = emps as unknown as Array<{ id: string; numero: string; tipo: string; arquivo_id: string | null }>;
+          const respostas = await Promise.all(lista.map((e) => Promise.all([
             supabase.rpc('contrato_empenho_saldo_por_cota' as never, { p_empenho_id: e.id } as never),
             supabase.rpc('contrato_empenho_valor_vigente' as never, { p_empenho_id: e.id } as never),
-          ]);
-          const v = ((vig ?? []) as unknown as Array<{
-            valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number;
-          }>)[0];
-          for (const s of (saldo ?? []) as unknown as Array<{
-            cota: string; saldo_qtd: number; qtd_empenhada: number;
-      /** Do empenho inteiro, não da cota: é o que diz se ele foi cancelado. */
-      valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number; saldo_valor: number;
-          }>) {
-            linhas.push({
-              empenho_id: e.id, numero: e.numero, tipo: e.tipo, arquivo_id: e.arquivo_id,
-              cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0,
-              qtd_empenhada: Number(s.qtd_empenhada) || 0,
-              saldo_valor: Number(s.saldo_valor) || 0,
-              valor_original: Number(v?.valor_original) || 0,
-              reforcos: Number(v?.reforcos) || 0,
-              anulacoes: Number(v?.anulacoes) || 0,
-              valor_vigente: Number(v?.valor_vigente) || 0,
-              reforcado: (Number(v?.reforcos) || 0) > 0 || (Number(v?.anulacoes) || 0) > 0,
-            });
-          }
+          ])));
+          const linhas: typeof saldosDeEmpenho = [];
+          lista.forEach((e, i) => {
+            const [{ data: saldo }, { data: vig }] = respostas[i];
+            const v = ((vig ?? []) as unknown as Array<{
+              valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number;
+            }>)[0];
+            for (const s of (saldo ?? []) as unknown as Array<{
+              cota: string; saldo_qtd: number; qtd_empenhada: number;
+              /** Do empenho inteiro, não da cota: é o que diz se ele foi cancelado. */
+              valor_original: number; reforcos: number; anulacoes: number; valor_vigente: number; saldo_valor: number;
+            }>) {
+              linhas.push({
+                empenho_id: e.id, numero: e.numero, tipo: e.tipo, arquivo_id: e.arquivo_id,
+                cota: s.cota, saldo_qtd: Number(s.saldo_qtd) || 0,
+                qtd_empenhada: Number(s.qtd_empenhada) || 0,
+                saldo_valor: Number(s.saldo_valor) || 0,
+                valor_original: Number(v?.valor_original) || 0,
+                reforcos: Number(v?.reforcos) || 0,
+                anulacoes: Number(v?.anulacoes) || 0,
+                valor_vigente: Number(v?.valor_vigente) || 0,
+                reforcado: (Number(v?.reforcos) || 0) > 0 || (Number(v?.anulacoes) || 0) > 0,
+              });
+            }
+          });
+          setSaldosDeEmpenho(linhas);
+        } finally {
+          setCarregandoEmpenhos(false);
         }
-        setSaldosDeEmpenho(linhas);
       });
     // Consulta SEPARADA, de propósito. As colunas de prazo vêm da migration
     // 20260829000004, que é colada à mão no SQL Editor: enquanto ela não
@@ -2851,10 +2863,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             // a cobertura do global e o que falta empenhar.
             rotulo: 'Valor empenhado',
             valor: empenhosDoContrato.length > 0 ? fmt(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).empenhado) : null,
-            razaoIndisponivel: 'Nenhum empenho registrado',
+            razaoIndisponivel: carregandoEmpenhos ? 'Carregando empenhos…' : 'Nenhum empenho registrado',
             detalhe: empenhosDoContrato.length > 0
               ? detalheDosEmpenhos(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global))
-              : 'o empenho autoriza as entregas — registre pela nota',
+              : carregandoEmpenhos ? 'somando os empenhos vigentes' : 'o empenho autoriza as entregas — registre pela nota',
             icone: FileText,
             tom: empenhosDoContrato.some(e => e.cancelado) || resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).excesso > 0 ? 'aviso' : 'neutro',
           },
@@ -2868,7 +2880,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       <AbasGestao
         abas={[
           { valor: 'pedidos', rotulo: 'Pedidos / Ordens', contagem: pedidos.length },
-          { valor: 'empenhos', rotulo: 'Empenhos', contagem: empenhosDoContrato.length },
+          { valor: 'empenhos', rotulo: 'Empenhos', contagem: carregandoEmpenhos && empenhosDoContrato.length === 0 ? undefined : empenhosDoContrato.length },
         ]}
         valor={subAba}
         aoMudar={(v) => setSubAba(v as 'pedidos' | 'empenhos')}
@@ -3521,7 +3533,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 recolhidaPorPadrao
                 classNameTitulo="text-base font-semibold leading-6 text-foreground"
                 icone={<FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-                titulo={<>Empenhos registrados ({empenhosDoContrato.length}) — {fmt(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).empenhado)} empenhados, autorizam os pedidos acima</>}
+                titulo={carregandoEmpenhos && empenhosDoContrato.length === 0
+                  ? <>Empenhos registrados — carregando…</>
+                  : <>Empenhos registrados ({empenhosDoContrato.length}) — {fmt(resumoDosEmpenhos(empenhosDoContrato, contratoInfo?.valor_global).empenhado)} empenhados, autorizam os pedidos acima</>}
               >
                 <div className="mt-2">{listaDeEmpenhos}</div>
               </SecaoRecolhivel>
@@ -3620,7 +3634,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             Empenho <strong>autoriza</strong>; não consome. O saldo de item e de contrato só é
             abatido quando a entrega é lançada contra ele, na subaba Pedidos / Ordens.
           </p>
-          {loading ? (
+          {loading || (carregandoEmpenhos && empenhosDoContrato.length === 0) ? (
             <Card className="overflow-hidden" role="status" aria-busy="true">
               <span className="sr-only">Carregando empenhos…</span>
               <div className="flex flex-col gap-px bg-border">
