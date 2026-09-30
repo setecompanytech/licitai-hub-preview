@@ -883,7 +883,7 @@ export default function VinculoContratoSelector({
               />
             ) : (
               <div
-                className="h-[min(34vh,260px)] min-h-[120px] divide-y divide-border overflow-y-auto overscroll-contain rounded-md border border-border"
+                className="h-[min(44vh,420px)] min-h-[120px] divide-y divide-border overflow-y-auto overscroll-contain rounded-md border border-border"
                 onWheel={(e) => e.stopPropagation()}
               >
                 {itens.map((i, idx) => {
@@ -1036,7 +1036,7 @@ export default function VinculoContratoSelector({
                           return (
                             <tr key={i.id} className="border-t border-border">
                               <td className="py-1 pr-2 whitespace-nowrap font-medium tabular-nums">{rotuloDoItem(i, posicao < 0 ? 0 : posicao).replace("Item ", "")}</td>
-                              <td className="py-1 pr-2 max-w-[18rem]"><span className="line-clamp-2" title={i.descricao}>{i.descricao}</span></td>
+                              <td className="py-1 pr-2 max-w-[32rem]"><span className="line-clamp-2" title={i.descricao}>{i.descricao}</span></td>
                               <td className="py-1 pr-2">{campoDaParte(i, "quantidade")}</td>
                               <td className="py-1 pr-2">
                                 <div className="flex items-center justify-end gap-1">

@@ -1189,7 +1189,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[calc(100vh-2rem)] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
+        {/* Largura de trabalho (30/09): o vínculo com 18 itens, a tabela por item e a cesta
+            não cabem em 56rem — a janela ocupa a tela, e as instruções recolhem quando há arquivo. */}
+        <DialogContent className="w-[min(98vw,96rem)] max-w-[min(98vw,96rem)] max-h-[calc(100vh-1.5rem)] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="flex flex-wrap items-center gap-2">
               <ScanLine className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
@@ -1211,7 +1213,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     ladrilho neutro, o texto ao lado. `role="list"` porque
                     `list-none` faz alguns leitores de tela esquecerem que é
                     lista. */}
-                <ol role="list" className="list-none space-y-1.5 text-sm">
+                {docs.length === 0 && <ol role="list" className="list-none space-y-1.5 text-sm">
                   <li className="flex items-start gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">1</span>
                     <span>O arquivo é <strong>arquivado</strong> assim que chega — mesmo se a leitura falhar.</span>
@@ -1225,7 +1227,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     <span>Só ao clicar em <strong>Lançar</strong> nasce o {tipoLabel} em{' '}
                       <strong>{tipo === "a_receber" ? "Contas a Receber" : "Contas a Pagar"}</strong>.</span>
                   </li>
-                </ol>
+                </ol>}
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -1250,19 +1252,28 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   inputRef.current?.click();
                 }
               }}
-              className={`cursor-pointer rounded-md border border-dashed p-6 text-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                dragOver ? "border-primary bg-primary-tint" : "border-input hover:border-primary hover:bg-primary-tint"
-              }`}
+              className={`cursor-pointer rounded-md border border-dashed transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                docs.length > 0 ? "flex items-center gap-3 px-4 py-2 text-left" : "p-6 text-center"
+              } ${dragOver ? "border-primary bg-primary-tint" : "border-input hover:border-primary hover:bg-primary-tint"}`}
             >
-              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
-                <Upload className="h-5 w-5" />
-              </span>
-              <p className="text-base font-semibold text-foreground mt-2">
-                Arraste arquivos aqui ou clique para selecionar
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                XML (NF-e/NFS-e, o caminho certo para nota fiscal) • PDF (DANFE pela chave; cupom, boleto, recibo, fatura por OCR) • JPG/PNG — até 15 MB cada
-              </p>
+              {docs.length > 0 ? (
+                <>
+                  <Upload className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <p className="text-sm text-foreground"><span className="font-semibold">Enviar mais arquivos</span> <span className="text-muted-foreground">— arraste aqui ou clique. XML, PDF, JPG/PNG, até 15 MB cada.</span></p>
+                </>
+              ) : (
+                <>
+                  <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true">
+                    <Upload className="h-5 w-5" />
+                  </span>
+                  <p className="text-base font-semibold text-foreground mt-2">
+                    Arraste arquivos aqui ou clique para selecionar
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    XML (NF-e/NFS-e, o caminho certo para nota fiscal) • PDF (DANFE pela chave; cupom, boleto, recibo, fatura por OCR) • JPG/PNG — até 15 MB cada
+                  </p>
+                </>
+              )}
               <input
                 ref={inputRef}
                 type="file"
@@ -1276,8 +1287,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
               />
             </div>
 
-            {/* Aviso */}
-            <Alert variant="info">
+            {/* Aviso — só enquanto não há arquivo: com arquivo, o espaço é do trabalho. */}
+            {docs.length === 0 && <Alert variant="info">
               <Info className="w-4 h-4" aria-hidden="true" />
               <AlertDescription>
                 <b>XMLs de NF-e/NFS-e</b> são lançados automaticamente, item a item (entrada/saída pelo CNPJ da empresa).
@@ -1287,7 +1298,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 <br />
                 <b>Cupom, boleto, recibo, fatura</b> (PDF ou imagem) passam por OCR multi-IA e abrem para revisão antes de virar lançamento.
               </AlertDescription>
-            </Alert>
+            </Alert>}
 
             {/* Lista de docs */}
             {docs.length > 0 && (
@@ -1313,7 +1324,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                     </div>
                   </div>
 
-                  <ScrollArea className="h-[min(52vh,520px)] pr-3">
+                  <ScrollArea className="h-[calc(100vh-16rem)] min-h-[22rem] pr-3">
                     <div className="space-y-2">
                       {docs.map((d) => (
                         <div key={d.id} className="flex flex-wrap items-start gap-3 rounded-md border border-border bg-card p-3">
