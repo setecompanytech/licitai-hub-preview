@@ -150,13 +150,19 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization") ?? "";
     if (!auth.startsWith("Bearer ")) {
-      return json({ error: "unauthorized" }, 401);
+      return json({ error: "Sessão não enviada: entre de novo e tente outra vez." }, 401);
     }
+    // O token vai EXPLÍCITO ao getUser (30/09): sem sessão guardada, o cliente
+    // de servidor só reconhece o usuário pelo JWT passado — o mesmo padrão da
+    // `tcu-pesquisa`. E o motivo de cada recusa vai dito, para a tela mostrar.
+    const token = auth.slice("Bearer ".length).trim();
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
     });
-    const { data: userData } = await userClient.auth.getUser();
-    if (!userData?.user) return json({ error: "unauthorized" }, 401);
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return json({ error: `Sessão inválida ou expirada (${userErr?.message ?? "sem usuário"}): entre de novo e tente outra vez.` }, 401);
+    }
     const userId = userData.user.id;
 
     const body = await req.json().catch(() => ({}));
@@ -178,7 +184,7 @@ Deno.serve(async (req) => {
       .eq("empresa_id", empresaId)
       .eq("user_id", userId)
       .maybeSingle();
-    if (!membro) return json({ error: "sem acesso a esta empresa" }, 403);
+    if (!membro) return json({ error: "Seu usuário não é membro da empresa selecionada — a importação é recusada." }, 403);
 
     // CNPJ da empresa para detectar direção
     const { data: emp } = await admin.from("empresas").select("cnpj").eq("id", empresaId).maybeSingle();
@@ -189,13 +195,16 @@ Deno.serve(async (req) => {
     let criadas = 0, duplicadas = 0, erros = 0;
 
     for (const arq of arquivos) {
-      const nome = String(arq.nome ?? "arquivo.xml");
-      const xml = String(arq.xml ?? "");
+      const nome = String(arq?.nome ?? "arquivo.xml");
+      const xml = String(arq?.xml ?? "");
       if (!xml.trim()) {
         resultados.push({ nome, status: "erro", erro: "XML vazio" });
         erros++;
         continue;
       }
+      // Um arquivo que estoura não derruba o lote inteiro em 500: vira erro
+      // daquele arquivo, com a mensagem, e os outros seguem.
+      try {
 
       let nota: NotaParseada | null = null;
       try {
@@ -250,7 +259,11 @@ Deno.serve(async (req) => {
           serie_documento: nota.serie,
           chave_acesso_nfe: nota.chave_acesso,
           data_emissao: nota.data_emissao,
-          origem: "importacao_xml",
+          // `financeiro_lancamentos.origem` é o enum financeiro_origem_movimento
+          // (manual, ofx, pluggy, cnab, dda, sefaz_nfe, ocr, recorrencia,
+          // folha_pagamento). "importacao_xml" não existe nele: todo XML era
+          // recusado pelo banco (30/09). O XML da NF-e é a nota da SEFAZ.
+          origem: "sefaz_nfe",
           origem_ref: nota.chave_acesso,
           created_by: userId,
         })
@@ -335,8 +348,14 @@ Deno.serve(async (req) => {
         tipo: nota.tipo,
         direcao: nota.direcao,
         valor: nota.valor_total,
+        chave: nota.chave_acesso,
         competencia,
       });
+      } catch (e) {
+        console.error("importar-notas-fiscais: falha no arquivo", nome, e);
+        resultados.push({ nome, status: "erro", erro: `Falha ao processar o XML: ${e instanceof Error ? e.message : String(e)}` });
+        erros++;
+      }
     }
 
     return json({
@@ -347,9 +366,9 @@ Deno.serve(async (req) => {
       erros,
       resultados,
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("importar-notas-fiscais error:", e);
-    return json({ error: e?.message ?? "erro interno" }, 500);
+    return json({ error: `Erro interno na importação: ${e instanceof Error ? e.message : String(e)}` }, 500);
   }
 });
 

@@ -36,7 +36,7 @@ export default function FinImportarNotas({ onImportacaoConcluida }: Props) {
     const xmls = files.filter(f => f.name.toLowerCase().endsWith(".xml"));
     if (xmls.length === 0) return;
     const r = await importar(xmls);
-    if (r) {
+    if (r?.ok) {
       setUltimoLote(r.resultados);
       await carregarRecentes();
       onImportacaoConcluida?.();

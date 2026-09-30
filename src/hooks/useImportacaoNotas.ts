@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
+import { motivoDaEdgeFunction } from "@/lib/erro-edge-function";
 
 export interface ResultadoImportacao {
   nome: string;
@@ -16,6 +17,8 @@ export interface ResultadoImportacao {
 
 export interface RespostaImportacao {
   ok: boolean;
+  /** Quando `ok` é falso: o motivo, como a edge o disse (401/403/400/500) — nunca só "non-2xx". */
+  erro?: string;
   total: number;
   criadas: number;
   duplicadas: number;
@@ -60,12 +63,15 @@ export function useImportacaoNotas() {
       });
 
       if (error) {
-        toast.error("Erro: " + error.message);
-        return null;
+        // "Edge Function returned a non-2xx status code" não diz nada; o corpo diz.
+        const motivo = (await motivoDaEdgeFunction(error)) ?? error.message;
+        toast.error("A importação do XML foi recusada.", { description: motivo, duration: 12000 });
+        return { ok: false, erro: motivo, total: files.length, criadas: 0, duplicadas: 0, erros: files.length, resultados: [] };
       }
       if (!data?.ok) {
-        toast.error("Falha ao importar notas.");
-        return null;
+        const motivo = (data as { error?: string } | null)?.error ?? "Falha ao importar notas.";
+        toast.error("A importação do XML falhou.", { description: motivo, duration: 12000 });
+        return { ok: false, erro: motivo, total: files.length, criadas: 0, duplicadas: 0, erros: files.length, resultados: [] };
       }
 
       const { criadas, duplicadas, erros } = data;

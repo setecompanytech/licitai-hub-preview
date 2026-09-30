@@ -880,6 +880,14 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
 - OCR continua sendo o caminho de cupom, boleto, recibo, fatura e imagem.
   Buscar o XML na SEFAZ pela chave exige certificado A1 ou provedor
   (`nfe-consult-sefaz` com FocusNFe/NFe.io, não contratado) — decisão do dono.
+- **A edge `importar-notas-fiscais` nunca tinha gravado nada** (30/09, zero
+  linhas em `financeiro_notas_importadas`): gravava `origem: "importacao_xml"`
+  num enum (`financeiro_origem_movimento`: manual, ofx, pluggy, cnab, dda,
+  sefaz_nfe, ocr, recorrencia, folha_pagamento) — agora `sefaz_nfe`; o
+  `getUser` recebe o token explícito; cada arquivo tem o próprio try/catch;
+  e o hook `useImportacaoNotas` devolve `{ ok: false, erro }` com o corpo da
+  resposta (`motivoDaEdgeFunction`) em vez de "non-2xx". Enum novo em
+  `origem` só por migration; nunca inventar valor.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 

@@ -226,8 +226,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       if (item.kind === "xml") {
         const r = await importar([item.file]);
         const resultado = r?.resultados?.[0];
-        if (!resultado || resultado.status === "erro") {
-          return { ...item, status: "erro", erro: resultado?.erro ?? "Falha na importação" };
+        if (!r?.ok || !resultado || resultado.status === "erro") {
+          return { ...item, status: "erro", erro: resultado?.erro ?? r?.erro ?? "Falha na importação", documentoId: documento?.id ?? null };
         }
         // A QUANTIDADE que a nota declara (soma de q_com dos itens). Sem ela,
         // o vínculo sugeria valorTotal ÷ preço do contrato — 498,8914 caixas
@@ -402,7 +402,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     try {
       const r = await importar([xmlFile]);
       const resultado = r?.resultados?.[0];
-      if (!resultado || resultado.status === "erro") throw new Error(resultado?.erro ?? "Falha na importação do XML");
+      if (!r?.ok || !resultado || resultado.status === "erro") throw new Error(resultado?.erro ?? r?.erro ?? "Falha na importação do XML");
       const existente = await lancamentoDaChave(chaveDoPdf);
       if (existente && item.documentoId) await vincularLancamento(item.documentoId, existente.id);
       invalidarFinanceiro();
