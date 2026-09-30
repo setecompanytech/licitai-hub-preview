@@ -67,7 +67,29 @@ export function diferencaParaANota(fatias: Array<{ valor_total: number }>, valor
 export type ItemDaNota = { descricao?: string | null; quantidade?: number | null; valor_unitario?: number | null; valor_total?: number | null };
 export type ItemMarcado = { id: string; descricao: string; valor_unitario: number | null };
 
-const normalizar = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((t) => t.length >= 3);
+const PALAVRAS_VAZIAS = new Set(['tipo', 'com', 'sem', 'para', 'por', 'que', 'uma', 'dos', 'das', 'nao', 'sao', 'pela', 'pelo', 'sua', 'seu', 'ate', 'mais', 'tambem', 'liq', 'liquido', 'peso', 'embalagem', 'embalagens', 'embalado', 'embalada', 'pacote', 'pct', 'unidade', 'und', 'apresentacao', 'dados', 'data', 'validade', 'fabricacao', 'identificacao', 'qualidade', 'primeira', 'produto', 'classe', 'grupo', 'subgrupo', 'origem']);
+const normalizar = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((t) => t.length >= 3 && !PALAVRAS_VAZIAS.has(t));
+/** "400g", "1kg", "900ml", "250g": diz a embalagem, não o produto — pesa pouco. */
+const ehMedida = (t: string) => /^\d+(kg|g|gr|ml|l|lt|un|cx)$/.test(t);
+
+/**
+ * Quanto uma linha da nota se parece com um item do contrato. A nota abrevia
+ * ("BISC CREAM CRACKER 350G", "MAC.ESP.POTY 400G", "ACUC TRIT 1KG"): palavra
+ * igual vale 1; abreviação que é começo da palavra do contrato (ou vice-versa,
+ * 3+ letras) vale 0,7; medida de embalagem ("400g", "1kg") vale 0,3, porque
+ * é o que mais coincide entre produtos diferentes. O 0 continua sendo 0.
+ */
+export function semelhancaDaLinha(descricaoDoItem: string, descricaoDaLinha: string): number {
+  const doItem = Array.from(new Set(normalizar(descricaoDoItem)));
+  const daLinha = Array.from(new Set(normalizar(descricaoDaLinha)));
+  let pontos = 0;
+  for (const t of daLinha) {
+    if (doItem.includes(t)) { pontos += ehMedida(t) ? 0.3 : 1; continue; }
+    if (ehMedida(t) || /^\d+$/.test(t)) continue;
+    if (doItem.some((u) => !ehMedida(u) && (u.startsWith(t) || t.startsWith(u)))) pontos += 0.7;
+  }
+  return Math.round(pontos * 100) / 100;
+}
 
 /**
  * Sugestão de partes: para cada item marcado, procura na nota o produto de
@@ -78,14 +100,12 @@ const normalizar = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-
  */
 export function sugerirPartes(itensMarcados: ItemMarcado[], itensDaNota: ItemDaNota[] | null | undefined, partesAtuais: ParteDoVinculo[] = []): ParteDoVinculo[] {
   const linhas = itensDaNota ?? [];
-  const toksDasLinhas = linhas.map((n) => normalizar(String(n.descricao ?? '')));
   const pares: Array<{ item: number; linha: number; pontos: number }> = [];
   itensMarcados.forEach((item, i) => {
     const atual = partesAtuais.find((p) => p.contrato_item_id === item.id);
     if (atual && atual.quantidade > 0) return;
-    const toks = new Set(normalizar(item.descricao));
-    toksDasLinhas.forEach((lt, j) => {
-      const pontos = lt.filter((t) => toks.has(t)).length;
+    linhas.forEach((n, j) => {
+      const pontos = semelhancaDaLinha(item.descricao, String(n.descricao ?? ''));
       if (pontos > 0) pares.push({ item: i, linha: j, pontos });
     });
   });

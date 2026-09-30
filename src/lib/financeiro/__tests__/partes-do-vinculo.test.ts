@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, fatiasPorSaldo, linhasDaNfe, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, sugerirPartes, sugerirUnidadesCompostas } from '../partes-do-vinculo';
+import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, fatiasPorSaldo, linhasDaNfe, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, semelhancaDaLinha, sugerirPartes, sugerirUnidadesCompostas } from '../partes-do-vinculo';
 
 describe('uma nota, vários itens do contrato', () => {
   it('partes informadas item a item: valor = quantidade × unitário, e a soma tem de fechar com a nota', () => {
@@ -95,5 +95,34 @@ describe('uma nota, vários itens do contrato', () => {
     // Item sem preço de contrato conhecido: o contratado por cesta fica em aberto, o faturado não.
     expect(resumoDaUnidadeComposta(fatias, () => null, 1000)).toMatchObject({ faturadoPorUnidade: 15.2, contratadoPorUnidade: null, diferencaPct: null });
     expect(resumoDaUnidadeComposta(fatias, preco, 0)).toBeNull();
+  });
+  it('a NF-e 595 do 772/2024, como o emissor escreveu: as 18 linhas abreviadas casam com os 18 itens', () => {
+    const itens = [
+      ['1', 'AÇÚCAR TIPO REFINADO - AÇÚCAR TIPO REFINADO, BRANCO, DE PRIMEIRA QUALIDADE, EMBALAGEM DE 1KG'],
+      ['2', 'ARROZ TIPO 01 POLIDO - NÃO PARBOLIZADO, POLIDO, CLASSE LONGO FINO, PACOTE DE 1KG'],
+      ['3', 'AVEIA EM FLOCOS GROSSOS 200G – AVEIA BENEFICIADA, CLASSE BRANCA, EM FLOCOS GROSSOS'],
+      ['4', 'BISCOITO SALGADO TIPO ÁGUA E SAL 400G - BISCOITO CLASSIFICAÇÃO SALGADA, APRESENTAÇÃO QUADRADA, SEM RECHEIO'],
+      ['5', 'CAFÉ EM PÓ 250G - CAFÉ EM PÓ, TORRADO E MOÍDO, TIPO TRADICIONAL'],
+      ['6', 'COLORÍFICO 100G – CONDIMENTO EM PÓ, CONSTITUÍDO DE MATÉRIA PRIMA DE BOA QUALIDADE'],
+      ['7', 'CARNE BOVINA TIPO EM CONSERVA - PESO LÍQUIDO DE 320G. EMBALAGEM: LATA'],
+      ['8', 'FARINHA DE MANDIOCA GROSSA - GRUPO: D´ÁGUA, SUBGRUPO: BRANCA, CLASSE: GROSSA, EMBALADA EM SACOS PLÁSTICOS DE 1KG'],
+      ['9', 'FEIJÃO CARIOCA TIPO 01 - DE PRIMEIRA QUALIDADE, CONSTITUÍDO DE 95% DE GRÃOS INTEIROS, PACOTE 1KG'],
+      ['10', 'LEITE EM PÓ INTEGRAL 200G - LEITE EM PÓ, ORIGEM: DE VACA, TEOR GORDURA: INTEGRAL, EMBALADO EM PACOTE DE 200G'],
+      ['11', 'MACARRÃO ESPAGUETE 500G - MACARRÃO COMPRIDO TIPO ESPAGUETE, INGREDIENTES: SÊMOLA DE TRIGO ENRIQUECIDA COM FERRO'],
+      ['12', 'MARGARINA 250G - MARGARINA A BASE DE ÓLEO VEGETAL COMESTÍVEL, LEITE E SEUS CONSTITUINTES, COM SAL'],
+      ['13', 'ÓLEO DE SOJA 900ML - PREPARADO A PARTIR DE GRÃOS DE SOJA SÃOS E LIMPOS, SEM CONSERVANTES'],
+      ['14', 'PIMENTA E COMINHO 100G – CONDIMENTO TEMPERO MISTO, CONTENDO PIMENTA DO REINO PRETA E COMINHO, EM PÓ'],
+      ['15', 'SAL REFINADO - SAL IODADO REFINADO, EM EMBALAGENS PLÁSTICAS DE 1KG'],
+      ['16', 'SALSICHA EM CONSERVA TIPO VIENA 180G - SALSICHA EM CONSERVA, SEM TEMPEROS, ORIGEM CARNE SUÍNA/BOVINA EM LATA'],
+      ['17', 'SARDINHA ÓLEO LATA 125G - SARDINHA EM CONSERVA, PEIXE EM CONSERVA, TIPO SARDINHA INTEIRA SEM CABEÇA, ÓLEO COMESTÍVEL'],
+      ['18', 'SACO TRANSPARENTE - EMBALAGEM PLÁSTICA, FORMA: SACO, LARGURA: 50 CM, ALTURA: 80 CM, MATERIAL: PLÁSTICO TRANSPARENTE'],
+    ].map(([id, descricao]) => ({ id, descricao, valor_unitario: 1 }));
+    const linhas = ['ACUC TRIT 1KG', 'ARROZ BCO BOM DE GOSTO T1 1KG', 'AVEIA QUAKER 165G FLOCOS REGULAR', 'BISC CREAM CRACKER TOST 350G', 'CAFE TRADICIONAL VACUO 250G', 'COLORIFICO EM PO', 'FIAMBRE KITUT CARNE BOV 320G', 'FARINHA MAND BCA D PARA FINA 1KG', 'FEIJAO CARIOCA TP1 1KG', 'LEITE PO CAMPONESA INT 200G', 'MAC.ESP.POTY 400G.', 'MARGARINA PRIMOR CSAL 250G', 'OLEO SOJA PET 900ML (20x01)', 'PIMENTA EM GRAO 1KG', 'SAL MOIDO 1KG', 'SALS T VIENA CARIOCA 180G', 'SARDINHA PALMEIRA 75G DREN 125G LIQ OLEO', 'SACO 50X80 30KG(10) BD I E S LISO CENTO']
+      .map((descricao, i) => ({ descricao, quantidade: 100 + i, valor_unitario: 2 }));
+    const s = sugerirPartes(itens, linhas);
+    // Cada item recebe a linha de mesma posição — inclusive o biscoito ("BISC … 350G") e o macarrão ("MAC.ESP.").
+    expect(s.map((p) => p.quantidade)).toEqual(linhas.map((l) => l.quantidade));
+    expect(semelhancaDaLinha(itens[3].descricao, 'BISC CREAM CRACKER TOST 350G')).toBeGreaterThan(0);
+    expect(semelhancaDaLinha(itens[10].descricao, 'MAC.ESP.POTY 400G.')).toBeGreaterThan(semelhancaDaLinha(itens[3].descricao, 'MAC.ESP.POTY 400G.'));
   });
 });

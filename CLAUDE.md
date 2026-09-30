@@ -901,6 +901,16 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
   já o guarda ligado ao título; arquivar antes deixava cópia órfã). Na aba
   Pedidos, `useNotasDosPedidos` prefere o PDF quando o título tem os dois e
   traz `arquivo_xml`: "Espelho da NF-e (XML)" abre `abrirEspelho`.
+- **Casamento linha da nota × item do contrato** (`semelhancaDaLinha`): o
+  emissor abrevia ("BISC CREAM CRACKER 350G", "MAC.ESP.POTY 400G", "ACUC
+  TRIT 1KG"): palavra igual = 1, abreviação-prefixo (3+ letras) = 0,7,
+  medida de embalagem ("400g", "1kg") = 0,3, palavras vazias fora; par
+  global pelo maior score. As 18 linhas reais da NF-e 595 são o teste.
+- **XML pela chave, sem certificado, não existe oficialmente.** O meudanfe
+  gera DANFE de XML enviado e busca por chave com base própria/parcerias;
+  a porta oficial é `NFeDistribuicaoDFe` (consChNFe) com certificado A1 da
+  empresa interessada — a `fin-sefaz-nsu-puxar` já prevê isso via
+  `SEFAZ_PROXY_URL` (mTLS), não configurado; ETHOS não tem A1 cadastrado.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 
