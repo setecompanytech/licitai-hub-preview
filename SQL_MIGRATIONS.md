@@ -19961,3 +19961,10 @@ o título único de uma nota rateada em N pedidos (mesmo `lote_id` de
 proporcionais ao valor de cada pedido, refeitas quando o valor muda; a
 quitação de cada parte é recalculada a cada mudança de status. Depende da
 20260929000001. Arquivo: `supabase/migrations/20260929000002_titulo_unico_do_lote.sql`.
+
+## 20260930000001 — apagar o título do lote apaga as partes (30/09/2026)
+
+`cleanup_contrato_pedido_on_lancamento_delete` passa a apagar também as
+partes não quitadas de um lote quando o título único (`lote_id`) é excluído
+e não resta outro título do lote. Depende da 20260929000002. Arquivo:
+`supabase/migrations/20260930000001_apagar_titulo_do_lote_apaga_as_partes.sql`.
