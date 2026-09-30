@@ -857,6 +857,15 @@ certa e fica só para item único. A Extração passa as LINHAS da NF-e
 no seletor vêm em ordem numérica (`ordenarItensDoContrato`, por
 `codigo_item`) e dinheiro por item é texto formatado em pt-BR, nunca
 `type="number"` (mostrava "5,6" e "9").
+**Lote repetido (30/09):** dois cliques em "Vincular ao contrato" criaram
+dois lotes da 595; a auditoria (`auditarPedidos`, com `lote_id`) trata como
+UM fato (`lote_duplicado`) e cala a comparação parte a parte entre eles; o
+painel do lote tem "Excluir lote" (partes com motivo em `pedidos_exclusoes`;
+o título único fica sem `lote_id`, apagar título é no Financeiro); o botão
+da Extração trava enquanto vincula. A nota do lote (arquivo do título e
+espelho do XML) aparece na linha e no painel do lote (`notaDoLote`). O
+detalhe do pedido abre em caixa (Dialog em duas colunas), não mais no
+painel lateral.
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 

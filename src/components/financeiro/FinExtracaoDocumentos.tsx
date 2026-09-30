@@ -67,6 +67,8 @@ interface DocItem {
    */
   danfe?: DanfeLido | null;
   aguardandoXml?: boolean;
+  /** "Vincular ao contrato" em andamento — o botão fica travado até acabar. */
+  vinculando?: boolean;
 }
 
 /** O selo do arquivo fala português — "IMAGE" era o valor cru do detector. */
@@ -323,6 +325,17 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
    * pela chave, e as partes nascem ligadas a ele, sem título novo.
    */
   const vincularXmlAoContrato = async (item: DocItem) => {
+    // Dois cliques criaram dois lotes da 595 (30/09): o segundo espera o primeiro acabar.
+    if (item.vinculando) return;
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, vinculando: true } : d)));
+    try {
+      await vincularXmlAoContratoDeFato(item);
+    } finally {
+      setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, vinculando: false } : d)));
+    }
+  };
+
+  const vincularXmlAoContratoDeFato = async (item: DocItem) => {
     const chave = normalizarChaveNfe(item.dados?.chave_nfe);
     const existente = chave ? await lancamentoDaChave(chave) : null;
     if (!existente) {
@@ -1572,8 +1585,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               borda do modal — "Lançar e vinc…" truncado era isso. */}
                           <div className="flex flex-row sm:flex-col flex-wrap gap-2 shrink-0 ml-auto">
                             {d.status === "ok" && d.dados?._ja_lancada && !d.lancamentoId && d.vinculo?.contrato_id && (
-                              <Button size="sm" variant="default" onClick={() => void vincularXmlAoContrato(d)} disabled={upsert.isPending}>
-                                <Link2 aria-hidden="true" />Vincular ao contrato
+                              <Button size="sm" variant="default" onClick={() => void vincularXmlAoContrato(d)} disabled={upsert.isPending || !!d.vinculando}>
+                                {d.vinculando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Link2 aria-hidden="true" />}{d.vinculando ? "Vinculando…" : "Vincular ao contrato"}
                               </Button>
                             )}
                             {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && !d.aguardandoXml && (

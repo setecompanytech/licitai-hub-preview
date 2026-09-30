@@ -30,10 +30,12 @@ export type PedidoParaAuditar = {
   data_pedido: string | null;
   contrato_item_id: string | null;
   status?: string | null;
+  /** Partes de uma nota rateada (29/09): o lote a que pertencem. */
+  lote_id?: string | null;
 };
 
 export type SuspeitaDePedido = {
-  tipo: 'dupla_versao' | 'preco_divergente';
+  tipo: 'dupla_versao' | 'preco_divergente' | 'lote_duplicado';
   /** Números dos pedidos envolvidos, para a frase apontar as linhas. */
   pedidos: string[];
   frase: string;
@@ -67,6 +69,42 @@ export function auditarPedidos(
     (p) => p.status !== 'cancelado' && (Number(p.valor_total) || 0) > 0,
   );
 
+  // ── O mesmo lote duas vezes ───────────────────────────────────────────────
+  //
+  // A NF-e 595 entrou como lote de 18 partes DUAS vezes (30/09: dois cliques
+  // em "Vincular ao contrato"). Comparar parte com parte dava 18 avisos
+  // "595-1 e 595-1" — é UM fato: o lote repetido. Dois lotes com o mesmo
+  // número-base e o mesmo total, em datas próximas, viram um aviso só, e as
+  // partes deles saem da comparação par a par.
+  const lotes = new Map<string, { numero: string; partes: PedidoParaAuditar[]; total: number }>();
+  for (const p of ativos) {
+    if (!p.lote_id) continue;
+    const l = lotes.get(p.lote_id) ?? { numero: p.numero_pedido.replace(/-\d+$/, ''), partes: [], total: 0 };
+    l.partes.push(p);
+    l.total += Number(p.valor_total) || 0;
+    lotes.set(p.lote_id, l);
+  }
+  const lotesRepetidos = new Set<string>();
+  const ids = Array.from(lotes.keys());
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = lotes.get(ids[i])!;
+      const b = lotes.get(ids[j])!;
+      if (a.numero !== b.numero || a.partes.length !== b.partes.length) continue;
+      if (Math.abs(a.total - b.total) > Math.max(1, a.total * 0.01)) continue;
+      const da = a.partes[0]?.data_pedido; const db = b.partes[0]?.data_pedido;
+      if (da && db && dias(da, db) > JANELA_DIAS) continue;
+      lotesRepetidos.add(ids[i]); lotesRepetidos.add(ids[j]);
+      suspeitas.push({
+        tipo: 'lote_duplicado',
+        pedidos: [a.numero],
+        frase: `A nota ${a.numero} entrou como lote DUAS vezes (2 × ${a.partes.length} partes, ${brl(a.total)} cada) — as duas versões consomem o contrato.`,
+        impacto: Math.round(Math.min(a.total, b.total) * 100) / 100,
+        providencia: `Abra o lote ${a.numero} e exclua a versão repetida (botão "Excluir lote"): o consumo do contrato cai ${brl(Math.min(a.total, b.total))}.`,
+      });
+    }
+  }
+
   // ── Dupla versão da mesma entrega ─────────────────────────────────────────
   //
   // Mesmo item, MESMA quantidade, datas próximas, valores quase iguais e
@@ -81,6 +119,7 @@ export function auditarPedidos(
       const b = ativos[j];
       if (!a.quantidade || a.quantidade !== b.quantidade) continue;
       if ((a.contrato_item_id ?? null) !== (b.contrato_item_id ?? null)) continue;
+      if (a.lote_id && b.lote_id && lotesRepetidos.has(a.lote_id) && lotesRepetidos.has(b.lote_id)) continue;
       if (!a.data_pedido || !b.data_pedido || dias(a.data_pedido, b.data_pedido) > JANELA_DIAS) continue;
       const va = Number(a.valor_total) || 0;
       const vb = Number(b.valor_total) || 0;

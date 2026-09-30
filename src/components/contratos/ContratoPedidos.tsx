@@ -407,7 +407,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Delete audit dialog
-  const [deleteDialog, setDeleteDialog] = useState<{ id: string; numero: string } | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ id: string; numero: string; lote?: { id: string; partes: string[] } } | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   // Desfazer quitação (21/09): o pedido em questão, o motivo e o que a
   // pré-leitura achou (títulos pagos, bonificações pagas/pendentes).
@@ -1805,12 +1805,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     load();
   };
 
-  const handleDeleteConfirmed = async () => {
-    if (!deleteDialog || !deleteReason.trim()) return;
-    const { id, numero } = deleteDialog;
+  /** Apaga um pedido com o motivo no histórico do Admin e desliga o que apontava para ele. */
+  const apagarPedido = async (id: string, numero: string, motivo: string): Promise<string | null> => {
     const pedidoSnap = pedidos.find(p => p.id === id);
-    setDeleting(true);
-
     await supabase.from('pedidos_exclusoes' as any).insert({
       contrato_id: contratoId,
       pedido_id: id,
@@ -1821,20 +1818,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       status: pedidoSnap?.status || null,
       deletado_por_user_id: user?.id,
       deletado_por_email: user?.email,
-      motivo: deleteReason.trim(),
+      motivo,
       pedido_snapshot: pedidoSnap ? pedidoSnap : null,
     });
-
     await supabase.from('comissoes_lancamentos' as any).delete().eq('contrato_pedido_id', id);
     await supabase.from('contrato_custos').delete().eq('contrato_pedido_id', id);
     await supabase.from('notas_fiscais').update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
     await supabase.from('contas_receber' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
     await supabase.from('pre_nota_itens' as any).update({ contrato_pedido_id: null } as any).eq('contrato_pedido_id', id);
-
     const { error } = await supabase.from('contrato_pedidos').delete().eq('id', id);
+    return error ? error.message : null;
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteDialog || !deleteReason.trim()) return;
+    const { id, numero } = deleteDialog;
+    // Lote inteiro (30/09): cada parte sai com o mesmo motivo; o título único
+    // do lote, se houver, fica no Financeiro sem lote — apagar título é lá.
+    if (deleteDialog.lote) {
+      setDeleting(true);
+      const lote = deleteDialog.lote;
+      const erros: string[] = [];
+      for (const parteId of lote.partes) {
+        const p = pedidos.find(x => x.id === parteId);
+        const erro = await apagarPedido(parteId, p?.numero_pedido ?? parteId, deleteReason.trim());
+        if (erro) erros.push(erro);
+      }
+      const { data: titulos } = await supabase.from('financeiro_lancamentos').select('id, descricao').eq('lote_id' as never, lote.id as never);
+      if ((titulos ?? []).length > 0) {
+        await supabase.from('financeiro_lancamentos').update({ lote_id: null } as never).eq('lote_id' as never, lote.id as never);
+      }
+      setDeleting(false);
+      setDeleteDialog(null);
+      setDeleteReason('');
+      setLoteSelecionado(null);
+      if (erros.length > 0) toast.error(`${erros.length} parte(s) não puderam ser excluídas`, { description: erros[0] });
+      else toast.success(`Lote excluído (${lote.partes.length} partes). Motivo registrado.${(titulos ?? []).length > 0 ? ' O título no Financeiro ficou sem lote — se for repetido, exclua-o lá.' : ''}`);
+      load();
+      return;
+    }
+    setDeleting(true);
+    const erro = await apagarPedido(id, numero, deleteReason.trim());
     setDeleting(false);
-    if (error) {
-      toast.error('Erro ao excluir pedido: ' + error.message);
+    if (erro) {
+      toast.error('Erro ao excluir pedido: ' + erro);
       setDeleteDialog(null);
       return;
     }
@@ -2283,7 +2310,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const reservaDoPedido = pedidoAberto ? estoqueDoItem(pedidoAberto.contrato_item_id) : null;
 
   const painelDoPedido = pedidoAberto ? (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4 xl:grid-cols-2 items-start [&>*]:min-w-0">
       <BlocoDoPainel
         titulo={`Pedido ${pedidoAberto.numero_pedido}`}
         acao={<SeloSituacao tom={tomDoStatus(pedidoAberto.status)}>{(statusCfg[pedidoAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>}
@@ -2515,6 +2542,27 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   // gaveta lateral: origem à esquerda, as partes à direita, com espaço para
   // a tabela. A parte aberta vai para o painel do pedido, que tem as ações.
   const abrirParteDoLote = (id: string) => { setLoteSelecionado(null); setPedidoSelecionado(id); };
+
+  /** A nota do lote: o arquivo (DANFE em PDF, quando anexado) e o espelho lido do XML. Vive no título único; as partes a compartilham. */
+  const notaDoLote = (lote: Lote<Pedido>) => {
+    const nd = lote.partes.map((p) => notaDoPedido?.[p.id]).find((x) => x && (x.storage_path || x.arquivo_xml)) ?? null;
+    if (!nd) return null;
+    return (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        {nd.storage_path && (
+          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')} title={`Abrir ${nd.arquivo_nome}`}>
+            <ExternalLink aria-hidden="true" className="h-3 w-3" />{/\.xml$/i.test(nd.arquivo_nome ?? '') ? 'Abrir XML' : 'Abrir DANFE'}
+          </button>
+        )}
+        {nd.arquivo_xml && (
+          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" title="Leitura do XML da nota em nova aba (não substitui o DANFE oficial)"
+            onClick={() => { try { if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.'); } catch { toast.error('Não foi possível ler o XML desta nota.'); } }}>
+            <FileText aria-hidden="true" className="h-3 w-3" />Espelho da NF-e
+          </button>
+        )}
+      </span>
+    );
+  };
   const caixaDoLote = (
     <Dialog open={!!loteAberto} onOpenChange={(v) => { if (!v) setLoteSelecionado(null); }}>
       <DialogContent className="max-w-[min(96vw,84rem)] max-h-[92vh] overflow-y-auto" data-testid="painel-do-lote">
@@ -2535,7 +2583,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
                     { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
                     { rotulo: 'Empenho de origem', largo: true, valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
-                    { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
+                    { rotulo: 'Nota fiscal', largo: true, valor: loteAberto.nota_fiscal ? <span className="inline-flex flex-wrap items-center gap-2">{formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal}{notaDoLote(loteAberto)}</span> : <ValorIndisponivel razao="Sem nota" /> },
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
                     { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
                     { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
@@ -2606,7 +2654,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 </div>
               </BlocoDoPainel>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:justify-between">
+              <Button variant="ghost" className="text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
+                <Trash2 aria-hidden="true" className="h-4 w-4" />Excluir lote
+              </Button>
               <Button variant="outline" onClick={() => setLoteSelecionado(null)}>Fechar</Button>
             </DialogFooter>
           </>
@@ -2627,7 +2678,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       id: p.id, numero_pedido: p.numero_pedido,
       quantidade: p.quantidade, valor_unitario: p.valor_unitario,
       valor_total: p.valor_total, data_pedido: p.data_pedido,
-      contrato_item_id: p.contrato_item_id, status: p.status,
+      contrato_item_id: p.contrato_item_id, status: p.status, lote_id: p.lote_id ?? null,
     })),
     itens.length === 1 ? itens[0].valor_unitario : null,
   );
@@ -2783,11 +2834,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               />
             </Card>
           ) : (
-            <AreaComPainel
-              painel={painelDoPedido}
-              tituloPainel="Detalhe do pedido"
-              aoFechar={() => setPedidoSelecionado(null)}
-            >
+            <AreaComPainel>
               {pedidosFiltrados.length === 0 ? (
                 <Card>
                   <EstadoVazio tamanho="compacto" titulo="Nenhum pedido corresponde aos filtros aplicados." />
@@ -2880,7 +2927,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   <span className="inline-flex items-center rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium">
                                     <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />{formatarNumeroNfe(lote.nota_fiscal) ?? lote.nota_fiscal}
                                   </span>
-                                  <div className="g-meta text-muted-foreground">rateada em {lote.partes.length} partes — a nota e o arquivo ficam em cada parte</div>
+                                  {notaDoLote(lote) ?? <div className="g-meta text-muted-foreground">sem arquivo — anexe o XML ou o DANFE pela Extração de Documentos</div>}
+                                  <div className="g-meta text-muted-foreground">rateada em {lote.partes.length} partes</div>
                                 </div>
                               ) : <span className="g-meta text-muted-foreground">sem nota</span>}
                             </TableCell>
@@ -3967,14 +4015,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive-ink">
-              <Trash2 aria-hidden="true" className="h-5 w-5" /> Excluir Pedido
+              <Trash2 aria-hidden="true" className="h-5 w-5" /> {deleteDialog?.lote ? 'Excluir lote inteiro' : 'Excluir Pedido'}
             </DialogTitle>
           </DialogHeader>
           {deleteDialog && (
             <div className="space-y-4">
               <div className="space-y-1 rounded-lg border border-destructive-line bg-destructive-tint p-3 text-xs">
                 <p className="font-medium text-destructive-ink">Atenção: esta ação não pode ser desfeita.</p>
-                <p className="text-muted-foreground">Pedido: <strong className="text-foreground">{deleteDialog.numero}</strong></p>
+                <p className="text-muted-foreground">{deleteDialog.lote ? 'Lote' : 'Pedido'}: <strong className="text-foreground">{deleteDialog.numero}</strong>{deleteDialog.lote ? ` — ${deleteDialog.lote.partes.length} partes saem juntas` : ''}</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Motivo da exclusão *</Label>
@@ -4003,6 +4051,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* O pedido aberto numa caixa (30/09): o painel lateral espremia origem,
+          valores e ações numa coluna; a caixa usa a tela em duas colunas. */}
+      <Dialog open={!!pedidoAberto} onOpenChange={(v) => { if (!v) setPedidoSelecionado(null); }}>
+        <DialogContent className="max-w-[min(96vw,80rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Detalhe do pedido {pedidoAberto?.numero_pedido ?? ''}</DialogTitle>
+            <DialogDescription>Origem, item, valores, nota e ações do pedido.</DialogDescription>
+          </DialogHeader>
+          {painelDoPedido}
         </DialogContent>
       </Dialog>
 
