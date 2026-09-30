@@ -941,6 +941,12 @@ configurar o proxy". O que existe no código:
   (estado + link de envio) — `lib/financeiro/xml-por-chave.ts`.
 - Manifestação do destinatário pelo proxy (RecepcaoEvento) NÃO existe
   ainda: a edge `manifestacao-destinatario` depende do FocusNFe.
+- **A página `/certificado-upload` é pública** (autoriza pelo token de uso
+  único): `upload-certificado` precisa de `verify_jwt = false` no
+  `config.toml`, senão o gateway recusa o envio antes de a função rodar —
+  foi o "Erro ao enviar certificado" de 30/09 (nenhum token da tabela
+  tinha sido usado desde junho). Edge nova chamada por página sem login →
+  sempre `verify_jwt = false` no config.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 

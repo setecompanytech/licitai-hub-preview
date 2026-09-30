@@ -110,10 +110,11 @@ export default function CertificadoUpload() {
         body: formData,
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erro ao enviar certificado.');
+        // O gateway responde { code, message }; a função, { error }. Os dois têm de aparecer.
+        throw new Error(result.error || result.message || `Erro ao enviar certificado (HTTP ${response.status}).`);
       }
 
       setUploaded(true);

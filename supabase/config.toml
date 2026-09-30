@@ -1,6 +1,10 @@
 project_id = "uwtyuwktxalnpgrcbbgk"
 
 [functions]
+  # Página pública de envio do certificado (autoriza pelo token de uso único, não por sessão):
+  # com verify_jwt o gateway recusava o envio antes de a função rodar (30/09).
+  [functions.upload-certificado]
+    verify_jwt = false
   [functions.ai-chat]
     verify_jwt = false
   [functions.alerta-vencimento]
