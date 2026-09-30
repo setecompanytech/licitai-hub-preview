@@ -220,18 +220,27 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Detecta duplicada por chave_acesso
+      // Detecta duplicada por chave_acesso — mas só é duplicada se o TÍTULO
+      // ainda existe. Título apagado (a NF-e 595 em 30/09) deixava o registro
+      // de importação órfão, e a nota ficava "duplicada" sem lançamento algum.
       if (nota.chave_acesso) {
         const { data: dup } = await admin
           .from("financeiro_notas_importadas")
-          .select("id")
+          .select("id, lancamento_id")
           .eq("empresa_id", empresaId)
           .eq("chave_acesso", nota.chave_acesso)
           .maybeSingle();
         if (dup) {
-          resultados.push({ nome, status: "duplicada", chave: nota.chave_acesso });
-          duplicadas++;
-          continue;
+          const { data: tituloVivo } = dup.lancamento_id
+            ? await admin.from("financeiro_lancamentos").select("id").eq("id", dup.lancamento_id).maybeSingle()
+            : { data: null };
+          if (tituloVivo) {
+            resultados.push({ nome, status: "duplicada", chave: nota.chave_acesso, lancamento_id: dup.lancamento_id });
+            duplicadas++;
+            continue;
+          }
+          // Registro sem título: sai, e a nota entra de novo como nova.
+          await admin.from("financeiro_notas_importadas").delete().eq("id", dup.id);
         }
       }
 
@@ -352,6 +361,7 @@ Deno.serve(async (req) => {
         direcao: nota.direcao,
         valor: nota.valor_total,
         chave: nota.chave_acesso,
+        lancamento_id: lanc.id,
         competencia,
       });
       } catch (e) {

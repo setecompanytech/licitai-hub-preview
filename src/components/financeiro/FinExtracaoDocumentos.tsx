@@ -326,7 +326,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     const chave = normalizarChaveNfe(item.dados?.chave_nfe);
     const existente = chave ? await lancamentoDaChave(chave) : null;
     if (!existente) {
-      toast.error("Não achei o título desta nota no Financeiro.", { description: "Confira em Contas a Receber/Pagar se a nota foi lançada e tente de novo." });
+      // O título do XML foi apagado depois (a 595 em 30/09): nasce de novo
+      // aqui, junto do pedido/lote — o mesmo caminho do Lançar e vincular.
+      toast.info("O título desta nota não existe mais no Financeiro: será criado agora, junto do pedido.", { duration: 8000 });
+      await vincularAoContrato(item, null);
       return;
     }
     await vincularAoContrato(item, { id: existente.id, valor: item.dados?.valor_total != null ? Number(item.dados.valor_total) : null });
