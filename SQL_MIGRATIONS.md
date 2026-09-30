@@ -19976,3 +19976,11 @@ quantas cestas básicas (ou kits) o lote entrega, gravado pela Extração de
 Documentos em todas as partes do lote. Gestão de Contratos mostra preço
 faturado, custo e margem por cesta no painel do lote. Sem RLS nova. Arquivo:
 `supabase/migrations/20260930000002_unidade_composta_do_lote.sql`.
+
+## 20260930000003 — excluir lote de pedidos numa transação (30/09/2026)
+
+RPC `excluir_lote_de_pedidos(p_lote_id, p_motivo)` (SECURITY DEFINER, membro
+da empresa): registra cada parte em `pedidos_exclusoes`, apaga comissões,
+solta `contas_receber`, desliga o título único (`lote_id` nulo) e apaga as
+partes — tudo ou nada. A exclusão parte a parte pelo navegador parava no
+meio. Arquivo: `supabase/migrations/20260930000003_excluir_lote_de_pedidos.sql`.

@@ -1864,24 +1864,21 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Lote inteiro (30/09): cada parte sai com o mesmo motivo; o título único
     // do lote, se houver, fica no Financeiro sem lote — apagar título é lá.
     if (deleteDialog.lote) {
+      // Uma chamada, uma transação (migration 20260930000003): parte a parte
+      // pelo navegador parou no meio na 595.
       setDeleting(true);
       const lote = deleteDialog.lote;
-      const erros: string[] = [];
-      for (const parteId of lote.partes) {
-        const p = pedidos.find(x => x.id === parteId);
-        const erro = await apagarPedido(parteId, p?.numero_pedido ?? parteId, deleteReason.trim());
-        if (erro) erros.push(erro);
-      }
-      const { data: titulos } = await supabase.from('financeiro_lancamentos').select('id, descricao').eq('lote_id' as never, lote.id as never);
-      if ((titulos ?? []).length > 0) {
-        await supabase.from('financeiro_lancamentos').update({ lote_id: null } as never).eq('lote_id' as never, lote.id as never);
-      }
+      const { data, error } = await supabase.rpc('excluir_lote_de_pedidos' as never, { p_lote_id: lote.id, p_motivo: deleteReason.trim() } as never);
       setDeleting(false);
+      if (error) {
+        toast.error('O lote não foi excluído', { description: error.message.includes('excluir_lote_de_pedidos') ? 'A função excluir_lote_de_pedidos ainda não existe no banco: cole a migration 20260930000003.' : error.message });
+        return;
+      }
+      const r = (data ?? {}) as { partes_apagadas?: number; titulos_desligados?: number };
       setDeleteDialog(null);
       setDeleteReason('');
       setLoteSelecionado(null);
-      if (erros.length > 0) toast.error(`${erros.length} parte(s) não puderam ser excluídas`, { description: erros[0] });
-      else toast.success(`Lote excluído (${lote.partes.length} partes). Motivo registrado.${(titulos ?? []).length > 0 ? ' O título no Financeiro ficou sem lote — se for repetido, exclua-o lá.' : ''}`);
+      toast.success(`Lote excluído de uma vez: ${r.partes_apagadas ?? lote.partes.length} partes. Motivo registrado.${(r.titulos_desligados ?? 0) > 0 ? ' O título no Financeiro ficou sem lote — se for repetido, exclua-o lá.' : ''}`);
       load();
       return;
     }
@@ -2599,7 +2596,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   };
   const caixaDoLote = (
     <Dialog open={!!loteAberto} onOpenChange={(v) => { if (!v) setLoteSelecionado(null); }}>
-      <DialogContent className="max-w-[min(96vw,84rem)] max-h-[92vh] overflow-y-auto" data-testid="painel-do-lote">
+      <DialogContent className="max-w-[min(97vw,100rem)] max-h-[92vh] overflow-y-auto" data-testid="painel-do-lote">
         {loteAberto && (
           <>
             <DialogHeader>
@@ -2610,7 +2607,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <DialogDescription>{rotuloDoLote(loteAberto)} — cada parte é um pedido do item do contrato: consome o saldo dele e tem as próprias ações.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+            <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
               <BlocoDoPainel titulo="Origem">
                 <ListaDeCampos
                   campos={[
@@ -2648,8 +2645,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           </button>
                         </th>
                         <th className="px-3 py-2 whitespace-nowrap">Itens do Processo</th>
-                        <th className="px-3 py-2">Descrição</th>
-                        <th className="px-3 py-2">Unidade</th>
+                        <th className="px-3 py-2 min-w-[18rem]">Descrição</th>
+                        <th className="px-3 py-2 whitespace-nowrap">Unidade</th>
                         <th className="px-3 py-2 text-right">Qtd</th>
                         <th className="px-3 py-2 text-right">Unitário</th>
                         <th className="px-3 py-2 text-right">Valor</th>
@@ -2678,8 +2675,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{Number(parte.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</td>
                             <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(Number(parte.valor_unitario) || 0)}</td>
                             <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmt(parte.valor_total)}</td>
-                            <td className="px-3 py-2"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
-                            <td className="px-3 py-2 whitespace-nowrap"><Button size="sm" variant="outline" className="h-7" onClick={() => abrirParteDoLote(parte.id)}>Abrir</Button></td>
+                            <td className="px-3 py-2 whitespace-nowrap"><SeloSituacao tom={tomDoStatus(parte.status)}>{(statusCfg[parte.status] ?? statusCfg.pendente).label}</SeloSituacao></td>
+                            <td className="px-3 py-2 whitespace-nowrap text-right"><Button size="sm" variant="outline" className="h-7" onClick={() => abrirParteDoLote(parte.id)}>Abrir</Button></td>
                           </tr>
                         ))}
                     </tbody>
@@ -2939,9 +2936,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               <div className="g-meta text-muted-foreground">lote · {lote.partes.length} partes{lote.numero_empenho ? ` · emp. ${lote.numero_empenho}` : ''}</div>
                             </TableCell>
                             <TableCell className="min-w-[12rem] max-w-[17rem]">
-                              <button type="button" className="line-clamp-2 block w-full rounded text-left leading-snug hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o lote no painel" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }}>
-                                {rotuloDoLote(lote)}
-                              </button>
+                              {/* Texto, não link: o número e "Abrir lote" já abrem a caixa (30/09). */}
+                              <span className="line-clamp-2 block leading-snug">{rotuloDoLote(lote)}</span>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-right tabular-nums">
                               <div>{lote.partes.length} itens</div>
@@ -2949,7 +2945,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                             </TableCell>
                             <TableCell className="min-w-[8rem] max-w-[10rem] text-center">
                               <div className="whitespace-nowrap">{lote.data_pedido ? new Date(lote.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
-                              <AvisoDePrazoDeEntrega compacto contrato={prazos} dataDoPedido={lote.data_pedido} dataDeEntrega={lote.status === 'entregue' ? (lote.partes[0]?.data_entrega ?? null) : null} />
+                              <AvisoDePrazoDeEntrega resumido contrato={prazos} dataDoPedido={lote.data_pedido} dataDeEntrega={lote.status === 'entregue' ? (lote.partes[0]?.data_entrega ?? null) : null} />
                             </TableCell>
                             <TableCell className="text-center whitespace-nowrap">
                               <SeloSituacao tom={tomDoStatus(lote.status)}>{cfgLote.label}</SeloSituacao>
@@ -3057,7 +3053,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 afirmar "Entregue com 286 dias de atraso" para um
                                 pedido que nunca saiu. */}
                             <AvisoDePrazoDeEntrega
-                              compacto
+                              resumido
                               contrato={prazos}
                               dataDoPedido={p.data_pedido}
                               dataDeEntrega={p.status === 'entregue' ? p.data_entrega : null}

@@ -865,7 +865,10 @@ o título único fica sem `lote_id`, apagar título é no Financeiro); o botão
 da Extração trava enquanto vincula. A nota do lote (arquivo do título e
 espelho do XML) aparece na linha e no painel do lote (`notaDoLote`). O
 detalhe do pedido abre em caixa (Dialog em duas colunas), não mais no
-painel lateral.
+painel lateral. **Excluir lote é uma RPC** (`excluir_lote_de_pedidos`,
+migration 20260930000003, transação única): parte a parte pelo navegador
+parou no meio. Prazo nas linhas é `resumido` (ícone + palavra; a frase abre
+ao clicar). Na linha do lote só o número e "Abrir lote" abrem a caixa.
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 

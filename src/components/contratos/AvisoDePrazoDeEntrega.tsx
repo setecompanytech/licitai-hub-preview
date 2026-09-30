@@ -1,5 +1,6 @@
 import { AlertTriangle, CalendarClock, CheckCircle2, MapPin, Info } from 'lucide-react';
 import { situacaoDoPrazo, type PrazoDoContrato } from '@/lib/contratos/prazo-de-entrega';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export type PrazosDoContrato = {
   prazo_entrega_dias: number | null;
@@ -16,6 +17,8 @@ type Props = {
   dataDoPedido: string | null | undefined;
   dataDeEntrega?: string | null;
   compacto?: boolean;
+  /** Na tabela (30/09): só o ícone e uma palavra; a frase inteira abre ao clicar. */
+  resumido?: boolean;
 };
 
 const ESTILO = {
@@ -44,13 +47,32 @@ const ESTILO = {
  * "30 dias porque é o usual" produziria uma obrigação que ninguém pactuou,
  * com a aparência de cláusula.
  */
-export default function AvisoDePrazoDeEntrega({ contrato, dataDoPedido, dataDeEntrega, compacto }: Props) {
+export default function AvisoDePrazoDeEntrega({ contrato, dataDoPedido, dataDeEntrega, compacto, resumido }: Props) {
   const prazo: PrazoDoContrato = {
     dias: contrato?.prazo_entrega_dias ?? null,
     unidade: (contrato?.prazo_entrega_unidade as PrazoDoContrato['unidade']) ?? null,
   };
   const s = situacaoDoPrazo(dataDoPedido, prazo, { entregueEm: dataDeEntrega });
   const { cor, fundo, Icone } = ESTILO[s.estado];
+
+  // Resumido (30/09): a frase vermelha em cada linha era ruído — fica o ícone
+  // e uma palavra, e a frase inteira abre ao clicar.
+  if (resumido) {
+    if (s.estado === 'sem_prazo') return null;
+    const palavra = s.estado === 'vencido' ? 'vencido' : s.estado === 'entregue' ? 'entregue' : s.estado === 'vence_hoje' ? 'vence hoje' : s.estado === 'apertado' ? 'apertado' : 'no prazo';
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" className={`inline-flex items-center gap-1 rounded text-xs ${cor} hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`} title="Ver o prazo" aria-label={`Prazo: ${s.frase}`}>
+            <Icone aria-hidden="true" className="h-3 w-3 shrink-0" />{palavra}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="center" className="w-72 text-sm">
+          <p className={`flex items-start gap-1.5 font-medium ${cor}`}><Icone aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />{s.frase}</p>
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
   // Na linha da tabela, só o essencial: o resto tem lugar no detalhe do pedido.
   if (compacto) {
