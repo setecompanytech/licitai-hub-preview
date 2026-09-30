@@ -33,6 +33,8 @@ export type NotaDoPedido = {
   /** O número que o Financeiro conhece — pode existir aqui e faltar no pedido. */
   numero: string | null;
   tem_xml: boolean;
+  /** O XML da nota, quando é ele que está arquivado: o espelho da NF-e é lido dele. */
+  arquivo_xml: string | null;
 };
 
 export function useNotasDosPedidos(contratoId: string | undefined) {
@@ -82,11 +84,19 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
         id: string; storage_path: string; arquivo_nome: string;
         numero: string | null; arquivo_xml: string | null;
       }>();
+      // Um título pode ter o XML E o DANFE em PDF (30/09). O arquivo que abre
+      // é o PDF, quando existe; o XML fica junto, para o espelho da nota.
+      const xmlPorLancamento = new Map<string, string>();
       for (const d of (docs ?? []) as unknown as Array<{
         id: string; lancamento_id: string; storage_path: string;
         arquivo_nome: string; numero: string | null; arquivo_xml: string | null;
       }>) {
-        if (d.storage_path) porLancamento.set(d.lancamento_id, d);
+        if (d.arquivo_xml && !xmlPorLancamento.has(d.lancamento_id)) xmlPorLancamento.set(d.lancamento_id, d.arquivo_xml);
+        if (!d.storage_path) continue;
+        const atual = porLancamento.get(d.lancamento_id);
+        const ehXml = !!d.arquivo_xml || /\.xml$/i.test(d.arquivo_nome ?? "");
+        const atualEhXml = !!atual && (!!atual.arquivo_xml || /\.xml$/i.test(atual.arquivo_nome ?? ""));
+        if (!atual || (atualEhXml && !ehXml)) porLancamento.set(d.lancamento_id, d);
       }
 
       const mapa: Record<string, NotaDoPedido> = {};
@@ -102,7 +112,8 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
           // O número do documento vale mais que o do registro: é o que a nota
           // diz. Faltando, o do lançamento.
           numero: d?.numero ?? l.numero_documento ?? null,
-          tem_xml: !!d?.arquivo_xml,
+          tem_xml: !!(d?.arquivo_xml || xmlPorLancamento.get(l.id)),
+          arquivo_xml: d?.arquivo_xml ?? xmlPorLancamento.get(l.id) ?? null,
         };
       }
       return mapa;

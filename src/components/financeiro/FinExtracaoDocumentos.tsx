@@ -212,10 +212,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
      * vai querer reabrir depois para conferir à mão. A chegada do documento é
      * um fato; o conteúdo é interpretação, e vem depois.
      */
-    const documento = await guardarArquivo(item.file, {
-      arquivo_xml: item.kind === "xml" ? await item.file.text().catch(() => null) : null,
-    });
-    if (!documento) {
+    // XML não é arquivado aqui: a edge `importar-notas-fiscais` já o guarda,
+    // ligado ao título — guardar antes deixava uma cópia órfã por envio (30/09).
+    const documento = item.kind === "xml" ? null : await guardarArquivo(item.file);
+    if (!documento && item.kind !== "xml") {
       toast.warning(`"${item.file.name}" foi processado, mas não pôde ser arquivado.`, {
         description: "O lançamento será criado; o documento original não ficará guardado.",
       });
@@ -277,6 +277,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     let numero: string | null = null;
     let dataEmissao: string | null = null;
     let valor: number | null = null;
+    let direcaoDoXml: "entrada" | "saida" | null = null;
     try {
       const nfe = parseNFeXML(await xmlFile.text());
       const soma = (nfe.itens ?? []).reduce(
@@ -287,6 +288,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       numero = nfe.numero_nf ? String(nfe.numero_nf) : null;
       dataEmissao = nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null;
       valor = Number(nfe.v_nf) || null;
+      // A direção pelo XML: emitida pela empresa é saída (receita). A edge
+      // não a devolve para nota duplicada, e o cartão dizia "despesa".
+      const emit = String(nfe.cnpj_emitente ?? "").replace(/\D/g, "");
+      const empresa = String(cnpjDaEmpresa ?? "").replace(/\D/g, "");
+      if (emit.length === 14 && empresa.length === 14) direcaoDoXml = emit === empresa ? "saida" : "entrada";
     } catch { /* nota sem itens legíveis: segue sem quantidade */ }
     return {
       status: "ok",
@@ -301,11 +307,26 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         quantidade_total: quantidadeTotal,
         itens: linhasDaNota,
         descricao: `${(resultado.tipo ?? "nota").toUpperCase()} ${numero ?? resultado.chave ?? ""}`.trim(),
-        _direcao: resultado.direcao,
+        _direcao: direcaoDoXml ?? resultado.direcao ?? null,
         _ja_lancada: true,
       },
       lancamentoId: null,
     };
+  };
+
+  /**
+   * O XML já é título; o vínculo com o contrato é o que falta (30/09). O
+   * cartão mostrava o seletor e nenhum botão o aplicava: o título existe
+   * pela chave, e as partes nascem ligadas a ele, sem título novo.
+   */
+  const vincularXmlAoContrato = async (item: DocItem) => {
+    const chave = normalizarChaveNfe(item.dados?.chave_nfe);
+    const existente = chave ? await lancamentoDaChave(chave) : null;
+    if (!existente) {
+      toast.error("Não achei o título desta nota no Financeiro.", { description: "Confira em Contas a Receber/Pagar se a nota foi lançada e tente de novo." });
+      return;
+    }
+    await vincularAoContrato(item, { id: existente.id, valor: item.dados?.valor_total != null ? Number(item.dados.valor_total) : null });
   };
 
   /** Os campos que a chave e o texto do DANFE dão com certeza. */
@@ -1447,7 +1468,8 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               <p className="text-xs text-success-ink mt-1">
                                 {d.dados?._danfe_anexado
                                   ? `NF-e ${d.dados?.numero_documento ?? ""} já estava lançada: o DANFE foi anexado ao título existente.`
-                                  : `Lançado pelo XML como ${d.dados._direcao === "saida" ? "receita" : "despesa"}${d.kind === "pdf" ? "; o DANFE ficou anexado ao título" : ""}.`}
+                                  : `Lançado pelo XML como ${d.dados._direcao === "saida" ? "receita" : d.dados._direcao === "entrada" ? "despesa" : "título"}${d.kind === "pdf" ? "; o DANFE ficou anexado ao título" : ""}.`}
+                                {" "}Para o pedido nascer em Gestão de Contratos, abra <b>Vinculado a contrato</b>, marque os itens e clique em <b>Vincular ao contrato</b>.
                               </p>
                             )}
 
@@ -1506,6 +1528,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               não cabe ao lado, ela DESCE inteira em vez de ser cortada pela
                               borda do modal — "Lançar e vinc…" truncado era isso. */}
                           <div className="flex flex-row sm:flex-col flex-wrap gap-2 shrink-0 ml-auto">
+                            {d.status === "ok" && d.dados?._ja_lancada && !d.lancamentoId && d.vinculo?.contrato_id && (
+                              <Button size="sm" variant="default" onClick={() => void vincularXmlAoContrato(d)} disabled={upsert.isPending}>
+                                <Link2 aria-hidden="true" />Vincular ao contrato
+                              </Button>
+                            )}
                             {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && !d.aguardandoXml && (
                               <>
                                 <Button size="sm" variant="default" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>

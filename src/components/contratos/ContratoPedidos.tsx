@@ -16,6 +16,8 @@ import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoE
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
 import { agruparEmLotes, rotuloDoLote, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
+import { parseNFeXML } from '@/lib/parseNFe';
+import { abrirEspelho } from '@/lib/financeiro/espelho-da-nfe';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -3011,6 +3013,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                     Quitada {new Date(p.data_quitacao + 'T00:00:00').toLocaleDateString('pt-BR')}
                                   </p>
                                 );
+                                // Nota que entrou pelo XML (30/09): o espelho da NF-e, lido do
+                                // XML, abre aqui; o DANFE em PDF, quando anexado ao mesmo
+                                // título, é o arquivo que abre no selo.
+                                const espelho = nd.arquivo_xml ? (
+                                  <button type="button" className="block w-fit g-meta text-primary underline-offset-2 hover:underline"
+                                    title="Abre a leitura do XML da nota em nova aba (não substitui o DANFE oficial)"
+                                    onClick={() => {
+                                      try {
+                                        if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.');
+                                      } catch {
+                                        toast.error('Não foi possível ler o XML desta nota.');
+                                      }
+                                    }}>
+                                    Espelho da NF-e (XML)
+                                  </button>
+                                ) : null;
                                 if (!nd.storage_path) {
                                   return (
                                     <>
@@ -3019,6 +3037,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                         {rotulo}
                                         <span className="ml-1 text-muted-foreground font-normal">• sem arquivo</span>
                                       </Badge>
+                                      {espelho}
                                       {quitada}
                                     </>
                                   );
@@ -3034,6 +3053,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                         <ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3 text-primary" />
                                       </Badge>
                                     </button>
+                                    {espelho}
                                     {quitada}
                                   </>
                                 );

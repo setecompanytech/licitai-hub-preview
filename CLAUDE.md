@@ -894,6 +894,13 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
   (`danfeDaChave`): nota já lançada recebe o PDF; senão o cartão pede o XML
   e oferece "Seguir com a leitura por imagem (N linhas)". A detecção no
   texto aceita grupos de quatro intercalados com rótulos vizinhos.
+- **XML é título; o vínculo é um botão à parte.** O cartão do XML
+  (`_ja_lancada`) tem "Vincular ao contrato" (`vincularXmlAoContrato`: acha
+  o título pela chave e chama `vincularAoContrato` com ele — partes sem
+  título novo, lote ligado ao título). A Extração NÃO arquiva o XML (a edge
+  já o guarda ligado ao título; arquivar antes deixava cópia órfã). Na aba
+  Pedidos, `useNotasDosPedidos` prefere o PDF quando o título tem os dois e
+  traz `arquivo_xml`: "Espelho da NF-e (XML)" abre `abrirEspelho`.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 
