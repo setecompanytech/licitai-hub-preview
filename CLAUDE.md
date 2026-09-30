@@ -858,3 +858,26 @@ no seletor vêm em ordem numérica (`ordenarItensDoContrato`, por
 `codigo_item`) e dinheiro por item é texto formatado em pt-BR, nunca
 `type="number"` (mostrava "5,6" e "9").
 
+### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
+
+O dono: "vários erros de leitura em DANFEs anexados via upload, principalmente
+em PDF (OCR)". O DANFE é a impressão do XML; o dado oficial está no XML.
+Regras que valem na Extração de Documentos (a receber e a pagar):
+- **PDF passa primeiro pelo TEXTO** (`textoDasPaginas`, sem OCR). Chave de
+  44 dígitos com DV válido (`chaveNfeDoTexto`/`chaveNfeValida`, módulo 11)
+  = DANFE. A chave sozinha dá CNPJ emitente, modelo, série, número e mês
+  (`dadosDaChaveNfe`); `lerDanfe` (`lib/financeiro/danfe-texto.ts`) soma
+  valor total e data quando o texto permite e diz a direção pelo CNPJ da
+  empresa (saída → a receber; entrada → a pagar).
+- **Nota já lançada** (documento fiscal com a chave, ou título com
+  `chave_acesso_nfe`) → o PDF é anexado ao título existente; nenhum título
+  nasce. **Sem nota** → o cartão pede o XML ("Anexar o XML desta nota":
+  confere a chave, lança pelo mesmo caminho do XML enviado direto e anexa o
+  PDF) e oferece "Ler por OCR mesmo assim" como escolha. Lançar/Revisar e
+  o vínculo ficam escondidos enquanto o XML não vem.
+- **XML antes de PDF na fila** (`processarTodos`): o DANFE da mesma nota,
+  lido depois, encontra o título que o XML criou.
+- OCR continua sendo o caminho de cupom, boleto, recibo, fatura e imagem.
+  Buscar o XML na SEFAZ pela chave exige certificado A1 ou provedor
+  (`nfe-consult-sefaz` com FocusNFe/NFe.io, não contratado) — decisão do dono.
+

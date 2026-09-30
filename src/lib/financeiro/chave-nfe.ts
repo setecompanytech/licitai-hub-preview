@@ -92,3 +92,57 @@ export function numeroNfeComoInteiro(valor: unknown): number | null {
   const n = parseInt(digitos, 10);
   return Number.isFinite(n) ? n : null;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A chave por dentro — o que ela já diz sem ler mais nada (30/09/2026)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Dígito verificador (módulo 11, pesos 2 a 9 da direita para a esquerda) dos 43 primeiros dígitos. */
+export function dvDaChaveNfe(base43: string): number | null {
+  const d = base43.replace(/\D/g, '');
+  if (d.length !== 43) return null;
+  let soma = 0;
+  for (let i = 0; i < 43; i++) soma += Number(d[42 - i]) * (2 + (i % 8));
+  const resto = 11 - (soma % 11);
+  return resto >= 10 ? 0 : resto;
+}
+
+/** 44 dígitos, modelo 55 ou 65 e dígito verificador correto. */
+export function chaveNfeValida(valor: unknown): boolean {
+  const chave = normalizarChaveNfe(valor);
+  if (!chave) return false;
+  const modelo = chave.slice(20, 22);
+  if (modelo !== '55' && modelo !== '65') return false;
+  return dvDaChaveNfe(chave.slice(0, 43)) === Number(chave[43]);
+}
+
+/**
+ * A chave dentro de um texto (o texto do DANFE, por exemplo). No DANFE ela
+ * vem em grupos de quatro separados por espaço; às vezes a leitura do PDF
+ * troca o espaço por nada ou por quebra de linha. Só devolve chave VÁLIDA.
+ */
+export function chaveNfeDoTexto(texto: string): string | null {
+  const re = /(?:\d[\s.-]{0,2}){44}/g;
+  for (const m of texto.matchAll(re)) {
+    const chave = m[0].replace(/\D/g, '');
+    if (chaveNfeValida(chave)) return chave;
+  }
+  return null;
+}
+
+export type DadosDaChave = {
+  uf: string; ano: string; mes: string; competencia: string;
+  cnpj_emitente: string; modelo: string; serie: number; numero: number; tp_emis: string; codigo: string; dv: string;
+};
+
+/** cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3) nNF(9) tpEmis(1) cNF(8) DV(1). */
+export function dadosDaChaveNfe(valor: unknown): DadosDaChave | null {
+  const c = normalizarChaveNfe(valor);
+  if (!c) return null;
+  const ano = `20${c.slice(2, 4)}`; const mes = c.slice(4, 6);
+  return {
+    uf: c.slice(0, 2), ano, mes, competencia: `${ano}-${mes}`,
+    cnpj_emitente: c.slice(6, 20), modelo: c.slice(20, 22), serie: Number(c.slice(22, 25)), numero: Number(c.slice(25, 34)),
+    tp_emis: c.slice(34, 35), codigo: c.slice(35, 43), dv: c.slice(43, 44),
+  };
+}

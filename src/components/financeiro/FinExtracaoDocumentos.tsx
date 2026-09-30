@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { lerLinhaDigitavel } from '@/lib/financeiro/boleto';
 import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
+import { lerDanfe, pastaDaDirecao, type DanfeLido } from "@/lib/financeiro/danfe-texto";
+import { textoDasPaginas } from "@/lib/pdf-text-extractor";
+import { parseNFeXML } from "@/lib/parseNFe";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
 import { numeroDaNota } from "@/lib/financeiro/recebimento-da-nota";
@@ -18,7 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import SeloPraefectusIA from "@/components/shared/SeloPraefectusIA";
 import {
   Upload, Loader2, FileCheck2, FileX, ScanLine,
-  FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info, Link2, ChevronDown, ChevronUp,
+  FileText, ImageIcon, Pencil, CheckCircle2, AlertCircle, Info, Link2, ChevronDown, ChevronUp, FileCode2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +59,12 @@ interface DocItem {
   // Vínculo com Gestão (Contrato/ATA/Item/Aditivo)
   vinculo?: VinculoContratoValue;
   vincularExpandido?: boolean;
+  /**
+   * DANFE em PDF reconhecido pela chave (30/09) e ainda sem o XML: o cartão
+   * pede o XML da nota em vez de mandar o PDF para a leitura por imagem.
+   */
+  danfe?: DanfeLido | null;
+  aguardandoXml?: boolean;
 }
 
 /** O selo do arquivo fala português — "IMAGE" era o valor cru do detector. */
@@ -139,6 +149,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
   const { guardarArquivo, vincularLancamento } = useDocumentoFiscal();
+  const { empresaAtiva } = useEmpresa();
+  const cnpjDaEmpresa = empresaAtiva?.cnpj ?? null;
+  const xmlInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const [processando, setProcessando] = useState(false);
   const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null; docId: string | null }>({
     open: false,
@@ -221,36 +234,120 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // para uma nota de 500. Quantidade é o que a nota atesta.
         // E as LINHAS de produto (30/09): sem elas, a nota de 18 produtos chegava
         // ao vínculo como "1.000 unidades a R$ 17,28" e nenhum item casava.
-        let quantidadeTotal: number | null = null;
-        let linhasDaNota: ItemDaNota[] | null = null;
-        try {
-          const { parseNFeXML } = await import("@/lib/parseNFe");
-          const nfe = parseNFeXML(await item.file.text());
-          const soma = (nfe.itens ?? []).reduce(
-            (acc: number, i: { q_com?: number | null }) => acc + (Number(i.q_com) || 0), 0);
-          if (soma > 0) quantidadeTotal = soma;
-          const linhas = linhasDaNfe(nfe.itens);
-          if (linhas.length > 0) linhasDaNota = linhas;
-        } catch { /* nota sem itens legíveis: segue sem quantidade */ }
-        return {
-          ...item,
-          status: "ok",
-          motor: "Parser XML",
-          dados: {
-            tipo_documento: resultado.tipo,
-            valor_total: resultado.valor,
-            data_emissao: resultado.competencia,
-            chave_nfe: resultado.chave,
-            quantidade_total: quantidadeTotal,
-            itens: linhasDaNota,
-            descricao: `${(resultado.tipo ?? "nota").toUpperCase()} ${resultado.chave ?? ""}`.trim(),
-            _direcao: resultado.direcao,
-            _ja_lancada: true,
-          },
-          lancamentoId: null,
-          documentoId: documento?.id ?? null,
-        };
+        return { ...item, ...(await dadosDoXml(item.file, resultado)), documentoId: documento?.id ?? null };
       }
+
+      // ---------- PDF: é um DANFE? A chave diz, sem IA (30/09) ----------
+      // O DANFE é a impressão do XML. Pela chave o sistema sabe emitente,
+      // número, série e mês; acha a nota se já estiver lançada e anexa o PDF
+      // a ela; senão pede o XML. A leitura por imagem fica para cupom, boleto,
+      // recibo, fatura — ou para quem escolher "Ler por OCR mesmo assim".
+      if (item.kind === "pdf") {
+        const texto = await textoDasPaginas(item.file, 2).catch(() => "");
+        const danfe = lerDanfe(texto, cnpjDaEmpresa);
+        if (danfe) {
+          const existente = await lancamentoDaChave(danfe.chave);
+          if (existente) {
+            if (documento?.id) await vincularLancamento(documento.id, existente.id);
+            invalidarFinanceiro();
+            return {
+              ...item, status: "ok", motor: "Chave do DANFE", danfe,
+              dados: dadosDoDanfe(danfe, { _ja_lancada: true, _danfe_anexado: true }),
+              lancamentoId: existente.id, documentoId: documento?.id ?? null,
+            };
+          }
+          return {
+            ...item, status: "ok", motor: "Chave do DANFE", danfe, aguardandoXml: true,
+            dados: dadosDoDanfe(danfe, { _precisa_xml: true }),
+            documentoId: documento?.id ?? null,
+          };
+        }
+      }
+      return await lerPorImagem(item, documento?.id ?? null);
+    } catch (e: any) {
+      // O arquivo já está guardado — o erro é da leitura, não do documento.
+      return { ...item, status: "erro", erro: e?.message ?? "Erro inesperado", documentoId: documento?.id ?? null };
+    }
+  };
+
+  /** O que o XML diz, lido no navegador: valor, data, chave, número e as linhas — o mesmo para XML enviado ou anexado a um DANFE. */
+  const dadosDoXml = async (xmlFile: File, resultado: { tipo?: string; valor?: number; competencia?: string; chave?: string; direcao?: string }): Promise<Partial<DocItem>> => {
+    let quantidadeTotal: number | null = null;
+    let linhasDaNota: ItemDaNota[] | null = null;
+    let numero: string | null = null;
+    let dataEmissao: string | null = null;
+    let valor: number | null = null;
+    try {
+      const nfe = parseNFeXML(await xmlFile.text());
+      const soma = (nfe.itens ?? []).reduce(
+        (acc: number, i: { q_com?: number | null }) => acc + (Number(i.q_com) || 0), 0);
+      if (soma > 0) quantidadeTotal = soma;
+      const linhas = linhasDaNfe(nfe.itens);
+      if (linhas.length > 0) linhasDaNota = linhas;
+      numero = nfe.numero_nf ? String(nfe.numero_nf) : null;
+      dataEmissao = nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null;
+      valor = Number(nfe.v_nf) || null;
+    } catch { /* nota sem itens legíveis: segue sem quantidade */ }
+    return {
+      status: "ok",
+      motor: "Parser XML",
+      aguardandoXml: false,
+      dados: {
+        tipo_documento: resultado.tipo,
+        numero_documento: numero,
+        valor_total: valor ?? resultado.valor,
+        data_emissao: dataEmissao ?? resultado.competencia,
+        chave_nfe: resultado.chave,
+        quantidade_total: quantidadeTotal,
+        itens: linhasDaNota,
+        descricao: `${(resultado.tipo ?? "nota").toUpperCase()} ${numero ?? resultado.chave ?? ""}`.trim(),
+        _direcao: resultado.direcao,
+        _ja_lancada: true,
+      },
+      lancamentoId: null,
+    };
+  };
+
+  /** Os campos que a chave e o texto do DANFE dão com certeza. */
+  const dadosDoDanfe = (danfe: DanfeLido, extras: Record<string, unknown>) => ({
+    tipo_documento: "nfe",
+    numero_documento: String(danfe.numero),
+    serie: String(danfe.serie),
+    chave_nfe: danfe.chave,
+    valor_total: danfe.valor_total,
+    data_emissao: danfe.data_emissao ?? `${danfe.competencia}-01`,
+    emitente_cnpj: danfe.cnpj_emitente,
+    descricao: `NFE ${danfe.numero}`,
+    _direcao: danfe.direcao,
+    ...extras,
+  });
+
+  /** A nota desta chave já está lançada? Pelo documento fiscal (XML importado) ou pelo próprio título. */
+  const lancamentoDaChave = async (chave: string): Promise<{ id: string } | null> => {
+    if (!empresaId) return null;
+    const { data: doc } = await supabase
+      .from("financeiro_documentos_fiscais" as never)
+      .select("lancamento_id")
+      .eq("empresa_id", empresaId)
+      .eq("chave_acesso", chave)
+      .not("lancamento_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+    const viaDoc = (doc as unknown as { lancamento_id: string | null } | null)?.lancamento_id;
+    if (viaDoc) return { id: viaDoc };
+    const { data: lanc } = await supabase
+      .from("financeiro_lancamentos")
+      .select("id")
+      .eq("empresa_id", empresaId)
+      .eq("chave_acesso_nfe", chave)
+      .limit(1)
+      .maybeSingle();
+    return lanc?.id ? { id: lanc.id } : null;
+  };
+
+  /** A leitura por imagem (OCR multi-IA) — o caminho antigo, agora só para o que não é DANFE ou por escolha. */
+  const lerPorImagem = async (item: DocItem, documentoId: string | null): Promise<DocItem> => {
+    try {
 
       // ---------- PDF / Imagem -> OCR ----------
       let dataUrl: string;
@@ -259,7 +356,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       } else if (item.kind === "image") {
         dataUrl = await fileToDataUrl(item.file);
       } else {
-        return { ...item, status: "erro", erro: "Formato não suportado (use XML, PDF ou imagem)" };
+        return { ...item, status: "erro", erro: "Formato não suportado (use XML, PDF ou imagem)", documentoId };
       }
 
       const { data, error } = await supabase.functions.invoke("ocr-document-financeiro", {
@@ -270,10 +367,51 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       const dados = data?.dados;
       if (!dados) throw new Error("Sem dados extraídos");
 
-      return { ...item, status: "ok", motor: data.motor, dados, documentoId: documento?.id ?? null };
-    } catch (e: any) {
+      // A chave que o DANFE já tinha dado vale mais do que a lida na imagem.
+      const chaveCerta = item.danfe?.chave;
+      return { ...item, status: "ok", motor: data.motor, aguardandoXml: false, dados: chaveCerta ? { ...dados, chave_nfe: chaveCerta } : dados, documentoId };
+    } catch (e) {
       // O arquivo já está guardado — o erro é da leitura, não do documento.
-      return { ...item, status: "erro", erro: e?.message ?? "Erro inesperado", documentoId: documento?.id ?? null };
+      return { ...item, status: "erro", erro: e instanceof Error ? e.message : "Erro inesperado", documentoId };
+    }
+  };
+
+  /** "Ler por OCR mesmo assim": o DANFE sem XML vai para a leitura por imagem, por escolha de quem opera. */
+  const lerDanfePorOcr = async (item: DocItem) => {
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "processando" } : d)));
+    const lido = await lerPorImagem({ ...item, aguardandoXml: false }, item.documentoId ?? null);
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? lido : d)));
+  };
+
+  /**
+   * O XML da nota do DANFE: confere a chave, lança pelo XML (o mesmo caminho
+   * do XML enviado direto) e anexa o PDF ao título que nasceu — ou ao que já
+   * existia. XML de outra nota é recusado com as duas chaves na tela.
+   */
+  const anexarXmlAoDanfe = async (item: DocItem, xmlFile: File) => {
+    const chaveDoPdf = item.danfe?.chave;
+    if (!chaveDoPdf) return;
+    let chaveDoXml: string | null = null;
+    try { chaveDoXml = normalizarChaveNfe(parseNFeXML(await xmlFile.text()).chave_acesso); } catch { chaveDoXml = null; }
+    if (!chaveDoXml) { toast.error(`"${xmlFile.name}" não é um XML de NF-e legível.`); return; }
+    if (chaveDoXml !== chaveDoPdf) {
+      toast.error("O XML é de outra nota.", { description: `XML: chave …${chaveDoXml.slice(-12)} · DANFE: chave …${chaveDoPdf.slice(-12)}. Anexe o XML da NF-e ${item.danfe?.numero}.`, duration: 10000 });
+      return;
+    }
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "processando" } : d)));
+    try {
+      const r = await importar([xmlFile]);
+      const resultado = r?.resultados?.[0];
+      if (!resultado || resultado.status === "erro") throw new Error(resultado?.erro ?? "Falha na importação do XML");
+      const existente = await lancamentoDaChave(chaveDoPdf);
+      if (existente && item.documentoId) await vincularLancamento(item.documentoId, existente.id);
+      invalidarFinanceiro();
+      const lido = await dadosDoXml(xmlFile, { ...resultado, chave: resultado.chave ?? chaveDoPdf, direcao: resultado.direcao ?? item.danfe?.direcao ?? undefined });
+      setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, ...lido, dados: { ...lido.dados, _danfe_anexado: !!existente } } : d)));
+      toast.success(resultado.status === "duplicada" ? `NF-e ${item.danfe?.numero} já estava lançada: o DANFE foi anexado ao título.` : `NF-e ${item.danfe?.numero} lançada pelo XML; o DANFE ficou anexado ao título.`);
+    } catch (e) {
+      setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "ok" } : d)));
+      toast.error(e instanceof Error ? e.message : "Não foi possível lançar pelo XML.");
     }
   };
 
@@ -283,7 +421,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     // Marca todos como processando
     setDocs((prev) => prev.map((d) => (d.status === "pendente" ? { ...d, status: "processando" } : d)));
 
-    for (const doc of docs.filter((d) => d.status === "pendente" || d.status === "processando")) {
+    // XML antes de PDF: o DANFE em PDF da mesma nota, lido depois, acha o
+    // título que o XML acabou de criar e é anexado a ele, em vez de pedir XML.
+    const ordem = (d: DocItem) => (d.kind === "xml" ? 0 : 1);
+    const fila = docs.filter((d) => d.status === "pendente" || d.status === "processando").sort((a, b) => ordem(a) - ordem(b));
+    for (const doc of fila) {
       // Sequencial para não estourar limites de IA
       const atualizado = await processarUm(doc);
       setDocs((prev) => prev.map((d) => (d.id === doc.id ? atualizado : d)));
@@ -977,8 +1119,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             <DialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Envie XMLs de NF-e/NFS-e (lançados automaticamente), ou PDFs e imagens de cupom fiscal,
-                  boleto, recibo, fatura.
+                  Para NF-e, envie o <strong>XML</strong>: é o documento oficial e entra sem leitura por imagem.
+                  DANFE em PDF é reconhecido pela chave e pede o XML. PDFs e imagens de cupom fiscal,
+                  boleto, recibo e fatura passam pela leitura por IA.
                 </p>
                 {/* O caminho, dito antes de começar. Quem envia um documento
                     precisa saber que ele fica guardado, que a leitura é só uma
@@ -995,7 +1138,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">2</span>
-                    <span>A IA lê os campos e mostra para <strong>você conferir</strong>.</span>
+                    <span>XML entra pelos dados oficiais; DANFE em PDF pede o XML da nota; o resto a IA lê e mostra para <strong>você conferir</strong>.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-hidden="true">3</span>
@@ -1038,7 +1181,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                 Arraste arquivos aqui ou clique para selecionar
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                XML (NF-e/NFS-e) • PDF • JPG/PNG (cupom fiscal, boleto, recibo, fatura) — até 15 MB cada
+                XML (NF-e/NFS-e, o caminho certo para nota fiscal) • PDF (DANFE pela chave; cupom, boleto, recibo, fatura por OCR) • JPG/PNG — até 15 MB cada
               </p>
               <input
                 ref={inputRef}
@@ -1057,9 +1200,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             <Alert variant="info">
               <Info className="w-4 h-4" aria-hidden="true" />
               <AlertDescription>
-                <b>XMLs de NF-e/NFS-e</b> são processados automaticamente (entrada/saída detectada pelo CNPJ da empresa).
+                <b>XMLs de NF-e/NFS-e</b> são lançados automaticamente, item a item (entrada/saída pelo CNPJ da empresa).
                 <br />
-                <b>PDFs e imagens</b> passam por OCR multi-IA (Gemini Vision/Claude/GPT-5) e abrem para revisão antes de virar lançamento.
+                <b>DANFE em PDF</b> é reconhecido pela chave de acesso: se a nota já está lançada, o PDF é anexado a ela; senão, o sistema pede o XML.
+                A leitura por imagem fica como escolha ("Ler por OCR mesmo assim").
+                <br />
+                <b>Cupom, boleto, recibo, fatura</b> (PDF ou imagem) passam por OCR multi-IA e abrem para revisão antes de virar lançamento.
               </AlertDescription>
             </Alert>
 
@@ -1176,7 +1322,53 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 nada dizia que ainda faltava um clique nem para
                                 onde o lançamento iria. Quem enviava a nota saía
                                 da tela achando que tinha lançado. */}
-                            {d.status === "ok" && !d.lancamentoId && !d.dados?._ja_lancada && (
+                            {d.aguardandoXml && d.danfe && (() => {
+                              const pastaCerta = pastaDaDirecao(d.danfe.direcao);
+                              const pastaErrada = pastaCerta != null && pastaCerta !== tipo;
+                              return (
+                                <div className="mt-2 space-y-2 rounded-md border border-info-line bg-info-tint px-3 py-2" data-testid="danfe-aguardando-xml">
+                                  <p className="text-sm font-semibold text-info-ink">
+                                    DANFE da NF-e nº {d.danfe.numero}{d.danfe.serie ? ` · série ${d.danfe.serie}` : ""} — anexe o XML desta nota
+                                  </p>
+                                  <p className="text-xs text-info-ink tabular-nums">
+                                    Chave {d.danfe.chave.replace(/(\d{4})(?=\d)/g, "$1 ")} · emitente CNPJ {d.danfe.cnpj_emitente.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")} · {d.danfe.competencia.split("-").reverse().join("/")}
+                                    {d.danfe.valor_total ? ` · ${fmt(d.danfe.valor_total)}` : ""}
+                                  </p>
+                                  <p className="text-xs text-info-ink">
+                                    O DANFE é a impressão do XML; a leitura por imagem erra número, valor e itens. Com o XML a nota entra
+                                    com os dados oficiais, item a item, e este PDF fica anexado ao título.
+                                  </p>
+                                  {pastaErrada && (
+                                    <p className="text-xs font-medium text-warning-ink">
+                                      {d.danfe.direcao === "entrada"
+                                        ? "Esta NF-e foi emitida por outro CNPJ: é nota de ENTRADA e pertence a Contas a Pagar."
+                                        : "Esta NF-e foi emitida pela própria empresa: é nota de SAÍDA e pertence a Contas a Receber."}
+                                    </p>
+                                  )}
+                                  <div className="flex flex-wrap gap-2">
+                                    <input
+                                      ref={(el) => { xmlInputs.current[d.id] = el; }}
+                                      type="file"
+                                      accept=".xml,text/xml,application/xml"
+                                      className="hidden"
+                                      aria-label={`XML da NF-e ${d.danfe.numero}`}
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        e.target.value = "";
+                                        if (f) void anexarXmlAoDanfe(d, f);
+                                      }}
+                                    />
+                                    <Button size="sm" onClick={() => xmlInputs.current[d.id]?.click()}>
+                                      <FileCode2 aria-hidden="true" />Anexar o XML desta nota
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => void lerDanfePorOcr(d)}>
+                                      <ScanLine aria-hidden="true" />Ler por OCR mesmo assim
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            {d.status === "ok" && !d.lancamentoId && !d.dados?._ja_lancada && !d.aguardandoXml && (
                               <div className="mt-2 rounded-md border border-dashed border-warning-line bg-warning-tint px-3 py-2">
                                 <p className="text-sm font-semibold text-warning-ink">
                                   Ainda não lançado
@@ -1198,6 +1390,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                     {d.dados?.valor_total ? fmt(Number(d.dados.valor_total)) : "Valor a conferir"}
                                     {d.documentoId ? " · documento arquivado junto" : " · documento NÃO arquivado"}
                                   </p>
+                                  {d.dados?._danfe_anexado && (
+                                    <p className="text-xs text-success-ink">
+                                      A NF-e {d.dados?.numero_documento ?? ""} já estava lançada: este DANFE foi anexado ao título existente, sem criar outro.
+                                    </p>
+                                  )}
                                 </div>
                                 {/* Fechar É a ação: o modal cobre a própria
                                     lista de Contas a Receber/Pagar, e o
@@ -1210,14 +1407,16 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 </Button>
                               </div>
                             )}
-                            {d.dados?._ja_lancada && (
+                            {d.dados?._ja_lancada && !d.lancamentoId && (
                               <p className="text-xs text-success-ink mt-1">
-                                Lançado automaticamente como {d.dados._direcao === "saida" ? "receita" : "despesa"}.
+                                {d.dados?._danfe_anexado
+                                  ? `NF-e ${d.dados?.numero_documento ?? ""} já estava lançada: o DANFE foi anexado ao título existente.`
+                                  : `Lançado pelo XML como ${d.dados._direcao === "saida" ? "receita" : "despesa"}${d.kind === "pdf" ? "; o DANFE ficou anexado ao título" : ""}.`}
                               </p>
                             )}
 
                             {/* Bloco de vínculo com Gestão (Contrato/ATA) */}
-                            {d.status === "ok" && !d.lancamentoId && (
+                            {d.status === "ok" && !d.lancamentoId && !d.aguardandoXml && (
                               <div className="mt-2">
                                 <Button
                                   type="button"
@@ -1270,7 +1469,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                               não cabe ao lado, ela DESCE inteira em vez de ser cortada pela
                               borda do modal — "Lançar e vinc…" truncado era isso. */}
                           <div className="flex flex-row sm:flex-col flex-wrap gap-2 shrink-0 ml-auto">
-                            {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && (
+                            {d.status === "ok" && !d.dados?._ja_lancada && !d.lancamentoId && !d.aguardandoXml && (
                               <>
                                 <Button size="sm" variant="default" onClick={() => lancarRapido(d)} disabled={upsert.isPending}>
                                   {d.vinculo?.contrato_id ? "Lançar e vincular" : "Lançar"}

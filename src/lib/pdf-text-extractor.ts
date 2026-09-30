@@ -59,6 +59,25 @@ function normalizeExtractedText(text: string): string {
  * IA numa chamada só; nato-digital segue pelo texto. Custa um getTextContent
  * por página olhada, nada de renderizar.
  */
+/**
+ * O TEXTO das primeiras páginas, sem OCR nenhum (30/09/2026). Serve para
+ * reconhecer um DANFE pela chave de acesso antes de mandar o arquivo para a
+ * leitura por imagem — que é a que erra. PDF escaneado devolve vazio.
+ */
+export async function textoDasPaginas(file: File, paginas = 2): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const ate = Math.min(pdf.numPages, paginas);
+  const partes: string[] = [];
+  for (let i = 1; i <= ate; i++) {
+    const content = await (await pdf.getPage(i)).getTextContent();
+    partes.push(content.items.map((it) => ('str' in it && typeof it.str === 'string' ? it.str : '')).join(' '));
+  }
+  return partes.join('\n');
+}
+
 export async function inspecionarPdf(file: File, paginasOlhadas = 3): Promise<{ paginas: number; comTexto: number; olhadas: number }> {
   const pdfjsLib = await import('pdfjs-dist');
   const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
