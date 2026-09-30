@@ -18,8 +18,9 @@ import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-
 import { agruparEmLotes, rotuloDoLote, descricaoSemParte, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
 import { parseNFeXML } from '@/lib/parseNFe';
 import { arquivoDanfe, abrirDanfe } from '@/lib/financeiro/danfe-pdf';
+import { precoDoItemEm, type PassoDePreco } from '@/lib/contratos/preco-na-data';
 import type { NotaDoPedido } from '@/hooks/useNotaDoPedido';
-import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
+import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
 import AvisoDePrazoDeEntrega, { type PrazosDoContrato } from './AvisoDePrazoDeEntrega';
@@ -86,8 +87,8 @@ function CustoInlineEditor({ initialValue, onSave }: { initialValue: number; onS
   );
 }
 
-type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; origem_aditivo_id: string | null; produto_id?: string | null };
-type AditivoRef = { id: string; numero_aditivo: string; tipo: string };
+type ContratoItem = { id: string; codigo_item: string | null; descricao: string; unidade: string; valor_unitario: number; valor_unitario_original?: number | null; origem_aditivo_id: string | null; produto_id?: string | null };
+type AditivoRef = { id: string; numero_aditivo: string; tipo: string; data_efeitos?: string | null; data_assinatura?: string | null; data_aditivo?: string | null };
 
 // O rótulo do item nos seletores vem da SITUAÇÃO (último termo aplicado à
 // linha, `lib/contratos/situacao-do-item.ts`), não da camada que a criou:
@@ -538,6 +539,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   });
   const [origemFilter, setOrigemFilter] = useState<string>(FILTRO_TODOS);
   const [situacaoDosItens, setSituacaoDosItens] = useState<Map<string, SituacaoDoItem>>(new Map());
+  const [passosDePreco, setPassosDePreco] = useState<PassoDePreco[]>([]);
+  /** "[Original · R$ 5,04]" / "[1º TA · R$ 6,81]": o preço do item no termo escolhido no formulário, ou na data do pedido. */
+  const rotuloDoItemNoFormulario = (i: { id: string; valor_unitario: number | null; valor_unitario_original?: number | null }) => {
+    const ref = precoDoItemEm(i, aditivos, passosDePreco, { origemAditivoId: form.origem_aditivo_id || null, data: form.data_pedido || null });
+    const nome = ref.origem === 'original' ? 'Original' : ref.origem === 'vigente' ? 'Vigente' : ref.rotulo;
+    return `${nome} · ${fmt(ref.valor)}`;
+  };
   const [ataSrpId, setAtaSrpId] = useState<string | null>(null);
   // Forma de execução declarada da ATA — é o que permite apontar o parcelamento.
   const [dadosExecucao, setDadosExecucao] = useState<{ forma: string | null; fundamento: string | null }>(
@@ -873,10 +881,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
-      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, origem_aditivo_id, produto_id').eq('contrato_id', contratoId),
+      supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, valor_unitario_original, origem_aditivo_id, produto_id').eq('contrato_id', contratoId),
       supabase.from('notas_fiscais').select('id, numero_nf, tipo, status, valor_total, data_emissao, chave_acesso, contrato_pedido_id, natureza_operacao, destinatario_razao_social').eq('contrato_id', contratoId),
       supabase.from('pre_notas_fiscais' as any).select('id, status, natureza_operacao, valor_total, created_at, motivo_rejeicao, motivo_devolucao').eq('contrato_id', contratoId).order('created_at', { ascending: false }),
-      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo, data_efeitos, data_assinatura, data_aditivo').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       // `numero_contrato` e `orgao_contratante` entram aqui para o painel do
       // pedido dizer DE QUE contrato e DE QUE órgão ele é — a referência pede
       // os dois. São colunas antigas e de uso corrente (o cabeçalho do
@@ -911,13 +919,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setItens((itensRes.data as any[]) || []);
     setNfsSync((nfsRes.data as any[]) || []);
     setPreNotas((preNotasRes.data as any[]) || []);
-    setAditivos((aditivosRes.data as any[]) || []);
+    setAditivos(((aditivosRes.data ?? []) as unknown as AditivoRef[]));
     // As linhas de termo aplicadas: é o que diz "3º TA" no seletor de itens.
     const { data: linhasAplicadas } = await supabase
       .from('contrato_aditivo_itens' as never)
-      .select('contrato_item_id, aditivo_id, aplicado_em, aditivo:contrato_aditivos(numero_aditivo)')
+      .select('contrato_item_id, aditivo_id, aplicado_em, valor_unitario_novo, aditivo:contrato_aditivos(numero_aditivo)')
       .eq('contrato_id', contratoId)
       .not('aplicado_em', 'is', null);
+    // Os passos de preço (30/09): o rótulo do item no seletor é o preço NO TERMO
+    // do pedido (ou na data), não o último termo aplicado a qualquer coisa.
+    setPassosDePreco(((linhasAplicadas ?? []) as unknown as Array<{ contrato_item_id: string | null; aditivo_id: string; aplicado_em: string | null; valor_unitario_novo: number | null }>)
+      .filter((l) => l.contrato_item_id)
+      .map((l) => ({ aditivo_id: l.aditivo_id, contrato_item_id: l.contrato_item_id!, valor_unitario_novo: l.valor_unitario_novo, aplicado_em: l.aplicado_em })));
     setSituacaoDosItens(situacaoPorItem(((linhasAplicadas ?? []) as unknown as Array<{ contrato_item_id: string | null; aditivo_id: string; aplicado_em: string | null; aditivo: { numero_aditivo: string | null } | null }>)
       .map((l): LinhaAplicada => ({ contrato_item_id: l.contrato_item_id, aditivo_id: l.aditivo_id, aplicado_em: l.aplicado_em, numero_aditivo: l.aditivo?.numero_aditivo ?? null }))));
     setAtaSrpId((contratoRes.data as any)?.ata_srp_id ?? null);
@@ -3923,7 +3936,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               <Select value={ei.contrato_item_id} onValueChange={v => {
                                 const item = itens.find(i => i.id === v);
                                 updateExtractedItem(ei.key, 'contrato_item_id', v);
-                                if (item) updateExtractedItem(ei.key, 'valor_unitario', String(item.valor_unitario));
+                                if (item) updateExtractedItem(ei.key, 'valor_unitario', String(precoDoItemEm(item, aditivos, passosDePreco, { origemAditivoId: form.origem_aditivo_id || null, data: form.data_pedido || null }).valor));
                               }}>
                                 <SelectTrigger><SelectValue placeholder="Vincular item" /></SelectTrigger>
                                 {/* Descrição de item de merenda tem 400+ caracteres, e o
@@ -3936,7 +3949,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                   {itens.map(i => (
                                     <SelectItem key={i.id} value={i.id} className="g-meta">
                                       <span className="block max-w-[500px] truncate" title={i.descricao}>
-                                        <span className="text-muted-foreground mr-1">[{rotuloDoItemNoSeletor(i, situacaoDosItens.get(i.id))}]</span>
+                                        <span className="text-muted-foreground mr-1">[{rotuloDoItemNoFormulario(i)}]</span>
                                         {i.descricao}
                                       </span>
                                     </SelectItem>

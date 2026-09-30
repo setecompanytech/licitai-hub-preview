@@ -34,7 +34,7 @@ import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
 import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, sugerirPartes, sugerirUnidadesCompostas, type Divergencia, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
-import { precoDoItemEm, type PassoDePreco, type PrecoDeReferencia, type TermoComData } from "@/lib/contratos/preco-na-data";
+import { precoDoItemEm, tabelaDePrecosPorTermo, type PassoDePreco, type PrecoDeReferencia, type TermoComData } from "@/lib/contratos/preco-na-data";
 import { formatarMoedaBr, formatarQuantidade, parseQuantidade } from "@/lib/compras/numeros";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
@@ -347,6 +347,19 @@ export default function VinculoContratoSelector({
   const precoContratadoDe = (id: string): number | null => {
     const i = itens.find((x) => x.id === id);
     return i && i.valor_unitario > 0 ? i.valor_unitario : null;
+  };
+
+  // A tabela de preços por termo (30/09): cada termo é uma coluna acumulada —
+  // "o 1º TA já com os 18 itens". É o que o seletor de termo mostra e o que a
+  // auditoria lê: quanto cada termo mudou em cada item, em R$ e em %.
+  const tabelaDePrecos = useMemo(() => tabelaDePrecosPorTermo(itensBrutos, aditivos, passosDePreco), [itensBrutos, aditivos, passosDePreco]);
+  const [mostrarTabelaDePrecos, setMostrarTabelaDePrecos] = useState(false);
+  const alteradosPorTermo = useMemo(() => new Map(tabelaDePrecos.colunas.map((c) => [c.aditivo_id, c.itensAlterados])), [tabelaDePrecos]);
+  /** Copia os preços de referência do termo escolhido (ou da data) para o unitário de cada parte marcada. */
+  const usarPrecosDoTermo = () => {
+    const partes = (value.partes ?? []).map((p) => ({ ...p, valor_unitario: precoContratadoDe(p.contrato_item_id) ?? p.valor_unitario }));
+    const faltantes = itemIds.filter((id) => !partes.some((p) => p.contrato_item_id === id)).map((id) => ({ contrato_item_id: id, quantidade: 0, valor_unitario: precoContratadoDe(id) ?? 0 }));
+    onChange({ ...value, partes: [...partes, ...faltantes] });
   };
 
   // Lista canônica de itens vinculados (suporte a múltiplos)
@@ -1144,13 +1157,63 @@ export default function VinculoContratoSelector({
                 <SelectItem value="__contrato__">
                   📄 Contrato Original
                 </SelectItem>
-                {aditivos.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    📎 {a.numero_aditivo} ({a.tipo})
-                  </SelectItem>
-                ))}
+                {aditivos.map((a) => {
+                  const n = alteradosPorTermo.get(a.id) ?? 0;
+                  return (
+                    <SelectItem key={a.id} value={a.id}>
+                      📎 {a.numero_aditivo} ({a.tipo}){n > 0 ? ` · ${n} preço(s) alterado(s)` : " · preços do termo anterior"}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {/* A tabela de preços do contrato, termo a termo: o que cada um mudou
+                em cada item (R$ e %). O preço de referência desta nota é a coluna
+                do termo escolhido — ou a da data do documento. */}
+            {itens.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => setMostrarTabelaDePrecos((v) => !v)} aria-expanded={mostrarTabelaDePrecos}>
+                    {mostrarTabelaDePrecos ? "Ocultar" : "Ver"} os preços do contrato termo a termo ({itens.length} itens · {tabelaDePrecos.colunas.length} termo(s))
+                  </Button>
+                  {itensSelecionados.length > 1 && (
+                    <Button type="button" variant="outline" size="sm" onClick={usarPrecosDoTermo} title="Copia o preço de referência de cada item marcado (o do termo escolhido, ou o da data do documento) para o unitário das partes">
+                      Usar os preços {value.origem_aditivo_id ? "deste termo" : "de referência"} nas partes
+                    </Button>
+                  )}
+                </div>
+                {mostrarTabelaDePrecos && (
+                  <div className="overflow-x-auto rounded-md border border-border">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-secondary text-left text-muted-foreground">
+                          <th className="px-2 py-1 whitespace-nowrap">Item</th>
+                          <th className="px-2 py-1 text-right whitespace-nowrap">Original</th>
+                          {tabelaDePrecos.colunas.map((c) => (
+                            <th key={c.aditivo_id} className={cn("px-2 py-1 text-right whitespace-nowrap", value.origem_aditivo_id === c.aditivo_id && "text-primary")} title={`${c.itensAlterados} preço(s) alterado(s)${c.data ? ` · efeitos ${c.data.split("-").reverse().join("/")}` : ""}`}>
+                              {c.rotulo}{c.itensAlterados === 0 ? " (=)" : ""}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tabelaDePrecos.linhas.map((l, idx) => (
+                          <tr key={l.contrato_item_id} className={cn("border-t border-border", itemIds.includes(l.contrato_item_id) && "bg-primary-tint/40")}>
+                            <td className="px-2 py-1 max-w-[16rem]"><span className="font-medium tabular-nums">{l.codigo_item ?? idx + 1}</span> <span className="line-clamp-1" title={l.descricao}>{l.descricao}</span></td>
+                            <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">{fmt(l.original)}</td>
+                            {l.porTermo.map((c) => (
+                              <td key={c.aditivo_id} className={cn("px-2 py-1 text-right tabular-nums whitespace-nowrap", c.mudou ? "font-medium text-foreground" : "text-muted-foreground")} title={c.mudou ? `${c.deltaReais >= 0 ? "+" : ""}${fmt(c.deltaReais)} (${c.deltaPct != null ? `${c.deltaPct >= 0 ? "+" : ""}${c.deltaPct.toFixed(2)}%` : "—"})` : "sem alteração neste termo"}>
+                                {fmt(c.valor)}{c.mudou && c.deltaPct != null && <span className={cn("ml-1 text-[10px]", c.deltaPct >= 0 ? "text-warning-ink" : "text-success-ink")}>{c.deltaPct >= 0 ? "+" : ""}{c.deltaPct.toFixed(1)}%</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

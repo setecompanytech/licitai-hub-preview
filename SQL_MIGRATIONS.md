@@ -19984,3 +19984,12 @@ da empresa): registra cada parte em `pedidos_exclusoes`, apaga comissões,
 solta `contas_receber`, desliga o título único (`lote_id` nulo) e apaga as
 partes — tudo ou nada. A exclusão parte a parte pelo navegador parava no
 meio. Arquivo: `supabase/migrations/20260930000003_excluir_lote_de_pedidos.sql`.
+
+## 20260930000004 — dados: 4º Termo Aditivo do 772/2024 (30/09/2026)
+
+Registro e aplicação do 4º TA (reequilíbrio dos itens 4, 6, 9 e 11, assinado
+em 20/08/2026, art. 124, II, "d"), no molde do 1º TA: aditivo + 4 linhas em
+`contrato_aditivo_itens` + `aplicar_itens_do_aditivo_interno`; itens nunca
+alterados ganham `valor_unitario_original = valor_unitario`. Idempotente;
+ensaiado com BEGIN…ROLLBACK. Arquivo:
+`supabase/migrations/20260930000004_dados_4o_termo_aditivo_772_2024.sql`.
