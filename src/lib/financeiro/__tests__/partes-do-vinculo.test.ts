@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, fatiasPorSaldo, linhasDaNfe, ordenarItensDoContrato, partesCompletas, rotuloDoItem, sugerirPartes } from '../partes-do-vinculo';
+import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, fatiasPorSaldo, linhasDaNfe, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, sugerirPartes, sugerirUnidadesCompostas } from '../partes-do-vinculo';
 
 describe('uma nota, vários itens do contrato', () => {
   it('partes informadas item a item: valor = quantidade × unitário, e a soma tem de fechar com a nota', () => {
@@ -78,5 +78,22 @@ describe('uma nota, vários itens do contrato', () => {
     expect(ordem.map((i) => i.codigo_item)).toEqual(['1', '2', '10', null, 'x']);
     expect(rotuloDoItem({ codigo_item: '7' }, 0)).toBe('Item 7');
     expect(rotuloDoItem({ codigo_item: null }, 3)).toBe('Item 4');
+  });
+  it('cesta básica: nº de cestas sugerido pelas quantidades; preço faturado × contratado por cesta e composição', () => {
+    expect(sugerirUnidadesCompostas([{ quantidade: 2000 }, { quantidade: 1000 }, { quantidade: 1000 }])).toBe(1000);
+    expect(sugerirUnidadesCompostas([{ quantidade: 1500 }, { quantidade: 1000 }])).toBeNull();
+    expect(sugerirUnidadesCompostas([{ quantidade: 1000 }])).toBeNull();
+    const fatias = [
+      { contrato_item_id: 'mac', quantidade: 2000, valor_unitario: 5.0 },
+      { contrato_item_id: 'acucar', quantidade: 1000, valor_unitario: 5.2 },
+    ];
+    const preco = (id: string) => ({ mac: 5.84, acucar: 6.81 } as Record<string, number>)[id] ?? null;
+    expect(resumoDaUnidadeComposta(fatias, preco, 1000)).toEqual({
+      unidades: 1000, faturadoPorUnidade: 15.2, contratadoPorUnidade: 18.49, diferencaPct: -17.79,
+      composicao: [{ contrato_item_id: 'mac', porUnidade: 2 }, { contrato_item_id: 'acucar', porUnidade: 1 }],
+    });
+    // Item sem preço de contrato conhecido: o contratado por cesta fica em aberto, o faturado não.
+    expect(resumoDaUnidadeComposta(fatias, () => null, 1000)).toMatchObject({ faturadoPorUnidade: 15.2, contratadoPorUnidade: null, diferencaPct: null });
+    expect(resumoDaUnidadeComposta(fatias, preco, 0)).toBeNull();
   });
 });

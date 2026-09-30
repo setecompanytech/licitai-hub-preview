@@ -19968,3 +19968,11 @@ quitação de cada parte é recalculada a cada mudança de status. Depende da
 partes não quitadas de um lote quando o título único (`lote_id`) é excluído
 e não resta outro título do lote. Depende da 20260929000002. Arquivo:
 `supabase/migrations/20260930000001_apagar_titulo_do_lote_apaga_as_partes.sql`.
+
+## 20260930000002 — unidade composta do lote (30/09/2026)
+
+`contrato_pedidos.unidade_composta text` e `unidades_compostas numeric` (> 0):
+quantas cestas básicas (ou kits) o lote entrega, gravado pela Extração de
+Documentos em todas as partes do lote. Gestão de Contratos mostra preço
+faturado, custo e margem por cesta no painel do lote. Sem RLS nova. Arquivo:
+`supabase/migrations/20260930000002_unidade_composta_do_lote.sql`.

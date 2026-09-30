@@ -15,7 +15,7 @@ import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
-import { agruparEmLotes, rotuloDoLote, type Lote } from '@/lib/contratos/lotes-de-pedidos';
+import { agruparEmLotes, rotuloDoLote, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -97,6 +97,9 @@ type Pedido = {
   /** Custo de compra DECLARADO (22/09): unitário × quantidade pelo gatilho do banco. Gerencial. */
   custo_unitario?: number | null;
   custo_total?: number | null;
+  /** Unidade composta do lote (30/09): "cesta básica" × quantas o lote entrega. */
+  unidade_composta?: string | null;
+  unidades_compostas?: number | null;
   custo_declarado_em?: string | null;
   pedido_id?: string | null;
   /**
@@ -2534,6 +2537,19 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
                     { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
                     { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
+                    // A cesta (30/09): o que o órgão compra é a cesta, não o açúcar —
+                    // preço, custo e margem por cesta quando o lote sabe quantas entregou.
+                    ...(() => {
+                      const c = porUnidadeComposta(loteAberto);
+                      if (!c) return [];
+                      const nome = loteAberto.unidade_composta || 'cesta';
+                      return [
+                        { rotulo: `${nome.charAt(0).toUpperCase()}${nome.slice(1)}s entregues`, valor: Number(loteAberto.unidades_compostas).toLocaleString('pt-BR'), numerico: true },
+                        { rotulo: `Faturado por ${nome}`, valor: fmt(c.preco), numerico: true },
+                        { rotulo: `Custo por ${nome}`, valor: c.custo != null ? fmt(c.custo) : <ValorIndisponivel razao="Sem custo nas partes" />, numerico: true },
+                        { rotulo: `Margem por ${nome}`, valor: c.margem != null ? `${fmt(c.margem)} (${c.margemPct?.toFixed(1)}%)` : <ValorIndisponivel razao="Sem custo nas partes" />, numerico: true },
+                      ];
+                    })(),
                   ]}
                 />
               </BlocoDoPainel>

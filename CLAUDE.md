@@ -881,3 +881,26 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
   Buscar o XML na SEFAZ pela chave exige certificado A1 ou provedor
   (`nfe-consult-sefaz` com FocusNFe/NFe.io, não contratado) — decisão do dono.
 
+### Preço na data da nota e a cesta básica (30/09/2026, tarde)
+
+- **O preço de referência de um item para uma nota é o que valia NA DATA
+  da nota** (`lib/contratos/preco-na-data.ts`, `precoDoItemEm`): original
+  até o primeiro termo com efeitos, depois o do último termo aplicado até
+  ali (`contrato_aditivo_itens` × `data_efeitos` ∥ `data_assinatura`); o
+  "Aditivo de origem" escolhido à mão manda (preço logo depois dele). O
+  seletor de vínculo (`VinculoContratoSelector`, prop `dataDoDocumento`)
+  mostra o VU de referência e o vigente entre parênteses; `valor_unitario`
+  de `contrato_itens` é o vigente e NÃO serve para conferir nota antiga.
+- **Cesta básica = unidade composta do lote.** Com 3+ itens, o vínculo pede
+  nome e quantidade de cestas (sugestão pela menor quantidade, se as outras
+  forem múltiplos), calcula faturado × contratado por cesta
+  (`resumoDaUnidadeComposta`, `sugerirUnidadesCompostas`) e grava
+  `contrato_pedidos.unidade_composta`/`unidades_compostas` em todas as partes
+  (migration `20260930000002`). O painel do lote em Pedidos mostra cestas,
+  faturado, custo e margem por cesta (`porUnidadeComposta`). A composição
+  (quanto de cada item por cesta) sai das quantidades; não há cadastro de
+  composição — decisão do dono se um dia precisar.
+- Os campos agregados "Quantidade (total a ratear)/Valor unitário" só
+  aparecem com 1 ou 2 itens (cota principal + reservada); para 3+ o que
+  vale são as partes e a cesta.
+

@@ -10,6 +10,8 @@ export type PedidoDoLote = {
   quantidade: number; valor_total: number; data_pedido: string | null; status: string;
   nota_fiscal: string | null; numero_empenho?: string | null; empenho_id?: string | null;
   custo_total?: number | null; lote_id?: string | null;
+  /** Unidade composta do lote (30/09): "cesta básica" × quantas a nota entrega. */
+  unidade_composta?: string | null; unidades_compostas?: number | null;
 };
 
 export type Lote<P extends PedidoDoLote = PedidoDoLote> = {
@@ -25,6 +27,8 @@ export type Lote<P extends PedidoDoLote = PedidoDoLote> = {
   nota_fiscal: string | null;
   numero_empenho: string | null;
   empenho_id: string | null;
+  unidade_composta: string | null;
+  unidades_compostas: number | null;
 };
 
 export type LinhaDaTabela<P extends PedidoDoLote> = { tipo: 'pedido'; pedido: P } | { tipo: 'lote'; lote: Lote<P> };
@@ -60,7 +64,7 @@ export function agruparEmLotes<P extends PedidoDoLote>(pedidos: P[]): LinhaDaTab
     if (!p.lote_id) { linhas.push({ tipo: 'pedido', pedido: p }); continue; }
     let lote = lotes.get(p.lote_id);
     if (!lote) {
-      lote = { id: p.lote_id, numero: numeroBaseDoPedido(p.numero_pedido), partes: [], valor_total: 0, custo_total: null, status: 'pendente', progresso: null, data_pedido: p.data_pedido, nota_fiscal: p.nota_fiscal, numero_empenho: p.numero_empenho ?? null, empenho_id: p.empenho_id ?? null };
+      lote = { id: p.lote_id, numero: numeroBaseDoPedido(p.numero_pedido), partes: [], valor_total: 0, custo_total: null, status: 'pendente', progresso: null, data_pedido: p.data_pedido, nota_fiscal: p.nota_fiscal, numero_empenho: p.numero_empenho ?? null, empenho_id: p.empenho_id ?? null, unidade_composta: null, unidades_compostas: null };
       lotes.set(p.lote_id, lote);
       linhas.push({ tipo: 'lote', lote });
     }
@@ -75,6 +79,9 @@ export function agruparEmLotes<P extends PedidoDoLote>(pedidos: P[]): LinhaDaTab
     const st = statusDoLote(lote.partes);
     lote.status = st.status; lote.progresso = st.progresso;
     lote.data_pedido = lote.partes.map((p) => p.data_pedido).filter(Boolean).sort()[0] ?? null;
+    const comCesta = lote.partes.find((p) => p.unidades_compostas != null && Number(p.unidades_compostas) > 0);
+    lote.unidade_composta = comCesta?.unidade_composta ?? null;
+    lote.unidades_compostas = comCesta ? Number(comCesta.unidades_compostas) : null;
   }
   return linhas.map((l) => (l.tipo === 'lote' && l.lote.partes.length === 1 ? { tipo: 'pedido', pedido: l.lote.partes[0] } : l));
 }
@@ -85,4 +92,15 @@ export function rotuloDoLote(lote: Lote): string {
   const nota = lote.nota_fiscal ? `NF-e ${lote.nota_fiscal}` : `Lote ${lote.numero}`;
   const prefixo = base.split(' · ')[0] || nota;
   return `${prefixo.startsWith('NF') || prefixo.startsWith('Lote') ? prefixo : nota} · ${lote.partes.length} itens do contrato`;
+}
+
+/** Preço faturado, custo e margem POR unidade composta (cesta), quando o lote sabe quantas entregou. */
+export function porUnidadeComposta(lote: Pick<Lote, 'valor_total' | 'custo_total' | 'unidades_compostas'>): { preco: number; custo: number | null; margem: number | null; margemPct: number | null } | null {
+  const n = Number(lote.unidades_compostas) || 0;
+  if (n <= 0) return null;
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  const preco = r2(lote.valor_total / n);
+  const custo = lote.custo_total != null ? r2(Number(lote.custo_total) / n) : null;
+  const margem = custo != null ? r2(preco - custo) : null;
+  return { preco, custo, margem, margemPct: margem != null && preco > 0 ? r2((margem / preco) * 100) : null };
 }

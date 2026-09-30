@@ -876,7 +876,12 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           if (loteId && pedidoCriado) pedidosDoLote.push(String(pedidoCriado));
         }
         if (loteId && pedidosDoLote.length > 1) {
-          const { error: erroLote } = await supabase.from("contrato_pedidos").update({ lote_id: loteId } as never).in("id", pedidosDoLote);
+          // A cesta (30/09): nome e quantidade em todas as partes do lote, para
+          // Gestão de Contratos medir preço, custo e margem por cesta.
+          const cesta = v!.unidades_compostas && v!.unidades_compostas > 0
+            ? { unidade_composta: v!.unidade_composta?.trim() || "cesta básica", unidades_compostas: v!.unidades_compostas }
+            : {};
+          const { error: erroLote } = await supabase.from("contrato_pedidos").update({ lote_id: loteId, ...cesta } as never).in("id", pedidosDoLote);
           if (erroLote) console.warn("lote_id não gravado nas partes:", erroLote.message);
 
           // O título ÚNICO do lote: o recebimento que já existe, ou um novo.
@@ -1456,6 +1461,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                       valorTotal={d.dados?.valor_total ?? null}
                                       quantidadeDaNota={d.dados?.quantidade_total ?? null}
                                       itensDaNota={Array.isArray(d.dados?.itens) ? d.dados.itens : null}
+                                      dataDoDocumento={d.dados?.data_emissao ?? null}
                                       value={d.vinculo ?? VINCULO_VAZIO}
                                       onChange={(v) => setVinculo(d.id, v)}
                                     />

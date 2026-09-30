@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { agruparEmLotes, descricaoSemParte, numeroBaseDoPedido, rotuloDoLote, statusDoLote } from '../lotes-de-pedidos';
+import { agruparEmLotes, descricaoSemParte, numeroBaseDoPedido, porUnidadeComposta, rotuloDoLote, statusDoLote } from '../lotes-de-pedidos';
 
 const parte = (n: number, extra: Record<string, unknown> = {}) => ({
   id: `p${n}`, numero_pedido: `595-${n}`, descricao: `NF-e 595 · ACUC TRIT 1KG (parte ${n}/3)`, contrato_item_id: `i${n}`,
@@ -31,5 +31,13 @@ describe('lote de pedidos', () => {
     expect(numeroBaseDoPedido('OF-2026-7')).toBe('OF-2026');
     expect(descricaoSemParte('NF-e 595 · ACUC TRIT 1KG (parte 18/18)')).toBe('NF-e 595 · ACUC TRIT 1KG');
     expect(descricaoSemParte(null)).toBe('');
+  });
+  it('cesta básica do lote: quantas entregou e o preço, custo e margem por cesta', () => {
+    const linhas = agruparEmLotes([parte(1, { unidade_composta: 'cesta básica', unidades_compostas: 100, custo_total: 60 }), parte(2, { custo_total: 90 })]);
+    const lote = linhas[0].tipo === 'lote' ? linhas[0].lote : null;
+    expect(lote).toMatchObject({ unidade_composta: 'cesta básica', unidades_compostas: 100, valor_total: 300, custo_total: 150 });
+    expect(porUnidadeComposta(lote!)).toEqual({ preco: 3, custo: 1.5, margem: 1.5, margemPct: 50 });
+    expect(porUnidadeComposta({ valor_total: 300, custo_total: null, unidades_compostas: 100 })).toEqual({ preco: 3, custo: null, margem: null, margemPct: null });
+    expect(porUnidadeComposta({ valor_total: 300, custo_total: 10, unidades_compostas: null })).toBeNull();
   });
 });

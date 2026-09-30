@@ -33,7 +33,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
-import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, ordenarItensDoContrato, partesCompletas, rotuloDoItem, sugerirPartes, type Divergencia, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
+import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, sugerirPartes, sugerirUnidadesCompostas, type Divergencia, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
+import { precoDoItemEm, type PassoDePreco, type PrecoDeReferencia, type TermoComData } from "@/lib/contratos/preco-na-data";
 import { formatarMoedaBr, formatarQuantidade, parseQuantidade } from "@/lib/compras/numeros";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
@@ -62,6 +63,13 @@ export interface VinculoContratoValue {
    * vazias, cai no rateio por saldo (só para cota principal + reservada).
    */
   partes?: ParteDoVinculo[];
+  /**
+   * Unidade composta (30/09): a cesta básica que a nota entrega. Nome e
+   * quantidade; o preço por cesta = Σ das partes ÷ quantidade. Gravado nas
+   * partes do lote para Gestão de Contratos medir custo e margem por cesta.
+   */
+  unidade_composta?: string | null;
+  unidades_compostas?: number | null;
 }
 
 export interface ContratoOpcao {
@@ -81,15 +89,19 @@ interface ItemOpcao {
   codigo_item: string | null;
   descricao: string;
   unidade: string | null;
+  /** O preço de REFERÊNCIA para esta nota (na data do documento ou do termo escolhido) — ver `itens`. */
   valor_unitario: number;
+  /** O preço da contratação, antes de qualquer termo. */
+  valor_unitario_original?: number | null;
+  /** O preço vigente hoje, como está em `contrato_itens`. */
+  valor_vigente?: number;
+  preco_ref?: PrecoDeReferencia;
   saldo_quantitativo: number | null;
   saldo_financeiro: number | null;
   origem_aditivo_id: string | null;
 }
 
-interface AditivoOpcao {
-  id: string;
-  numero_aditivo: string;
+interface AditivoOpcao extends TermoComData {
   tipo: string;
 }
 
@@ -109,6 +121,8 @@ interface Props {
   quantidadeDaNota?: number | null;
   /** As linhas de produto lidas da nota, para sugerir quantidade e unitário por item. */
   itensDaNota?: ItemDaNota[] | null;
+  /** A data de emissão do documento: decide o preço de referência de cada item (original × termos). */
+  dataDoDocumento?: string | null;
   value: VinculoContratoValue;
   onChange: (v: VinculoContratoValue) => void;
   /** Em a_receber, listamos contratos onde o órgão é o pagador (cliente). Em a_pagar, idem (fornecedor). */
@@ -121,6 +135,7 @@ export default function VinculoContratoSelector({
   valorTotal,
   quantidadeDaNota,
   itensDaNota,
+  dataDoDocumento,
   value,
   onChange,
   tipo,
@@ -129,7 +144,8 @@ export default function VinculoContratoSelector({
   const { empresaAtiva } = useEmpresa();
 
   const [contratos, setContratos] = useState<ContratoOpcao[]>([]);
-  const [itens, setItens] = useState<ItemOpcao[]>([]);
+  const [itensBrutos, setItensBrutos] = useState<ItemOpcao[]>([]);
+  const [passosDePreco, setPassosDePreco] = useState<PassoDePreco[]>([]);
   /** O que a pessoa está digitando em quantidade/unitário por item, antes de formatar ("id:campo" → texto). */
   const [rascunhoDaParte, setRascunhoDaParte] = useState<Record<string, string>>({});
   const [aditivos, setAditivos] = useState<AditivoOpcao[]>([]);
@@ -204,7 +220,7 @@ export default function VinculoContratoSelector({
   // Carrega itens + aditivos quando contrato selecionado
   useEffect(() => {
     if (!value.contrato_id) {
-      setItens([]);
+      setItensBrutos([]);
       setAditivos([]);
       return;
     }
@@ -213,18 +229,25 @@ export default function VinculoContratoSelector({
       supabase
         .from("contrato_itens")
         .select(
-          "id, codigo_item, descricao, unidade, valor_unitario, saldo_quantitativo, saldo_financeiro, origem_aditivo_id"
+          "id, codigo_item, descricao, unidade, valor_unitario, valor_unitario_original, saldo_quantitativo, saldo_financeiro, origem_aditivo_id"
         )
         .eq("contrato_id", value.contrato_id)
         .order("created_at", { ascending: true }),
       supabase
         .from("contrato_aditivos")
-        .select("id, numero_aditivo, tipo")
+        .select("id, numero_aditivo, tipo, data_efeitos, data_assinatura, data_aditivo")
         .eq("contrato_id", value.contrato_id)
         .order("created_at", { ascending: true }),
-    ]).then(([iRes, aRes]) => {
-      setItens(ordenarItensDoContrato((iRes.data ?? []) as ItemOpcao[]));
-      setAditivos((aRes.data ?? []) as AditivoOpcao[]);
+      // O que cada termo fez no preço de cada item — para o preço NA DATA da nota.
+      supabase
+        .from("contrato_aditivo_itens" as never)
+        .select("aditivo_id, contrato_item_id, valor_unitario_novo, aplicado_em")
+        .eq("contrato_id", value.contrato_id),
+    ]).then(([iRes, aRes, pRes]) => {
+      // `types.ts` ainda não conhece as colunas das migrations de 26/09 (preço original, data de efeitos).
+      setItensBrutos(ordenarItensDoContrato((iRes.data ?? []) as unknown as ItemOpcao[]));
+      setAditivos((aRes.data ?? []) as unknown as AditivoOpcao[]);
+      setPassosDePreco(((pRes.data ?? []) as unknown as PassoDePreco[]));
       setLoadingItens(false);
     });
   }, [value.contrato_id]);
@@ -309,6 +332,22 @@ export default function VinculoContratoSelector({
   }, [busca, contratos]);
 
   const contratoSel = contratos.find((c) => c.id === value.contrato_id);
+
+  // Cada item com o preço de REFERÊNCIA para esta nota: o que valia na data
+  // do documento (original antes do primeiro termo; depois, o do último termo
+  // aplicado até lá) ou o preço logo depois do "Aditivo de origem" escolhido.
+  // A NF-e 595 de 06/2024 era conferida contra o preço reequilibrado de 2025.
+  const itens = useMemo<ItemOpcao[]>(
+    () => itensBrutos.map((i) => {
+      const ref = precoDoItemEm(i, aditivos, passosDePreco, { data: dataDoDocumento ?? null, origemAditivoId: value.origem_aditivo_id ?? null });
+      return { ...i, valor_unitario: ref.valor, valor_vigente: Number(i.valor_unitario) || 0, preco_ref: ref };
+    }),
+    [itensBrutos, aditivos, passosDePreco, dataDoDocumento, value.origem_aditivo_id],
+  );
+  const precoContratadoDe = (id: string): number | null => {
+    const i = itens.find((x) => x.id === id);
+    return i && i.valor_unitario > 0 ? i.valor_unitario : null;
+  };
 
   // Lista canônica de itens vinculados (suporte a múltiplos)
   const itemIds = useMemo<string[]>(() => {
@@ -869,7 +908,12 @@ export default function VinculoContratoSelector({
                               </b>
                             </span>
                           )}
-                          <span>VU: {fmt(Number(i.valor_unitario))}</span>
+                          <span title={i.preco_ref && i.preco_ref.origem !== "vigente" ? `Preço de referência para esta nota: ${i.preco_ref.rotulo}${i.preco_ref.data ? ` (${i.preco_ref.data.split("-").reverse().join("/")})` : ""}. Vigente hoje: ${fmt(i.valor_vigente)}` : undefined}>
+                            VU: {fmt(Number(i.valor_unitario))}
+                            {i.preco_ref && i.preco_ref.origem !== "vigente" && i.valor_vigente !== i.valor_unitario && (
+                              <span className="text-foreground-tertiary"> ({i.preco_ref.rotulo} · vigente {fmt(i.valor_vigente)})</span>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </label>
@@ -940,7 +984,13 @@ export default function VinculoContratoSelector({
                 );
               };
               const completas = partesCompletas(itemIds, partes);
-              const conf = completas ? diferencaParaANota(fatiasPorPartes(itemIds, partes), Number(valorTotal) || 0) : null;
+              const fatias = completas ? fatiasPorPartes(itemIds, partes) : null;
+              const conf = fatias ? diferencaParaANota(fatias, Number(valorTotal) || 0) : null;
+              // A cesta: quantas a nota entrega e quanto custa cada uma, faturada e contratada.
+              const varios = itensSelecionados.length > 2;
+              const sugestaoDeCestas = fatias ? sugerirUnidadesCompostas(fatias) : null;
+              const unidades = value.unidades_compostas && value.unidades_compostas > 0 ? value.unidades_compostas : sugestaoDeCestas;
+              const cesta = varios && fatias ? resumoDaUnidadeComposta(fatias, precoContratadoDe, unidades) : null;
               return (
                 <div className="space-y-2 rounded-md border border-border p-3" data-testid="partes-por-item">
                   {aviso && (
@@ -960,6 +1010,7 @@ export default function VinculoContratoSelector({
                           <th className="py-1 pr-2 text-right">Qtd</th>
                           <th className="py-1 pr-2 text-right whitespace-nowrap">Unitário (R$)</th>
                           <th className="py-1 text-right">Valor</th>
+                          {cesta && <th className="py-1 pl-2 text-right whitespace-nowrap">Por {value.unidade_composta?.trim() || "cesta"}</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -978,6 +1029,7 @@ export default function VinculoContratoSelector({
                                 </div>
                               </td>
                               <td className="py-1 text-right tabular-nums whitespace-nowrap">{fmt(Math.round(pt.quantidade * pt.valor_unitario * 100) / 100)}</td>
+                              {cesta && <td className="py-1 pl-2 text-right tabular-nums whitespace-nowrap text-muted-foreground">{(cesta.composicao.find((c) => c.contrato_item_id === i.id)?.porUnidade ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>}
                             </tr>
                           );
                         })}
@@ -989,6 +1041,35 @@ export default function VinculoContratoSelector({
                       Soma das partes {fmt(conf.soma)} · nota {fmt(Number(valorTotal) || 0)}{conf.fecha ? " — fecha." : ` — diferença de ${fmt(conf.diferenca)}; ajuste antes de lançar.`}
                     </p>
                   )}
+                  {varios && (
+                    <div className="space-y-2 rounded-md border border-border bg-secondary p-3" data-testid="unidade-composta">
+                      <p className="text-xs font-medium text-foreground">Unidade composta — a cesta que a nota entrega</p>
+                      <p className="text-xs text-muted-foreground">
+                        A licitação somou os itens para chegar ao preço da cesta. Diga quantas cestas esta nota entrega: o sistema
+                        calcula o preço faturado por cesta (soma das partes ÷ cestas), compara com o contratado na data e grava nas
+                        partes do lote para Gestão de Contratos medir custo e margem por cesta.
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Nome da unidade</Label>
+                          <Input className="h-8" placeholder="cesta básica" value={value.unidade_composta ?? ""} onChange={(e) => onChange({ ...value, unidade_composta: e.target.value || null })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Quantas a nota entrega{sugestaoDeCestas && !value.unidades_compostas ? ` (sugerido pelas quantidades: ${sugestaoDeCestas.toLocaleString("pt-BR")})` : ""}</Label>
+                          <Input className="h-8 tabular-nums" type="number" min="0" step="1" placeholder={sugestaoDeCestas ? String(sugestaoDeCestas) : "0"} value={value.unidades_compostas ?? ""} onChange={(e) => onChange({ ...value, unidades_compostas: parseFloat(e.target.value) || null })} />
+                        </div>
+                      </div>
+                      {!fatias && <p className="text-xs text-muted-foreground">Preencha quantidade e unitário de cada item acima para calcular o preço por cesta.</p>}
+                      {cesta && (
+                        <p className="text-xs tabular-nums text-foreground">
+                          {cesta.unidades.toLocaleString("pt-BR")} {value.unidade_composta?.trim() || "cesta(s)"} · faturado <b>{fmt(cesta.faturadoPorUnidade)}</b> por unidade
+                          {cesta.contratadoPorUnidade != null
+                            ? <> · contratado na data <b>{fmt(cesta.contratadoPorUnidade)}</b>{cesta.diferencaPct != null && Math.abs(cesta.diferencaPct) >= 0.01 && <span className={Math.abs(cesta.diferencaPct) > 5 ? " text-destructive-ink" : " text-warning-ink"}> · diferença {cesta.diferencaPct >= 0 ? "+" : ""}{cesta.diferencaPct.toFixed(2)}%</span>}</>
+                            : " · contratado por unidade indisponível (item sem preço)"}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -996,7 +1077,7 @@ export default function VinculoContratoSelector({
         )}
         {/* Com quantidade e unitário por item, o total a ratear e o unitário
             "médio" não entram em nada — e confundem ("17,283" para 18 produtos). */}
-        {value.contrato_id && itemSel && !(itensSelecionados.length > 1 && partesCompletas(itemIds, value.partes)) && (
+        {value.contrato_id && itemSel && !(itensSelecionados.length > 1 && partesCompletas(itemIds, value.partes)) && itensSelecionados.length <= 2 && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>
@@ -1030,7 +1111,7 @@ export default function VinculoContratoSelector({
         {/* Aditivo origem */}
         {value.contrato_id && aditivos.length > 0 && (
           <div className="space-y-1.5">
-            <Label>Aditivo de origem (opcional)</Label>
+            <Label>Aditivo de origem (opcional) — define o preço de referência dos itens{dataDoDocumento ? `; sem escolha, vale o preço na data do documento (${dataDoDocumento.slice(0, 10).split("-").reverse().join("/")})` : ""}</Label>
             <Select
               value={value.origem_aditivo_id ?? "__contrato__"}
               onValueChange={(v) =>

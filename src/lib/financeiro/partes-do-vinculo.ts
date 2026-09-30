@@ -201,3 +201,60 @@ export function ordenarItensDoContrato<T extends { codigo_item?: string | null }
   const chave = (i: T) => { const n = parseInt(String(i.codigo_item ?? '').replace(/\D/g, ''), 10); return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER; };
   return itens.map((i, idx) => ({ i, idx })).sort((a, b) => chave(a.i) - chave(b.i) || a.idx - b.idx).map((x) => x.i);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unidade composta — a cesta básica (30/09/2026)
+// ─────────────────────────────────────────────────────────────────────────────
+// O dono: "o processo licitatório teve como cálculo a soma dos 18 itens que
+// resultaram no valor unitário da cesta básica". A nota traz os 18 produtos;
+// o que se vende é a cesta. O preço faturado da cesta = Σ(qtd × unitário da
+// nota) ÷ nº de cestas; o contratado = Σ(qtd × preço do contrato na data) ÷
+// nº de cestas. A composição (quanto de cada item vai em cada cesta) sai das
+// próprias quantidades.
+
+/**
+ * Quantas unidades compostas a nota entrega, sugerido pelas quantidades: a
+ * menor quantidade, se todas as outras forem múltiplos inteiros dela
+ * (macarrão 2.000 e os demais 1.000 → 1.000 cestas). Senão, ninguém adivinha.
+ */
+export function sugerirUnidadesCompostas(partes: Array<{ quantidade: number }>): number | null {
+  const qs = partes.map((p) => Number(p.quantidade) || 0).filter((q) => q > 0);
+  if (qs.length < 2) return null;
+  const menor = Math.min(...qs);
+  if (!Number.isInteger(menor)) return null;
+  return qs.every((q) => Math.abs(q / menor - Math.round(q / menor)) < 1e-6) ? menor : null;
+}
+
+export type ResumoDaUnidadeComposta = {
+  unidades: number;
+  faturadoPorUnidade: number;
+  contratadoPorUnidade: number | null;
+  diferencaPct: number | null;
+  composicao: Array<{ contrato_item_id: string; porUnidade: number }>;
+};
+
+/** Preço da cesta faturado × contratado, e a composição por cesta. */
+export function resumoDaUnidadeComposta(
+  fatias: Array<{ contrato_item_id: string; quantidade: number; valor_unitario: number }>,
+  precoContratado: (contratoItemId: string) => number | null,
+  unidades: number | null | undefined,
+): ResumoDaUnidadeComposta | null {
+  const n = Number(unidades) || 0;
+  if (n <= 0 || fatias.length === 0) return null;
+  const faturado = fatias.reduce((s, f) => s + f.quantidade * f.valor_unitario, 0);
+  let contratado = 0; let completo = true;
+  for (const f of fatias) {
+    const p = precoContratado(f.contrato_item_id);
+    if (p == null || !(p > 0)) { completo = false; break; }
+    contratado += f.quantidade * p;
+  }
+  const faturadoPorUnidade = r2(faturado / n);
+  const contratadoPorUnidade = completo ? r2(contratado / n) : null;
+  return {
+    unidades: n,
+    faturadoPorUnidade,
+    contratadoPorUnidade,
+    diferencaPct: contratadoPorUnidade ? r2(((faturadoPorUnidade - contratadoPorUnidade) / contratadoPorUnidade) * 100) : null,
+    composicao: fatias.map((f) => ({ contrato_item_id: f.contrato_item_id, porUnidade: r4(f.quantidade / n) })),
+  };
+}
