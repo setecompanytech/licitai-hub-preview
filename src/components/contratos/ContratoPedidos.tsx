@@ -69,6 +69,7 @@ import ComprasDoPedidoDialog from './ComprasDoPedidoDialog';
 import { fraseDaCobertura, ROTULO_SITUACAO, situacaoDoCusto, type SituacaoDoCusto } from '@/lib/contratos/cobertura-de-custo';
 import { unidadeLegivel } from '@/lib/texto/unidade';
 import ListaDeCampos, { BlocoDoPainel } from '@/components/gestao/ListaDeCampos';
+import TextoRecolhido from '@/components/shared/TextoRecolhido';
 import SecaoRecolhivel from '@/components/ui/secao-recolhivel';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -2335,21 +2336,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const reservaDoPedido = pedidoAberto ? estoqueDoItem(pedidoAberto.contrato_item_id) : null;
 
   const painelDoPedido = pedidoAberto ? (
-    <div className="grid gap-4 xl:grid-cols-2 items-start [&>*]:min-w-0">
-      <BlocoDoPainel
-        titulo={`Pedido ${pedidoAberto.numero_pedido}`}
-        acao={<SeloSituacao tom={tomDoStatus(pedidoAberto.status)}>{(statusCfg[pedidoAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>}
-      >
-        {pedidoAberto.descricao
-          ? <p className="g-corpo whitespace-pre-wrap leading-relaxed">{pedidoAberto.descricao}</p>
-          : <p className="g-corpo text-muted-foreground">Sem descrição registrada.</p>}
+    // A caixa do pedido (30/09): cabeçalho numa faixa, o item e as observações
+    // à esquerda, origem e prazo à direita, as ações num rodapé. Blocos de
+    // alturas diferentes em duas colunas soltas deixavam buracos.
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start [&>*]:min-w-0">
+      <div className="xl:col-span-2 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-secondary/40 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold leading-tight">Pedido {pedidoAberto.numero_pedido}</h3>
+            <SeloSituacao tom={tomDoStatus(pedidoAberto.status)}>{(statusCfg[pedidoAberto.status] ?? statusCfg.pendente).label}</SeloSituacao>
+          </div>
+          {pedidoAberto.descricao
+            ? <TextoRecolhido texto={pedidoAberto.descricao} linhas={2} limiar={140} className="g-corpo mt-1 leading-relaxed" />
+            : <p className="g-corpo mt-1 text-muted-foreground">Sem descrição registrada.</p>}
+        </div>
         {pedidoAberto.lote_id && (
-          <Button variant="link" size="sm" className="h-auto px-0" onClick={() => { const l = pedidoAberto.lote_id!; setPedidoSelecionado(null); setLoteSelecionado(l); }}>
+          <Button variant="outline" size="sm" className="shrink-0" onClick={() => { const l = pedidoAberto.lote_id!; setPedidoSelecionado(null); setLoteSelecionado(l); }}>
             ← Voltar ao lote
           </Button>
         )}
-      </BlocoDoPainel>
+      </div>
 
+      <div className="flex flex-col gap-4 xl:order-2">
       <BlocoDoPainel titulo="Origem">
         <ListaDeCampos
           campos={[
@@ -2412,7 +2420,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           ]}
         />
       </BlocoDoPainel>
+      <BlocoDoPainel titulo="Prazo">
+        <ListaDeCampos
+          campos={[
+            { rotulo: 'Data do pedido', valor: pedidoAberto.data_pedido ? new Date(pedidoAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
+            { rotulo: 'Entrega prevista', valor: pedidoAberto.data_entrega ? new Date(pedidoAberto.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
+          ]}
+        />
+        <AvisoDePrazoDeEntrega
+          contrato={prazos}
+          dataDoPedido={pedidoAberto.data_pedido}
+          dataDeEntrega={pedidoAberto.status === 'entregue' ? pedidoAberto.data_entrega : null}
+        />
+      </BlocoDoPainel>
+      </div>
 
+      <div className="flex flex-col gap-4 xl:order-1">
       <BlocoDoPainel titulo="Item, quantidade e valores">
         <ListaDeCampos
           campos={[
@@ -2420,7 +2443,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               rotulo: 'Item do contrato',
               largo: true,
               valor: itemDoPedido
-                ? <span title={itemDoPedido.descricao}>{itemDoPedido.descricao}</span>
+                ? <TextoRecolhido texto={itemDoPedido.descricao} linhas={2} limiar={160} />
                 : <ValorIndisponivel razao="Não vinculado" />,
             },
             {
@@ -2443,27 +2466,15 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           ]}
         />
       </BlocoDoPainel>
-
-      <BlocoDoPainel titulo="Prazo">
-        <ListaDeCampos
-          campos={[
-            { rotulo: 'Data do pedido', valor: pedidoAberto.data_pedido ? new Date(pedidoAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
-            { rotulo: 'Entrega prevista', valor: pedidoAberto.data_entrega ? new Date(pedidoAberto.data_entrega + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Não informada" /> },
-          ]}
-        />
-        <AvisoDePrazoDeEntrega
-          contrato={prazos}
-          dataDoPedido={pedidoAberto.data_pedido}
-          dataDeEntrega={pedidoAberto.status === 'entregue' ? pedidoAberto.data_entrega : null}
-        />
-      </BlocoDoPainel>
-
       {pedidoAberto.observacoes && (
         <BlocoDoPainel titulo="Observações">
           <p className="g-meta whitespace-pre-wrap">{pedidoAberto.observacoes}</p>
         </BlocoDoPainel>
       )}
+      </div>
 
+
+      <div className="xl:col-span-2 xl:order-3">
       <BlocoDoPainel titulo="Ações">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-2">
@@ -2555,6 +2566,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
           </div>
         </div>
       </BlocoDoPainel>
+      </div>
     </div>
   ) : null;
 
@@ -2569,8 +2581,37 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const abrirParteDoLote = (id: string) => { setLoteSelecionado(null); setPedidoSelecionado(id); };
 
   /** A nota do lote: o arquivo (DANFE em PDF, quando anexado) e o espelho lido do XML. Vive no título único; as partes a compartilham. */
-  const notaDoLote = (lote: Lote<Pedido>) => {
+  const notaDoLote = (lote: Lote<Pedido>, modo: 'links' | 'botoes' = 'links') => {
     const nd = lote.partes.map((p) => notaDoPedido?.[p.id]).find((x) => x && (x.storage_path || x.arquivo_xml)) ?? null;
+    if (modo === 'botoes') {
+      // Na Origem do lote (30/09): o DANFE é um botão. Sem título ligado, diz o que falta.
+      if (!nd) return <span className="g-meta text-muted-foreground">Sem título do Financeiro ligado a este lote — importe o XML pela Extração de Documentos.</span>;
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          {nd.tem_pdf && nd.storage_path && (
+            <Button size="sm" variant="default" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'DANFE')} title={`Abrir ${nd.arquivo_nome}`}>
+              <FileText aria-hidden="true" />Abrir DANFE (PDF)
+            </Button>
+          )}
+          {nd.arquivo_xml && !nd.tem_pdf && (
+            <Button size="sm" variant="default" disabled={gerandoDanfe === nd.lancamento_id} onClick={() => void gerarDanfeDaNota(nd)} title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título">
+              {gerandoDanfe === nd.lancamento_id ? <Loader2 aria-hidden="true" className="animate-spin" /> : <FileText aria-hidden="true" />}Gerar DANFE (PDF)
+            </Button>
+          )}
+          {nd.storage_path && !nd.tem_pdf && (
+            <Button size="sm" variant="outline" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Arquivo')} title={`Abrir ${nd.arquivo_nome}`}>
+              <ExternalLink aria-hidden="true" />Abrir arquivo
+            </Button>
+          )}
+          {nd.arquivo_xml && (
+            <Button size="sm" variant="ghost" title="Leitura do XML da nota em nova aba"
+              onClick={() => { try { if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.'); } catch { toast.error('Não foi possível ler o XML desta nota.'); } }}>
+              Espelho do XML
+            </Button>
+          )}
+        </div>
+      );
+    }
     if (!nd) return null;
     return (
       <span className="inline-flex flex-wrap items-center gap-2">
@@ -2614,7 +2655,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     { rotulo: 'Contrato', valor: contratoInfo?.numero_contrato || <ValorIndisponivel razao="Sem número" /> },
                     { rotulo: 'Órgão', largo: true, valor: contratoInfo?.orgao_contratante || <ValorIndisponivel razao="Não informado" /> },
                     { rotulo: 'Empenho de origem', largo: true, valor: empenhoDoLote ? `${empenhoDoLote.numero} (${ROTULO_DO_EMPENHO[empenhoDoLote.tipo as 'ordinario'] ?? empenhoDoLote.tipo})` : loteAberto.numero_empenho || <ValorIndisponivel razao="Sem empenho" /> },
-                    { rotulo: 'Nota fiscal', largo: true, valor: loteAberto.nota_fiscal ? <span className="inline-flex flex-wrap items-center gap-2">{formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal}{notaDoLote(loteAberto)}</span> : <ValorIndisponivel razao="Sem nota" /> },
+                    { rotulo: 'Nota fiscal', valor: loteAberto.nota_fiscal ? (formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal) : <ValorIndisponivel razao="Sem nota" /> },
+                    { rotulo: 'DANFE', largo: true, valor: notaDoLote(loteAberto, 'botoes') },
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
                     { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
                     { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
