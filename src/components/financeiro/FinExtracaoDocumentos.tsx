@@ -312,7 +312,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           item.vinculo.contrato_item_ids?.length
             ? ` · ${item.vinculo.contrato_item_ids.length} item(s)`
             : ""
-        }.`
+        } — ao salvar, o pedido (ou o lote) nasce em Gestão de Contratos ligado a este título.`
       : null;
     const initial: any = {
       tipo,
@@ -501,19 +501,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     return true;
   };
 
-  const lancarRapido = async (item: DocItem) => {
+  /**
+   * O vínculo com o contrato: pedido (ou lote de pedidos) + título. Serve ao
+   * "Lançar" e, desde 30/09, ao "Revisar": o diálogo salvava o título com uma
+   * nota "Vínculo: contrato …" no texto e nenhum pedido nascia — a NF-e 595 e
+   * a 651 entraram no Contas a Receber e não apareceram em Gestão de
+   * Contratos. Com `lancamentoSalvo`, o título já existe e é ele que se liga.
+   */
+  const vincularAoContrato = async (item: DocItem, lancamentoSalvo: { id: string; valor?: number | null } | null) => {
     const d = item.dados ?? {};
-    if (!d.valor_total) {
-      toast.warning("Valor não detectado. Use 'Revisar' para preencher manualmente.");
-      return;
-    }
+    const v = item.vinculo;
+    if (!v?.contrato_id) return;
     try {
-      const v = item.vinculo;
-      const temVinculo = !!v?.contrato_id;
-
-      if (temVinculo) {
         // A nota que já é de um pedido do contrato não vira pedido novo (22/09).
-        if (tipo === "a_receber" && d.numero_documento) {
+        // Pelo Revisar o título já foi salvo pela pessoa: essa conferência não cabe.
+        if (!lancamentoSalvo && tipo === "a_receber" && d.numero_documento) {
           try {
             if (await anexarAoPedidoExistente(item, v!.contrato_id)) return;
           } catch (e) {
@@ -522,7 +524,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
           }
         }
         // Caminho com vínculo: cria pedido + lançamento via RPC (recalcula saldo do contrato/ATA)
-        const valorTotal = numeroBr(d.valor_total);
+        const valorTotal = lancamentoSalvo?.valor != null ? Number(lancamentoSalvo.valor) : numeroBr(d.valor_total);
 
         // Lista de itens marcados (1 ou mais — cota principal + reservada)
         const itemIds =
@@ -558,9 +560,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // de criar. Indício (número sem valor, só valor, nota rateada em
         // vários itens) → o pedido nasce sem título e quem opera casa na aba
         // Pedidos. Nada parecido → cria, como antes.
-        let lancamentoExistente: string | null = null;
-        let criarTitulo = true;
-        if (tipo === "a_receber" && (d.numero_documento || d.chave_nfe)) {
+        // Título salvo no Revisar: é ELE o título — o pedido (ou o lote) nasce
+        // ligado a ele, nenhum título novo.
+        let lancamentoExistente: string | null = lancamentoSalvo?.id ?? null;
+        let criarTitulo = !lancamentoSalvo;
+        if (!lancamentoSalvo && tipo === "a_receber" && (d.numero_documento || d.chave_nfe)) {
           const { data: ctr } = await supabase
             .from("contratos")
             .select("empresa_id")
@@ -784,6 +788,23 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             ? `Nota lançada como lote de ${itemIds.length} itens do contrato, com um título único no Financeiro.`
             : "Lançamento criado e pedido vinculado ao contrato.",
         );
+    } catch (e) {
+      toast.error("Não foi possível vincular ao contrato", { description: mensagemDeErro(e) });
+    }
+  };
+
+  const lancarRapido = async (item: DocItem) => {
+    const d = item.dados ?? {};
+    if (!d.valor_total) {
+      toast.warning("Valor não detectado. Use 'Revisar' para preencher manualmente.");
+      return;
+    }
+    try {
+      const v = item.vinculo;
+      const temVinculo = !!v?.contrato_id;
+
+      if (temVinculo) {
+        await vincularAoContrato(item, null);
         return;
       }
 
@@ -1276,6 +1297,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         initial={editor.initial}
         defaultTipo={tipo}
         onSaved={(saved) => {
+          const doc = editor.docId ? docs.find((x) => x.id === editor.docId) ?? null : null;
           if (editor.docId) {
             setDocs((prev) =>
               prev.map((x) =>
@@ -1284,6 +1306,10 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             );
           }
           invalidarFinanceiro();
+          // O título salvo pelo Revisar ganha o pedido/lote do contrato (30/09).
+          if (doc?.vinculo?.contrato_id && saved?.id) {
+            void vincularAoContrato(doc, { id: saved.id, valor: saved.valor != null ? Number(saved.valor) : null });
+          }
         }}
       />
     </>
