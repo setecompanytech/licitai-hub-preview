@@ -848,4 +848,13 @@ realizado/conciliado). Quantidade e unitário por item vêm de
 sem partes, rateio por saldo é só para cota principal + reservada, e a tela
 avisa a partir do 3º item. `ratear_lancamento_em_pedidos` (RPC) exige
 título baixado — por isso o rateio do lote é por gatilho, não pela RPC.
+**A conferência de nota com vários produtos é item a item (30/09):**
+`divergenciasDasPartes` compara cada parte com o SEU item (unitário,
+quantidade, saldo); a agregada (valor da nota ÷ soma das quantidades de
+todas as linhas × preço do primeiro item) acusava "+195,94%" numa nota
+certa e fica só para item único. A Extração passa as LINHAS da NF-e
+(`linhasDaNfe`) ao seletor — sem elas nenhum item casava. Itens do contrato
+no seletor vêm em ordem numérica (`ordenarItensDoContrato`, por
+`codigo_item`) e dinheiro por item é texto formatado em pt-BR, nunca
+`type="number"` (mostrava "5,6" e "9").
 

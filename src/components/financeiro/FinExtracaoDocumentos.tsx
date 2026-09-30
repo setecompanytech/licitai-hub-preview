@@ -6,7 +6,7 @@ import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
 import { numeroDaNota } from "@/lib/financeiro/recebimento-da-nota";
 import { vencimentoDoTitulo } from "@/lib/financeiro/vencimento-do-titulo";
-import { diferencaParaANota, fatiasPorPartes, fatiasPorSaldo, partesCompletas } from "@/lib/financeiro/partes-do-vinculo";
+import { diferencaParaANota, fatiasPorPartes, fatiasPorSaldo, linhasDaNfe, partesCompletas, type ItemDaNota } from "@/lib/financeiro/partes-do-vinculo";
 import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -219,13 +219,18 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // A QUANTIDADE que a nota declara (soma de q_com dos itens). Sem ela,
         // o vínculo sugeria valorTotal ÷ preço do contrato — 498,8914 caixas
         // para uma nota de 500. Quantidade é o que a nota atesta.
+        // E as LINHAS de produto (30/09): sem elas, a nota de 18 produtos chegava
+        // ao vínculo como "1.000 unidades a R$ 17,28" e nenhum item casava.
         let quantidadeTotal: number | null = null;
+        let linhasDaNota: ItemDaNota[] | null = null;
         try {
           const { parseNFeXML } = await import("@/lib/parseNFe");
           const nfe = parseNFeXML(await item.file.text());
           const soma = (nfe.itens ?? []).reduce(
             (acc: number, i: { q_com?: number | null }) => acc + (Number(i.q_com) || 0), 0);
           if (soma > 0) quantidadeTotal = soma;
+          const linhas = linhasDaNfe(nfe.itens);
+          if (linhas.length > 0) linhasDaNota = linhas;
         } catch { /* nota sem itens legíveis: segue sem quantidade */ }
         return {
           ...item,
@@ -237,6 +242,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
             data_emissao: resultado.competencia,
             chave_nfe: resultado.chave,
             quantidade_total: quantidadeTotal,
+            itens: linhasDaNota,
             descricao: `${(resultado.tipo ?? "nota").toUpperCase()} ${resultado.chave ?? ""}`.trim(),
             _direcao: resultado.direcao,
             _ja_lancada: true,

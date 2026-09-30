@@ -33,7 +33,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
-import { avisoDeVariosItens, diferencaParaANota, fatiasPorPartes, partesCompletas, sugerirPartes, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
+import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, ordenarItensDoContrato, partesCompletas, rotuloDoItem, sugerirPartes, type Divergencia, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
+import { formatarMoedaBr, formatarQuantidade, parseQuantidade } from "@/lib/compras/numeros";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,8 @@ export interface ContratoOpcao {
 
 interface ItemOpcao {
   id: string;
+  /** Número do item no contrato ("1", "2"…), como na tabela do contrato. */
+  codigo_item: string | null;
   descricao: string;
   unidade: string | null;
   valor_unitario: number;
@@ -127,6 +130,8 @@ export default function VinculoContratoSelector({
 
   const [contratos, setContratos] = useState<ContratoOpcao[]>([]);
   const [itens, setItens] = useState<ItemOpcao[]>([]);
+  /** O que a pessoa está digitando em quantidade/unitário por item, antes de formatar ("id:campo" → texto). */
+  const [rascunhoDaParte, setRascunhoDaParte] = useState<Record<string, string>>({});
   const [aditivos, setAditivos] = useState<AditivoOpcao[]>([]);
   /**
    * Os empenhos do contrato, para o pedido nascer apontando de qual sai.
@@ -208,7 +213,7 @@ export default function VinculoContratoSelector({
       supabase
         .from("contrato_itens")
         .select(
-          "id, descricao, unidade, valor_unitario, saldo_quantitativo, saldo_financeiro, origem_aditivo_id"
+          "id, codigo_item, descricao, unidade, valor_unitario, saldo_quantitativo, saldo_financeiro, origem_aditivo_id"
         )
         .eq("contrato_id", value.contrato_id)
         .order("created_at", { ascending: true }),
@@ -218,7 +223,7 @@ export default function VinculoContratoSelector({
         .eq("contrato_id", value.contrato_id)
         .order("created_at", { ascending: true }),
     ]).then(([iRes, aRes]) => {
-      setItens((iRes.data ?? []) as ItemOpcao[]);
+      setItens(ordenarItensDoContrato((iRes.data ?? []) as ItemOpcao[]));
       setAditivos((aRes.data ?? []) as AditivoOpcao[]);
       setLoadingItens(false);
     });
@@ -328,6 +333,7 @@ export default function VinculoContratoSelector({
     const vuMax = Math.max(...itensSelecionados.map((i) => Number(i.valor_unitario) || 0));
     return {
       id: "__multi__",
+      codigo_item: null,
       descricao: `${itensSelecionados.length} itens agrupados (cota principal + reservada)`,
       unidade: itensSelecionados[0].unidade,
       valor_unitario: vuMax,
@@ -343,22 +349,30 @@ export default function VinculoContratoSelector({
   const TOL_QTD = 0.0001;
 
   const divergencias = useMemo(() => {
-    const alerts: Array<{
-      level: "warning" | "error";
-      titulo: string;
-      detalhe: string;
-    }> = [];
+    const alerts: Divergencia[] = [];
     if (!contratoSel) return alerts;
 
     const valorLancamento = Number(
       valorTotal ?? (value.quantidade || 0) * (value.valor_unitario || 0),
     );
+    // Nota com VÁRIOS produtos (30/09): a conferência é item a item, pelas
+    // partes. A agregada dividia o valor da nota pela soma das quantidades de
+    // 18 linhas e comparava com o preço de UM item — "+195,94%" numa nota certa.
+    const varios = itensSelecionados.length > 1;
+    const linhasDaNota = itensDaNota?.length ?? 0;
 
     // 0) Preço faturado ≠ preço contratado — informativo, não barra.
     //    A nota de 500 CX saiu a R$ 22,50 num contrato de R$ 22,55: pode ser
     //    desconto, reajuste ou erro do emissor. O pedido usa o faturado (é o
     //    que foi cobrado); quem confere precisa VER a diferença.
-    if (
+    if (!varios && linhasDaNota > 1 && itemSel) {
+      alerts.push({
+        level: "warning",
+        titulo: `A nota tem ${linhasDaNota} linhas de produto e um item marcado`,
+        detalhe: "O título fica com o valor da nota inteira; o pedido, só com este item. Se a nota entrega vários itens do contrato, marque todos — cada um com a sua quantidade e o seu unitário.",
+      });
+    } else if (
+      !varios &&
       itemSel?.valor_unitario &&
       value.quantidade > 0 &&
       valorLancamento > 0
@@ -395,8 +409,11 @@ export default function VinculoContratoSelector({
       });
     }
 
-    // 2) Validações específicas do ITEM (quando vinculado)
-    if (itemSel) {
+    // 2) Validações específicas do ITEM (quando vinculado). Com vários itens,
+    //    cada parte informada é conferida com o SEU item.
+    if (varios) {
+      alerts.push(...divergenciasDasPartes(itensSelecionados, value.partes));
+    } else if (itemSel) {
       const qtd = Number(value.quantidade || 0);
       const vu = Number(value.valor_unitario || itemSel.valor_unitario || 0);
       const valorItem = qtd * vu;
@@ -434,7 +451,7 @@ export default function VinculoContratoSelector({
     }
 
     return alerts;
-  }, [contratoSel, itemSel, value.quantidade, value.valor_unitario, valorTotal]);
+  }, [contratoSel, itemSel, itensSelecionados, itensDaNota, value.partes, value.quantidade, value.valor_unitario, valorTotal]);
 
   const setContrato = (id: string) => {
     setListaAberta(false);
@@ -475,6 +492,12 @@ export default function VinculoContratoSelector({
     const vuSugerido = qtdDaNota > 0 && valorTotal
       ? Number((Number(valorTotal) / qtdDaNota).toFixed(4))
       : itensMarcados[0]?.valor_unitario ?? value.valor_unitario;
+    // Nota com várias linhas e UM item marcado: quantidade e unitário são os
+    // da linha que casa com ele — não a soma das linhas nem o preço médio.
+    const linhaDoItem = novos.length === 1 && (itensDaNota?.length ?? 0) > 1 && itensMarcados[0]
+      ? sugerirPartes([{ id: itensMarcados[0].id, descricao: itensMarcados[0].descricao, valor_unitario: itensMarcados[0].valor_unitario }], itensDaNota)[0]
+      : null;
+    const daLinha = linhaDoItem && linhaDoItem.quantidade > 0 ? linhaDoItem : null;
 
     // As partes por item acompanham a marcação: entra com sugestão da nota, sai quando desmarca.
     const partesNovas = novos.length >= 2
@@ -487,9 +510,10 @@ export default function VinculoContratoSelector({
       contrato_item_id: novos[0] ?? null,
       origem_aditivo_id:
         itensMarcados[0]?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
-      valor_unitario: vuSugerido,
-      quantidade:
-        value.quantidade && value.quantidade > 0 ? value.quantidade : qtdSugerida,
+      valor_unitario: daLinha ? daLinha.valor_unitario : vuSugerido,
+      quantidade: daLinha
+        ? daLinha.quantidade
+        : value.quantidade && value.quantidade > 0 ? value.quantidade : qtdSugerida,
     });
   };
 
@@ -807,7 +831,7 @@ export default function VinculoContratoSelector({
                 className="h-[min(34vh,260px)] min-h-[120px] divide-y divide-border overflow-y-auto overscroll-contain rounded-md border border-border"
                 onWheel={(e) => e.stopPropagation()}
               >
-                {itens.map((i) => {
+                {itens.map((i, idx) => {
                   const checked = itemIds.includes(i.id);
                   const saldoFin = Number(i.saldo_financeiro ?? 0);
                   const saldoQtd = Number(i.saldo_quantitativo ?? 0);
@@ -827,6 +851,7 @@ export default function VinculoContratoSelector({
                       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <div className="min-w-0 flex-1">
                         <div className="line-clamp-2 leading-tight text-foreground" title={i.descricao}>
+                          <span className="mr-1 font-medium tabular-nums text-muted-foreground">{rotuloDoItem(i, idx)} ·</span>
                           {i.descricao}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
@@ -883,10 +908,36 @@ export default function VinculoContratoSelector({
               const aviso = avisoDeVariosItens(itensSelecionados.length);
               const partes = value.partes ?? [];
               const parteDe = (id: string) => partes.find((p) => p.contrato_item_id === id) ?? { contrato_item_id: id, quantidade: 0, valor_unitario: 0 };
-              const mudarParte = (id: string, campo: "quantidade" | "valor_unitario", v: string) => {
-                const n = parseFloat(String(v).replace(",", ".")) || 0;
+              const chave = (id: string, campo: "quantidade" | "valor_unitario") => `${id}:${campo}`;
+              const gravarParte = (id: string, campo: "quantidade" | "valor_unitario", n: number) => {
                 const resto = partes.filter((p) => p.contrato_item_id !== id);
                 onChange({ ...value, partes: [...resto, { ...parteDe(id), [campo]: n }] });
+              };
+              // Enquanto digita, o texto é o da pessoa; ao sair do campo, vira número e
+              // volta formatado em pt-BR ("5,60", "1.000"). Campo numérico do navegador
+              // mostrava "5,6" e "9" — dinheiro incompleto.
+              const campoDaParte = (i: ItemOpcao, campo: "quantidade" | "valor_unitario") => {
+                const pt = parteDe(i.id);
+                const k = chave(i.id, campo);
+                const valor = pt[campo];
+                const formatado = valor > 0 ? (campo === "quantidade" ? formatarQuantidade(valor) : formatarMoedaBr(valor)) : "";
+                const emEdicao = rascunhoDaParte[k];
+                return (
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    className={cn("h-8 text-right tabular-nums", campo === "quantidade" ? "w-24" : "w-28")}
+                    value={emEdicao ?? formatado}
+                    placeholder={campo === "quantidade" ? "0" : "0,00"}
+                    onFocus={() => setRascunhoDaParte((r) => ({ ...r, [k]: valor > 0 ? String(valor).replace(".", ",") : "" }))}
+                    onChange={(e) => setRascunhoDaParte((r) => ({ ...r, [k]: e.target.value }))}
+                    onBlur={(e) => {
+                      gravarParte(i.id, campo, parseQuantidade(e.target.value));
+                      setRascunhoDaParte((r) => { const { [k]: _saiu, ...resto } = r; return resto; });
+                    }}
+                    aria-label={`${campo === "quantidade" ? "Quantidade" : "Unitário"} de ${i.descricao}`}
+                  />
+                );
               };
               const completas = partesCompletas(itemIds, partes);
               const conf = completas ? diferencaParaANota(fatiasPorPartes(itemIds, partes), Number(valorTotal) || 0) : null;
@@ -902,15 +953,30 @@ export default function VinculoContratoSelector({
                   <p className="text-xs font-medium text-foreground">Quantidade e unitário por item{itensDaNota?.length ? " — sugeridos pelas linhas da nota, confira" : ""}</p>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
-                      <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Item do contrato</th><th className="py-1 pr-2 text-right">Qtd</th><th className="py-1 pr-2 text-right">Unitário (R$)</th><th className="py-1 text-right">Valor</th></tr></thead>
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-1 pr-2 whitespace-nowrap">Item</th>
+                          <th className="py-1 pr-2">Descrição</th>
+                          <th className="py-1 pr-2 text-right">Qtd</th>
+                          <th className="py-1 pr-2 text-right whitespace-nowrap">Unitário (R$)</th>
+                          <th className="py-1 text-right">Valor</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {itensSelecionados.map((i) => {
                           const pt = parteDe(i.id);
+                          const posicao = itens.findIndex((x) => x.id === i.id);
                           return (
                             <tr key={i.id} className="border-t border-border">
+                              <td className="py-1 pr-2 whitespace-nowrap font-medium tabular-nums">{rotuloDoItem(i, posicao < 0 ? 0 : posicao).replace("Item ", "")}</td>
                               <td className="py-1 pr-2 max-w-[18rem]"><span className="line-clamp-2" title={i.descricao}>{i.descricao}</span></td>
-                              <td className="py-1 pr-2"><Input type="number" step="0.0001" min="0" className="h-8 w-24 text-right tabular-nums" value={pt.quantidade || ""} onChange={(e) => mudarParte(i.id, "quantidade", e.target.value)} aria-label={`Quantidade de ${i.descricao}`} /></td>
-                              <td className="py-1 pr-2"><Input type="number" step="0.0001" min="0" className="h-8 w-28 text-right tabular-nums" value={pt.valor_unitario || ""} onChange={(e) => mudarParte(i.id, "valor_unitario", e.target.value)} aria-label={`Unitário de ${i.descricao}`} /></td>
+                              <td className="py-1 pr-2">{campoDaParte(i, "quantidade")}</td>
+                              <td className="py-1 pr-2">
+                                <div className="flex items-center justify-end gap-1">
+                                  <span className="text-muted-foreground">R$</span>
+                                  {campoDaParte(i, "valor_unitario")}
+                                </div>
+                              </td>
                               <td className="py-1 text-right tabular-nums whitespace-nowrap">{fmt(Math.round(pt.quantidade * pt.valor_unitario * 100) / 100)}</td>
                             </tr>
                           );
@@ -928,7 +994,9 @@ export default function VinculoContratoSelector({
             })()}
           </div>
         )}
-        {value.contrato_id && itemSel && (
+        {/* Com quantidade e unitário por item, o total a ratear e o unitário
+            "médio" não entram em nada — e confundem ("17,283" para 18 produtos). */}
+        {value.contrato_id && itemSel && !(itensSelecionados.length > 1 && partesCompletas(itemIds, value.partes)) && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>
