@@ -17,8 +17,7 @@ import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDial
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
 import { agruparEmLotes, rotuloDoLote, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
 import { parseNFeXML } from '@/lib/parseNFe';
-import { abrirEspelho } from '@/lib/financeiro/espelho-da-nfe';
-import { arquivoDanfe } from '@/lib/financeiro/danfe-pdf';
+import { arquivoDanfe, abrirDanfe } from '@/lib/financeiro/danfe-pdf';
 import type { NotaDoPedido } from '@/hooks/useNotaDoPedido';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
@@ -2639,8 +2638,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     if (!nd) { toast.info('Esta nota ainda não tem título ligado a este lote.', { description: 'Importe o XML pela Extração de Documentos; o DANFE nasce junto.' }); return; }
     if (nd.tem_pdf && nd.storage_path) { await abrirDocumentoDoFinanceiro(nd.storage_path, nd.arquivo_nome ?? 'DANFE'); return; }
     if (nd.arquivo_xml) {
+      // Sem PDF ainda: gera do XML, abre numa aba e guarda no cofre.
+      try { abrirDanfe(parseNFeXML(nd.arquivo_xml)); } catch { /* segue: o guardado abre depois */ }
       await gerarDanfeDaNota(nd);
-      try { abrirEspelho(parseNFeXML(nd.arquivo_xml)); } catch { /* o DANFE guardado abre pela linha assim que a lista recarregar */ }
       return;
     }
     if (nd.storage_path) await abrirDocumentoDoFinanceiro(nd.storage_path, nd.arquivo_nome ?? 'Arquivo');
@@ -2669,37 +2669,32 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <ExternalLink aria-hidden="true" />Abrir arquivo
             </Button>
           )}
-          {nd.arquivo_xml && (
-            <Button size="sm" variant="ghost" title="Leitura do XML da nota em nova aba"
-              onClick={() => { try { if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.'); } catch { toast.error('Não foi possível ler o XML desta nota.'); } }}>
-              Espelho do XML
-            </Button>
-          )}
         </div>
       );
     }
     if (!nd) return null;
-    return (
-      <span className="inline-flex flex-wrap items-center gap-2">
-        {nd.storage_path && (
-          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Nota fiscal')} title={`Abrir ${nd.arquivo_nome}`}>
-            <ExternalLink aria-hidden="true" className="h-3 w-3" />{/\.xml$/i.test(nd.arquivo_nome ?? '') ? 'Abrir XML' : 'Abrir DANFE'}
-          </button>
-        )}
-        {nd.arquivo_xml && !nd.tem_pdf && (
-          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
-            title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
-            {gerandoDanfe === nd.lancamento_id ? <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> : <FileText aria-hidden="true" className="h-3 w-3" />}Gerar DANFE
-          </button>
-        )}
-        {nd.arquivo_xml && (
-          <button type="button" className="g-meta inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:underline" title="Leitura do XML da nota em nova aba"
-            onClick={() => { try { if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.'); } catch { toast.error('Não foi possível ler o XML desta nota.'); } }}>
-            Espelho
-          </button>
-        )}
-      </span>
-    );
+    // Um caminho só (30/09): o DANFE é a impressão do XML; o "espelho" saiu.
+    // Com o PDF, "Abrir DANFE"; só com o XML, "Gerar DANFE".
+    if (nd.tem_pdf && nd.storage_path) {
+      return (
+        <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'DANFE')} title={`Abrir ${nd.arquivo_nome}`}>
+          <ExternalLink aria-hidden="true" className="h-3 w-3" />Abrir DANFE
+        </button>
+      );
+    }
+    if (nd.arquivo_xml) {
+      return (
+        <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
+          title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
+          {gerandoDanfe === nd.lancamento_id ? <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> : <FileText aria-hidden="true" className="h-3 w-3" />}Gerar DANFE
+        </button>
+      );
+    }
+    return nd.storage_path ? (
+      <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" onClick={() => abrirDocumentoDoFinanceiro(nd.storage_path!, nd.arquivo_nome ?? 'Arquivo')} title={`Abrir ${nd.arquivo_nome}`}>
+        <ExternalLink aria-hidden="true" className="h-3 w-3" />Abrir arquivo
+      </button>
+    ) : null;
   };
   const caixaDoLote = (
     <Dialog open={!!loteAberto} onOpenChange={(v) => { if (!v) setLoteSelecionado(null); }}>
@@ -2732,7 +2727,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           <button type="button" className="inline-flex items-center gap-1 rounded text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="Abrir o DANFE desta nota" onClick={() => void abrirNotaDoLote(loteAberto)}>
                             <span className="tabular-nums">{formatarNumeroNfe(loteAberto.nota_fiscal) ?? loteAberto.nota_fiscal}</span> <FileText aria-hidden="true" className="h-3.5 w-3.5" />
                           </button>
-                          {notaDoLote(loteAberto)}
+                          {(() => { const nd = loteAberto.partes.map((p) => notaDoPedido?.[p.id]).find((x) => x && (x.storage_path || x.arquivo_xml)); return nd && !nd.tem_pdf ? notaDoLote(loteAberto) : null; })()}
                         </span>
                       : <ValorIndisponivel razao="Sem nota" /> },
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
@@ -2807,23 +2802,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <div className="xl:col-span-2">
               {/* As ações da NOTA moram aqui (30/09): o lote é a nota; a parte é o item. */}
               <BlocoDoPainel titulo="Ações do lote">
+                {/* Só o que age sobre ESTE lote (30/09). Registrar ordem/empenho,
+                    Gerar pré-NF e Criar no Kanban criam coisa nova no contrato e
+                    moram na barra da aba; o documento do empenho abre pela Origem. */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog} title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
-                    <Upload aria-hidden="true" /> Registrar ordem/empenho
-                  </Button>
-                  <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
-                    <Receipt aria-hidden="true" /> Gerar pré-NF
-                  </Button>
-                  <Button size="sm" variant="outline" className="g-controle" title="Abrir Gestão de Compras para criar o pedido pelo funil comercial" onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-                    <ShoppingCart aria-hidden="true" /> Criar no Kanban
-                  </Button>
                   {loteAberto.partes[0] && (
                     <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
-                  )}
-                  {loteAberto.partes[0] && (
-                    <Button size="sm" variant="outline" className="g-controle" onClick={() => void abrirOrdem(loteAberto.partes[0])} title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este lote">
-                      <FileText aria-hidden="true" /> Ordem / Empenho
-                    </Button>
                   )}
                   <Button size="sm" variant="outline" className="g-controle" title="Trocar o empenho que autoriza este lote — vale para as 18 partes e recalcula os saldos"
                     onClick={() => { setNovoEmpenhoId(loteAberto.empenho_id ?? 'nenhum'); setTrocaDeEmpenho({ rotulo: `lote ${loteAberto.numero} (${loteAberto.partes.length} partes)`, pedidos: loteAberto.partes.map((p) => p.id), atual: loteAberto.empenho_id ?? null }); }}>
@@ -3242,26 +3226,11 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 // Nota que entrou pelo XML (30/09): o espelho da NF-e, lido do
                                 // XML, abre aqui; o DANFE em PDF, quando anexado ao mesmo
                                 // título, é o arquivo que abre no selo.
-                                const espelho = nd.arquivo_xml ? (
-                                  <span className="flex flex-wrap items-center gap-2">
-                                    {!nd.tem_pdf && (
-                                      <button type="button" className="g-meta text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
-                                        title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
-                                        Gerar DANFE
-                                      </button>
-                                    )}
-                                    <button type="button" className="g-meta text-muted-foreground underline-offset-2 hover:underline"
-                                      title="Abre a leitura do XML da nota em nova aba"
-                                      onClick={() => {
-                                        try {
-                                          if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.');
-                                        } catch {
-                                          toast.error('Não foi possível ler o XML desta nota.');
-                                        }
-                                      }}>
-                                      Espelho
-                                    </button>
-                                  </span>
+                                const espelho = nd.arquivo_xml && !nd.tem_pdf ? (
+                                  <button type="button" className="g-meta text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
+                                    title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
+                                    Gerar DANFE
+                                  </button>
                                 ) : null;
                                 if (!nd.storage_path) {
                                   return (

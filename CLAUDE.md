@@ -875,7 +875,12 @@ quitação, editar e excluir. Na Origem do lote, empenho e nota são links
 (documento do empenho; DANFE, gerado do XML se ainda não existir). **O empenho é fato do pedido, não do título:** "Trocar empenho"
 (lote e pedido solto) atualiza `empenho_id/numero_empenho/tipo_empenho`
 nas partes; os saldos das RPCs `contrato_empenho_*` se recalculam; o
-Financeiro não guarda empenho, então nada muda lá.
+Financeiro não guarda empenho, então nada muda lá. **Um caminho só para a nota (30/09):** DANFE (PDF) ou "Gerar DANFE" quando
+só há o XML; o "espelho" saiu da aba Pedidos (é leitura do mesmo XML). Na
+Origem do lote, o número da nota É o link. "Ações do lote" tem só o que age
+sobre o lote: Recibo e certidões, Trocar empenho, Excluir lote — Registrar
+ordem/empenho, Gerar pré-NF e Criar no Kanban criam coisa nova no contrato
+e ficam na barra da aba; o documento do empenho abre pela Origem.
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 
