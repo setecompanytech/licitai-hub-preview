@@ -237,7 +237,10 @@ Deno.serve(async (req) => {
 
       const competencia = nota.data_emissao.slice(0, 7) + "-01";
       const natureza = nota.direcao === "saida" ? "receita" : "despesa";
-      const tipo = natureza;
+      // `tipo` é o enum financeiro_tipo_lancamento (a_pagar, a_receber,
+      // movimento_bancario, transferencia) — não a natureza. "receita" ali
+      // era o segundo motivo de todo XML ser recusado (30/09).
+      const tipo = nota.direcao === "saida" ? "a_receber" : "a_pagar";
       const descricao = `${nota.tipo.toUpperCase()} ${nota.numero ?? ""}/${nota.serie ?? ""} - ${
         nota.direcao === "saida" ? nota.nome_destinatario : nota.nome_emitente
       }`.trim();
