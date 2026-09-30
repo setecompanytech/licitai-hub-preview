@@ -13,7 +13,8 @@ describe('lote de pedidos', () => {
     const lote = linhas[0].tipo === 'lote' ? linhas[0].lote : null;
     expect(lote).toMatchObject({ id: 'L1', numero: '595', valor_total: 600, status: 'pendente', progresso: null, nota_fiscal: '595', numero_empenho: '0062352024' });
     expect(lote!.partes.map((p) => p.numero_pedido)).toEqual(['595-1', '595-2', '595-3']);
-    expect(rotuloDoLote(lote!)).toBe('NF-e 595 · 3 itens do contrato');
+    expect(rotuloDoLote(lote!)).toBe('NF-e 595');
+    expect(rotuloDoLote({ ...lote!, partes: [{ ...lote!.partes[0], descricao: 'Cestas de junho · ACUC (parte 1/3)' }] })).toBe('Cestas de junho');
   });
   it('lote de uma parte só volta a ser pedido comum', () => {
     expect(agruparEmLotes([parte(1)])[0].tipo).toBe('pedido');

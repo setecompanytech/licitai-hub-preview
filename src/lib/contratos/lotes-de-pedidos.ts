@@ -86,12 +86,15 @@ export function agruparEmLotes<P extends PedidoDoLote>(pedidos: P[]): LinhaDaTab
   return linhas.map((l) => (l.tipo === 'lote' && l.lote.partes.length === 1 ? { tipo: 'pedido', pedido: l.lote.partes[0] } : l));
 }
 
-/** "NF-e 595 · 18 itens do contrato" — o rótulo da linha do lote. */
+/**
+ * O rótulo da linha do lote é a DESCRIÇÃO do lote (30/09): o prefixo antes
+ * de " · " nas partes, que "Editar lote" renomeia. Sem prefixo, o número da
+ * nota. A contagem de itens saiu: a coluna Quantidade já a diz.
+ */
 export function rotuloDoLote(lote: Lote): string {
   const base = descricaoSemParte(lote.partes[0]?.descricao);
   const nota = lote.nota_fiscal ? `NF-e ${lote.nota_fiscal}` : `Lote ${lote.numero}`;
-  const prefixo = base.split(' · ')[0] || nota;
-  return `${prefixo.startsWith('NF') || prefixo.startsWith('Lote') ? prefixo : nota} · ${lote.partes.length} itens do contrato`;
+  return base.split(' · ')[0].trim() || nota;
 }
 
 /** Preço faturado, custo e margem POR unidade composta (cesta), quando o lote sabe quantas entregou. */
