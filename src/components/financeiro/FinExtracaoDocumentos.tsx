@@ -1403,7 +1403,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                 </Badge>
                               )}
                               {d.status === "processando" && (
-                                <Badge variant="muted" className="gap-1">
+                                // Alerta que pisca (30/09): o cinza parecia "carregando"; o
+                                // amarelo pulsando diz que há trabalho em curso neste arquivo.
+                                <Badge variant="warning" className="gap-1 font-semibold motion-safe:animate-pulse" role="status" aria-live="polite">
                                   <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />Processando
                                 </Badge>
                               )}
