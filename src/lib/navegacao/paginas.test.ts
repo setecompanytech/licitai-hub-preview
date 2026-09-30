@@ -59,6 +59,10 @@ describe('padronização das telas do menu', () => {
     expect(trilhaDaRota('/gestao-contratos').map((t) => t.rotulo)).toEqual([
       'Painel', 'Gestão de Processos', 'Gestão de contratos',
     ]);
+    // Cada degrau leva a algum lugar (30/09): o grupo à primeira tela dele, a tela à própria lista.
+    expect(trilhaDaRota('/gestao-contratos').map((t) => t.para)).toEqual([
+      '/dashboard', '/licitacoes-estrategicas', '/gestao-contratos',
+    ]);
     // Aceita rota com parâmetro — a pasta do contrato é a mesma tela.
     expect(padraoDaRota('/gestao-contratos?contrato=123')?.titulo).toBe('Gestão de contratos');
   });

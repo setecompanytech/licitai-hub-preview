@@ -350,9 +350,19 @@ export function padraoDaRota(rota: string): PaginaPadrao | undefined {
   return porRota.get(rota.split('?')[0]);
 }
 
-/** Trilha pronta para o CabecalhoPagina: grupo › tela. */
+/** A porta de entrada de um grupo do menu: a primeira tela dele no registro. */
+export function rotaDoGrupo(grupo: string): string | undefined {
+  return paginasPadrao.find((p) => p.grupo === grupo)?.rota;
+}
+
+/**
+ * Trilha pronta para a faixa: Painel › grupo › tela. Cada degrau leva a algum
+ * lugar (30/09/2026): o grupo abre a primeira tela dele, a tela abre a própria
+ * lista — é o que faz "Gestão de contratos" voltar à lista quando um contrato
+ * está aberto. O último degrau nunca vira link (a faixa cuida disso).
+ */
 export function trilhaDaRota(rota: string): { rotulo: string; para?: string }[] {
   const p = padraoDaRota(rota);
   if (!p) return [];
-  return [{ rotulo: 'Painel', para: '/dashboard' }, { rotulo: p.grupo }, { rotulo: p.titulo }];
+  return [{ rotulo: 'Painel', para: '/dashboard' }, { rotulo: p.grupo, para: rotaDoGrupo(p.grupo) }, { rotulo: p.titulo, para: p.rota }];
 }

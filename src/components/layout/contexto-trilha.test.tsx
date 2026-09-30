@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CabecalhoPagina from '@/components/shared/CabecalhoPagina';
 import TrilhaDoTopo from './TrilhaDoTopo';
@@ -65,5 +65,32 @@ describe('trilha — uma por tela, na faixa', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Gestão de Processos')).toBeTruthy();
+  });
+});
+
+describe('trilha — degraus clicáveis e sem repetição (30/09)', () => {
+  it('com um registro aberto, o grupo e a tela viram links; o último degrau não', () => {
+    render(
+      <MemoryRouter initialEntries={['/gestao-contratos?contrato=x']}>
+        <ProvedorDeTrilha>
+          <TrilhaDoTopo extra={[{ rotulo: '772/2024' }]} />
+        </ProvedorDeTrilha>
+      </MemoryRouter>,
+    );
+    const nav = screen.getByLabelText('Trilha de navegação');
+    expect(within(nav).getByRole('link', { name: 'Gestão de contratos' })).toHaveAttribute('href', '/gestao-contratos');
+    expect(within(nav).getByRole('link', { name: 'Gestão de Processos' })).toHaveAttribute('href', '/licitacoes-estrategicas');
+    expect(within(nav).queryByRole('link', { name: '772/2024' })).toBeNull();
+  });
+  it('degrau repetido em sequência aparece uma vez', () => {
+    render(
+      <MemoryRouter initialEntries={['/gestao-contratos']}>
+        <ProvedorDeTrilha>
+          <TrilhaDoTopo extra={[{ rotulo: 'Gestão de contratos' }, { rotulo: '772/2024' }]} />
+        </ProvedorDeTrilha>
+      </MemoryRouter>,
+    );
+    const nav = screen.getByLabelText('Trilha de navegação');
+    expect(within(nav).getAllByText('Gestão de contratos')).toHaveLength(1);
   });
 });

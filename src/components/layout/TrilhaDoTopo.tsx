@@ -43,7 +43,18 @@ export default function TrilhaDoTopo({
   // com a marca, que já leva ao painel e fica dois centímetros à esquerda.
   const base = daPagina ?? trilhaDaRota(pathname);
   const doRegistro = base[0]?.rotulo === 'Painel' ? base.slice(1) : base;
-  const degraus = [...doRegistro, ...(extra ?? [])];
+  // Degrau repetido em sequência ("Gestão de contratos › Gestão de contratos",
+  // quando a página declara a própria tela e o registro também) aparece uma
+  // vez só; fica o que tem destino, ou o último.
+  const degraus = [...doRegistro, ...(extra ?? [])].reduce<DegrauDaTrilha[]>((acc, d) => {
+    const anterior = acc[acc.length - 1];
+    if (anterior && anterior.rotulo.trim().toLowerCase() === d.rotulo.trim().toLowerCase()) {
+      acc[acc.length - 1] = { rotulo: d.rotulo, para: d.para ?? anterior.para };
+      return acc;
+    }
+    acc.push(d);
+    return acc;
+  }, []);
 
   if (degraus.length === 0) return null;
   const ultimo = degraus[degraus.length - 1];
