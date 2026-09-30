@@ -1,0 +1,12 @@
+{
+  "name": "praefectus-sefaz-proxy",
+  "version": "1.0.0",
+  "description": "Proxy mTLS do Praefectus para a SEFAZ (NFeDistribuicaoDFe): recebe o certificado A1 e a consulta, fala SOAP com a Receita e devolve os XMLs.",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

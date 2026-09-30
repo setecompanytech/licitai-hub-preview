@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { FileSpreadsheet, RefreshCw, Plus, Loader2, Calculator, Building2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { statusDoCertificadoA1, type StatusDoCertificado } from "@/lib/financeiro/xml-por-chave";
+import { ShieldCheck, Copy } from "lucide-react";
 
 const TRIBUTOS = [
   { value: "icms", label: "ICMS" }, { value: "iss", label: "ISS" },
@@ -41,6 +43,33 @@ export default function FinIntegracoesFiscais() {
   const { empresaAtiva } = useEmpresa();
   const { toast } = useToast();
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
+  // Certificado A1 (30/09): estado lido pela edge (o cofre é privado), link de envio pelo fluxo que já existe.
+  const [certificado, setCertificado] = useState<StatusDoCertificado | null | "carregando">("carregando");
+  const [linkDeEnvio, setLinkDeEnvio] = useState<string | null>(null);
+  const [gerandoLink, setGerandoLink] = useState(false);
+  useEffect(() => {
+    if (!empresaAtiva?.id) return;
+    setCertificado("carregando");
+    void statusDoCertificadoA1(empresaAtiva.id).then((s) => setCertificado(s));
+  }, [empresaAtiva?.id]);
+  const gerarLinkDeEnvio = async () => {
+    if (!empresaAtiva?.id) return;
+    setGerandoLink(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gerar-link-certificado", { body: { empresa_id: empresaAtiva.id } });
+      if (error) throw error;
+      if (data?.upload_url) {
+        setLinkDeEnvio(String(data.upload_url));
+        toast({ title: "Link de envio gerado", description: "Abra o link, escolha o .pfx e informe a senha. Ele também vai por e-mail." });
+      } else {
+        throw new Error(data?.error ?? "A função não devolveu o link.");
+      }
+    } catch (e) {
+      toast({ title: "Não foi possível gerar o link", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setGerandoLink(false);
+    }
+  };
   const [speds, setSpeds] = useState<any[]>([]);
   const [apuracoes, setApuracoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,7 +143,48 @@ export default function FinIntegracoesFiscais() {
           <TabsTrigger value="impostos"><Calculator className="h-4 w-4" aria-hidden="true" />Apuração de Impostos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sefaz">
+        <TabsContent value="sefaz" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" aria-hidden="true" />Certificado digital A1</CardTitle>
+              <CardDescription>
+                É com ele que o sistema fala com a SEFAZ: busca o XML de uma NF-e pela chave e puxa as notas emitidas contra a empresa.
+                O arquivo .pfx fica no cofre privado e a senha, cifrada; nenhum dos dois volta ao navegador.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {certificado === "carregando" ? (
+                <Skeleton className="h-5 w-72" />
+              ) : certificado?.tem_certificado ? (
+                <p className="text-sm text-foreground">
+                  <Badge variant="success" className="mr-2">Enviado</Badge>
+                  {certificado.arquivo}{certificado.enviado_em ? ` · ${new Date(certificado.enviado_em).toLocaleDateString("pt-BR")}` : ""}
+                  {!certificado.com_senha && <span className="ml-2 text-warning-ink">sem a senha guardada — envie de novo</span>}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground"><Badge variant="warning" className="mr-2">Sem certificado</Badge>Envie o .pfx da empresa pelo link abaixo.</p>
+              )}
+              {certificado !== "carregando" && (
+                <p className="text-xs text-muted-foreground">
+                  Proxy da SEFAZ: {certificado?.proxy_configurado ? <span className="text-success-ink">configurado</span> : <span className="text-warning-ink">não configurado (SEFAZ_PROXY_URL e SEFAZ_PROXY_TOKEN nas edge functions — ver services/sefaz-proxy/README.md)</span>}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => void gerarLinkDeEnvio()} disabled={gerandoLink}>
+                  {gerandoLink ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                  {certificado && certificado !== "carregando" && certificado.tem_certificado ? "Enviar outro certificado" : "Gerar link de envio"}
+                </Button>
+                {linkDeEnvio && (
+                  <>
+                    <a href={linkDeEnvio} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline-offset-2 hover:underline">Abrir a página de envio</a>
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(linkDeEnvio); toast({ title: "Link copiado" }); }}>
+                      <Copy aria-hidden="true" />Copiar link
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Importação automática NF-e por CNPJ</CardTitle>
@@ -126,7 +196,7 @@ export default function FinIntegracoesFiscais() {
               <Alert variant="warning">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
-                  A consulta SEFAZ exige certificado digital A1 instalado em proxy mTLS externo. Configure <code className="rounded bg-muted px-1">SEFAZ_PROXY_URL</code> em Integrações para ativar; importação manual de XML continua sempre disponível.
+                  A consulta à SEFAZ usa o certificado A1 acima e o proxy mTLS do Praefectus (<code className="rounded bg-muted px-1">services/sefaz-proxy</code>). Sem os dois, a importação manual de XML continua disponível.
                 </AlertDescription>
               </Alert>
 

@@ -912,6 +912,36 @@ Regras que valem na Extração de Documentos (a receber e a pagar):
   empresa interessada — a `fin-sefaz-nsu-puxar` já prevê isso via
   `SEFAZ_PROXY_URL` (mTLS), não configurado; ETHOS não tem A1 cadastrado.
 
+### XML pela chave com o A1 da empresa — proxy mTLS (30/09/2026, tarde)
+
+Decisão do dono: "prosseguir com a busca por chave, cadastrar o A1 e
+configurar o proxy". O que existe no código:
+- **`services/sefaz-proxy/`** (Node 20, sem dependência): `POST
+  /consulta-chave` e `POST /distribuicao-dfe` recebem `{ cnpj, chave|
+  ultimo_nsu, ambiente, pfx_base64, senha }`, montam o SOAP 1.2 do
+  NFeDistribuicaoDFe (consChNFe / distNSU, versão 1.01), fazem mTLS com o
+  .pfx e devolvem `documentos` (procNFe inteira ou resNFe resumo) com o
+  docZip aberto. Cabeçalho `x-proxy-token` = `PROXY_TOKEN`. Não guarda
+  nem loga certificado/senha. `npm test` (node:test). Deploy pelo README
+  (Fly.io de exemplo). O proxy é hospedado pelo dono; a URL e o token
+  entram como secrets `SEFAZ_PROXY_URL` / `SEFAZ_PROXY_TOKEN`.
+- **`_shared/certificado-a1.ts`**: o .pfx do bucket privado `certificados`
+  e a senha cifrada de `cert_upload_tokens.senha_cifrada` (fluxo
+  `gerar-link-certificado` → `/certificado-upload` → `upload-certificado`,
+  o mesmo do robô). Só em memória, só para a chamada ao proxy.
+- **Edge `nfe-xml-por-chave`**: `{ empresa_id, chave }` → `{ ok, xml,
+  resumo }`; `modo: "status"` → certificado e proxy. cStat 137 = a SEFAZ
+  só entrega nota em que a empresa é destinatária/transportadora/terceiro
+  (nota EMITIDA pela empresa vem do emissor, não daqui); resNFe = falta a
+  "Ciência da Operação" (manifestação) antes do XML inteiro; 656 = esperar
+  1 h. `fin-sefaz-nsu-puxar` usa o mesmo proxy e contrato.
+- **Telas**: cartão do DANFE na Extração ("Buscar o XML na SEFAZ" → o XML
+  entra pelo caminho do XML anexado), Consulta NF-e de entrada ("Buscar na
+  SEFAZ" pela chave), Financeiro › Integrações › "Certificado digital A1"
+  (estado + link de envio) — `lib/financeiro/xml-por-chave.ts`.
+- Manifestação do destinatário pelo proxy (RecepcaoEvento) NÃO existe
+  ainda: a edge `manifestacao-destinatario` depende do FocusNFe.
+
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 
 - **O preço de referência de um item para uma nota é o que valia NA DATA

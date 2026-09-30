@@ -4,6 +4,8 @@ import { hojeLocal } from "@/lib/financeiro/data-local";
 import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
 import { danfeDaChave, lerDanfe, pastaDaDirecao, type DanfeLido } from "@/lib/financeiro/danfe-texto";
 import { textoDasPaginas } from "@/lib/pdf-text-extractor";
+import { arquivoDoXml, buscarXmlPorChave } from "@/lib/financeiro/xml-por-chave";
+import { useNavigate } from "react-router-dom";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
@@ -151,6 +153,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const { guardarArquivo, vincularLancamento } = useDocumentoFiscal();
   const { empresaAtiva } = useEmpresa();
   const cnpjDaEmpresa = empresaAtiva?.cnpj ?? null;
+  const navigate = useNavigate();
   const xmlInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const [processando, setProcessando] = useState(false);
   const [editor, setEditor] = useState<{ open: boolean; initial: Partial<Lancamento> | null; docId: string | null }>({
@@ -422,6 +425,29 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
     setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "processando" } : d)));
     const lido = await lerPorImagem({ ...item, aguardandoXml: false }, item.documentoId ?? null, true);
     setDocs((prev) => prev.map((d) => (d.id === item.id ? lido : d)));
+  };
+
+  /**
+   * O XML pela SEFAZ (30/09): a chave do DANFE vai à edge `nfe-xml-por-chave`,
+   * que usa o certificado A1 da empresa; o XML que volta entra pelo mesmo
+   * caminho do XML anexado à mão.
+   */
+  const buscarXmlNaSefaz = async (item: DocItem) => {
+    const chave = item.danfe?.chave;
+    if (!chave || !empresaId) return;
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "processando" } : d)));
+    const r = await buscarXmlPorChave(empresaId, chave);
+    setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: "ok" } : d)));
+    if (r.ok === true) {
+      await anexarXmlAoDanfe({ ...item, status: "ok" }, arquivoDoXml(r.xml, chave));
+      return;
+    }
+    const falha = r;
+    toast.error("A SEFAZ não entregou o XML.", {
+      description: falha.motivo,
+      duration: 15000,
+      action: falha.sem_certificado ? { label: "Enviar o certificado", onClick: () => navigate("/financeiro/integracoes_fiscais") } : undefined,
+    });
   };
 
   /** A leitura por imagem já aconteceu (PDF escaneado): seguir com ela é só liberar o cartão. */
@@ -1411,6 +1437,9 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                                     />
                                     <Button size="sm" onClick={() => xmlInputs.current[d.id]?.click()}>
                                       <FileCode2 aria-hidden="true" />Anexar o XML desta nota
+                                    </Button>
+                                    <Button size="sm" variant="secondary" onClick={() => void buscarXmlNaSefaz(d)} title="Busca o XML na SEFAZ com o certificado A1 da empresa (NFeDistribuicaoDFe)">
+                                      <Link2 aria-hidden="true" />Buscar o XML na SEFAZ
                                     </Button>
                                     {Array.isArray(d.dados?.itens) && d.dados.itens.length > 0 ? (
                                       <Button size="sm" variant="outline" onClick={() => seguirComALeitura(d)} title="A leitura por imagem já foi feita: usa o que ela leu, sem o XML">

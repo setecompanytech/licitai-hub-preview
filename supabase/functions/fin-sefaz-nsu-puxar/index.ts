@@ -1,7 +1,9 @@
 // Edge: fin-sefaz-nsu-puxar
 // Importa NF-e via SEFAZ DistribuicaoDFe pelo último NSU armazenado.
-// Usa proxy externo (SEFAZ_PROXY_URL) para mTLS com certificado A1; fallback grava status.
+// Usa proxy externo (SEFAZ_PROXY_URL + SEFAZ_PROXY_TOKEN, services/sefaz-proxy) para mTLS
+// com o certificado A1 da empresa (bucket `certificados` + senha cifrada); fallback grava status.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { carregarCertificadoA1 } from "../_shared/certificado-a1.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,14 +49,24 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // O certificado A1 da empresa vai junto: o proxy não guarda nada (30/09).
+    const cert = await carregarCertificadoA1(supabase, agend.empresa_id);
+    if ("erro" in cert) {
+      await supabase.from("fin_sefaz_agendamentos").update({
+        ultimo_status: "configuracao_pendente", ultimo_erro: cert.erro, ultima_execucao: new Date().toISOString(),
+      }).eq("id", agendamento_id);
+      return new Response(JSON.stringify({ ok: false, configuracao_pendente: true, message: cert.erro }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     // Chama proxy mTLS (DistribuicaoDFe)
-    const proxyResp = await fetch(`${proxyUrl}/distribuicao-dfe`, {
+    const proxyResp = await fetch(`${proxyUrl.replace(/\/$/, "")}/distribuicao-dfe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-internal-key": Deno.env.get("SEFAZ_PROXY_KEY") || "" },
+      headers: { "Content-Type": "application/json", "x-proxy-token": Deno.env.get("SEFAZ_PROXY_TOKEN") || "" },
       body: JSON.stringify({
         cnpj: agend.cnpj,
         ultimo_nsu: agend.ultimo_nsu || "0",
-        ambiente: "producao",
+        ambiente: Deno.env.get("SEFAZ_AMBIENTE") === "homologacao" ? "homologacao" : "producao",
+        pfx_base64: cert.certificado.pfxBase64,
+        senha: cert.certificado.senha,
       }),
     });
 
@@ -68,7 +80,8 @@ Deno.serve(async (req) => {
     }
 
     const result = await proxyResp.json();
-    const documentos = result?.documentos || [];
+    // Só a nota inteira (procNFe) vira registro; o resumo (resNFe) espera a manifestação.
+    const documentos = (result?.documentos || []).filter((d: { tipo?: string }) => d?.tipo !== "resNFe");
     let importadas = 0;
 
     for (const doc of documentos) {

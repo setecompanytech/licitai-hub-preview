@@ -15,6 +15,7 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { parseNFeXML } from "@/lib/parseNFe";
+import { arquivoDoXml, buscarXmlPorChave } from "@/lib/financeiro/xml-por-chave";
 
 /**
  * NF-e de ENTRADA — o acervo automático (Fase 1, 08/09/2026).
@@ -348,6 +349,29 @@ export default function FinConsultaNFeEntrada() {
   };
 
   const chaveInvalida = chaveNfe.length > 0 && chaveNfe.length !== 44;
+
+  // Buscar pela chave (30/09): a SEFAZ entrega o XML das notas em que a
+  // empresa é destinatária, pelo certificado A1; o XML entra como se tivesse
+  // sido importado à mão.
+  const [chaveBusca, setChaveBusca] = useState("");
+  const [buscando, setBuscando] = useState(false);
+  const buscarPelaChave = async () => {
+    if (!empresaAtiva) return toast.error("Selecione uma empresa ativa");
+    const chave = chaveBusca.replace(/\D/g, "");
+    if (chave.length !== 44) return toast.error("A chave de acesso tem 44 dígitos.");
+    setBuscando(true);
+    try {
+      const r = await buscarXmlPorChave(empresaAtiva.id, chave);
+      if (r.ok === false) {
+        toast.error("A SEFAZ não entregou o XML.", { description: r.motivo, duration: 15000 });
+        return;
+      }
+      await importarXml(arquivoDoXml(r.xml, chave));
+      setChaveBusca("");
+    } finally {
+      setBuscando(false);
+    }
+  };
   const motivoInvalido = exigeMotivo && motivo.trim().length > 0 && motivo.trim().length < 15;
 
   return (
@@ -365,6 +389,17 @@ export default function FinConsultaNFeEntrada() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={chaveBusca}
+                onChange={(e) => setChaveBusca(e.target.value)}
+                placeholder="Chave de acesso (44 dígitos)"
+                inputMode="numeric"
+                className="h-9 w-[22rem] max-w-full font-mono text-xs"
+                aria-label="Chave de acesso da NF-e para buscar na SEFAZ"
+              />
+              <Button size="sm" variant="secondary" onClick={() => void buscarPelaChave()} disabled={buscando} title="Busca o XML na SEFAZ com o certificado A1 da empresa">
+                {buscando ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download aria-hidden="true" />}Buscar na SEFAZ
+              </Button>
               <input ref={entradaXml} type="file" accept=".xml,text/xml" className="hidden"
                 onChange={(e) => { void importarXml(e.target.files?.[0] ?? null); e.target.value = ""; }} />
               <Button size="sm" variant="outline" onClick={() => entradaXml.current?.click()}>
