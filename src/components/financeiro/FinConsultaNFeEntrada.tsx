@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { parseNFeXML } from "@/lib/parseNFe";
 import { arquivoDoXml, buscarXmlPorChave } from "@/lib/financeiro/xml-por-chave";
+import { arquivoDanfe } from "@/lib/financeiro/danfe-pdf";
 
 /**
  * NF-e de ENTRADA — o acervo automático (Fase 1, 08/09/2026).
@@ -168,6 +169,21 @@ export default function FinConsultaNFeEntrada() {
     }
     toast.success(`NF-e ${dados.numero ?? ""} de ${dados.emitente_nome ?? "emitente"} importada.`);
     void carregarNotas();
+  };
+
+  /** O DANFE gerado do XML, para baixar (30/09). */
+  const baixarDanfe = (n: NfeEntrada) => {
+    if (!n.xml) { toast.info("Esta nota chegou como resumo — sem o XML completo não há DANFE."); return; }
+    try {
+      const arquivo = arquivoDanfe(parseNFeXML(n.xml));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(arquivo);
+      a.download = arquivo.name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      toast.error("Não foi possível gerar o DANFE deste XML.", { description: e instanceof Error ? e.message : String(e) });
+    }
   };
 
   const baixarXml = (n: NfeEntrada) => {
@@ -455,6 +471,11 @@ export default function FinConsultaNFeEntrada() {
                   <div className="shrink-0 space-y-2 text-right">
                     <p className="font-semibold tabular-nums">{brl(n.valor_total)}</p>
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => baixarDanfe(n)}
+                        aria-label={`Baixar o DANFE da NF-e ${n.numero ?? n.chave}`}
+                        title="DANFE em PDF gerado do XML autorizado">
+                        <FileText aria-hidden="true" />DANFE
+                      </Button>
                       <Button size="icon-sm" variant="ghost" onClick={() => baixarXml(n)}
                         aria-label={`Baixar o XML da NF-e ${n.numero ?? n.chave}`}
                         title="Baixar o XML da nota">

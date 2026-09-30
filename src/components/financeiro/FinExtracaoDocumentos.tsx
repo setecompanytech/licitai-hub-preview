@@ -7,6 +7,7 @@ import { textoDasPaginas } from "@/lib/pdf-text-extractor";
 import { arquivoDoXml, buscarXmlPorChave } from "@/lib/financeiro/xml-por-chave";
 import { useNavigate } from "react-router-dom";
 import { parseNFeXML } from "@/lib/parseNFe";
+import { arquivoDanfe } from "@/lib/financeiro/danfe-pdf";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { mensagemDeErro } from "@/lib/financeiro/erro-do-banco";
 import { buscarRecebimentoDaNota } from "@/lib/financeiro/buscar-recebimento-da-nota";
@@ -239,7 +240,11 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // para uma nota de 500. Quantidade é o que a nota atesta.
         // E as LINHAS de produto (30/09): sem elas, a nota de 18 produtos chegava
         // ao vínculo como "1.000 unidades a R$ 17,28" e nenhum item casava.
-        return { ...item, ...(await dadosDoXml(item.file, resultado)), documentoId: documento?.id ?? null };
+        const lido = await dadosDoXml(item.file, resultado);
+        // O DANFE nasce com o XML (30/09): gerado da nota autorizada e guardado
+        // no cofre, ligado ao título — sem ninguém precisar enviar PDF depois.
+        const danfeId = await guardarDanfeDoXml(item.file, (resultado as { lancamento_id?: string | null }).lancamento_id ?? null);
+        return { ...item, ...lido, documentoId: danfeId };
       }
 
       // ---------- PDF: é um DANFE? A chave diz, sem IA (30/09) ----------
@@ -346,6 +351,36 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       return;
     }
     await vincularAoContrato(item, { id: existente.id, valor: item.dados?.valor_total != null ? Number(item.dados.valor_total) : null });
+  };
+
+  /**
+   * Gera o DANFE do XML e o guarda junto do título (uma vez: título que já
+   * tem PDF não ganha outro). Devolve o id do documento guardado, ou nulo.
+   */
+  const guardarDanfeDoXml = async (xmlFile: File, lancamentoIdDado: string | null): Promise<string | null> => {
+    try {
+      const nfe = parseNFeXML(await xmlFile.text());
+      const chave = normalizarChaveNfe(nfe.chave_acesso);
+      const lancamentoId = lancamentoIdDado ?? (chave ? (await lancamentoDaChave(chave))?.id ?? null : null);
+      if (!lancamentoId) return null;
+      const { data: jaTem } = await supabase
+        .from("financeiro_documentos_fiscais" as never)
+        .select("id, arquivo_nome")
+        .eq("lancamento_id", lancamentoId)
+        .ilike("arquivo_nome", "%.pdf")
+        .limit(1)
+        .maybeSingle();
+      if (jaTem) return (jaTem as unknown as { id: string }).id;
+      const doc = await guardarArquivo(arquivoDanfe(nfe), {
+        tipo: "nfe", numero: nfe.numero_nf ? String(nfe.numero_nf) : null, serie: nfe.serie ? String(nfe.serie) : null,
+        chave_acesso: chave, data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
+        valor_total: Number(nfe.v_nf) || 0, lancamento_id: lancamentoId,
+      });
+      return doc?.id ?? null;
+    } catch (e) {
+      console.warn("DANFE não gerado:", e instanceof Error ? e.message : e);
+      return null;
+    }
   };
 
   /** Os campos que a chave e o texto do DANFE dão com certeza. */

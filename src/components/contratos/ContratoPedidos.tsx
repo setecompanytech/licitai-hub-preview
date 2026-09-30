@@ -18,6 +18,8 @@ import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-
 import { agruparEmLotes, rotuloDoLote, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
 import { parseNFeXML } from '@/lib/parseNFe';
 import { abrirEspelho } from '@/lib/financeiro/espelho-da-nfe';
+import { arquivoDanfe } from '@/lib/financeiro/danfe-pdf';
+import type { NotaDoPedido } from '@/hooks/useNotaDoPedido';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, rotuloDoItemNoSeletor, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
 import { useSituacaoJuridica } from '@/hooks/useSituacaoJuridica';
@@ -169,7 +171,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { data: docsPorNumero } = useDocumentosPorNumeroNota();
   // A nota pelo VÍNCULO, não pelo número digitado. Ver useNotaDoPedido.
   const { data: notaDoPedido } = useNotasDosPedidos(contratoId);
-  const { abrirArquivo } = useDocumentoFiscal();
+  const { abrirArquivo, guardarArquivo } = useDocumentoFiscal();
+  const [gerandoDanfe, setGerandoDanfe] = useState<string | null>(null);
+  /**
+   * O DANFE gerado do XML (30/09): quem tem o XML autorizado imprime o DANFE.
+   * Nasce sozinho na importação; para nota que entrou antes, este botão gera,
+   * guarda no cofre ligado ao título e a linha passa a "Abrir DANFE".
+   */
+  const gerarDanfeDaNota = async (nd: NotaDoPedido) => {
+    if (!nd.arquivo_xml || !nd.lancamento_id) return;
+    setGerandoDanfe(nd.lancamento_id);
+    try {
+      const nfe = parseNFeXML(nd.arquivo_xml);
+      const arquivo = arquivoDanfe(nfe);
+      const doc = await guardarArquivo(arquivo, {
+        tipo: 'nfe', numero: nfe.numero_nf ? String(nfe.numero_nf) : null, serie: nfe.serie ? String(nfe.serie) : null,
+        chave_acesso: nfe.chave_acesso || null, data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
+        valor_total: Number(nfe.v_nf) || 0, lancamento_id: nd.lancamento_id,
+      });
+      if (!doc) { toast.error('O DANFE foi gerado, mas não pôde ser guardado no cofre.'); return; }
+      toast.success(`DANFE da NF-e ${nfe.numero_nf} gerado e guardado junto do título.`);
+      void qc.invalidateQueries({ queryKey: ['nf-por-pedido'] });
+    } catch (e) {
+      toast.error('Não foi possível gerar o DANFE deste XML.', { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setGerandoDanfe(null);
+    }
+  };
 
   /** Abre o DANFE arquivado no Financeiro, por URL assinada. */
   /**
@@ -2554,10 +2582,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <ExternalLink aria-hidden="true" className="h-3 w-3" />{/\.xml$/i.test(nd.arquivo_nome ?? '') ? 'Abrir XML' : 'Abrir DANFE'}
           </button>
         )}
+        {nd.arquivo_xml && !nd.tem_pdf && (
+          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
+            title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
+            {gerandoDanfe === nd.lancamento_id ? <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" /> : <FileText aria-hidden="true" className="h-3 w-3" />}Gerar DANFE
+          </button>
+        )}
         {nd.arquivo_xml && (
-          <button type="button" className="g-meta inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" title="Leitura do XML da nota em nova aba (não substitui o DANFE oficial)"
+          <button type="button" className="g-meta inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:underline" title="Leitura do XML da nota em nova aba"
             onClick={() => { try { if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.'); } catch { toast.error('Não foi possível ler o XML desta nota.'); } }}>
-            <FileText aria-hidden="true" className="h-3 w-3" />Espelho da NF-e
+            Espelho
           </button>
         )}
       </span>
@@ -3065,17 +3099,25 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                                 // XML, abre aqui; o DANFE em PDF, quando anexado ao mesmo
                                 // título, é o arquivo que abre no selo.
                                 const espelho = nd.arquivo_xml ? (
-                                  <button type="button" className="block w-fit g-meta text-primary underline-offset-2 hover:underline"
-                                    title="Abre a leitura do XML da nota em nova aba (não substitui o DANFE oficial)"
-                                    onClick={() => {
-                                      try {
-                                        if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.');
-                                      } catch {
-                                        toast.error('Não foi possível ler o XML desta nota.');
-                                      }
-                                    }}>
-                                    Espelho da NF-e (XML)
-                                  </button>
+                                  <span className="flex flex-wrap items-center gap-2">
+                                    {!nd.tem_pdf && (
+                                      <button type="button" className="g-meta text-primary underline-offset-2 hover:underline disabled:opacity-60" disabled={gerandoDanfe === nd.lancamento_id}
+                                        title="Gera o DANFE (PDF) a partir do XML autorizado e guarda junto do título" onClick={() => void gerarDanfeDaNota(nd)}>
+                                        Gerar DANFE
+                                      </button>
+                                    )}
+                                    <button type="button" className="g-meta text-muted-foreground underline-offset-2 hover:underline"
+                                      title="Abre a leitura do XML da nota em nova aba"
+                                      onClick={() => {
+                                        try {
+                                          if (!abrirEspelho(parseNFeXML(nd.arquivo_xml!))) toast.error('O navegador bloqueou a janela do espelho da nota.');
+                                        } catch {
+                                          toast.error('Não foi possível ler o XML desta nota.');
+                                        }
+                                      }}>
+                                      Espelho
+                                    </button>
+                                  </span>
                                 ) : null;
                                 if (!nd.storage_path) {
                                   return (

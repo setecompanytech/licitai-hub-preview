@@ -950,6 +950,14 @@ configurar o proxy". O que existe no código:
   (estado + link de envio) — `lib/financeiro/xml-por-chave.ts`.
 - Manifestação do destinatário pelo proxy (RecepcaoEvento) NÃO existe
   ainda: a edge `manifestacao-destinatario` depende do FocusNFe.
+- **O DANFE nasce do XML, sem certificado e sem PDF do emissor** (30/09,
+  tarde): `lib/financeiro/danfe-pdf.ts` (jsPDF + autotable, traçado do MOC,
+  chave em Code 128 C de `code128.ts`, testado). A Extração gera e guarda o
+  PDF no cofre ligado ao título ao importar o XML (`guardarDanfeDoXml`, uma
+  vez por título); Pedidos tem "Gerar DANFE" para nota que entrou antes
+  (`gerarDanfeDaNota`, invalida `nf-por-pedido`); NF-e recebidas baixa o
+  DANFE. `NotaDoPedido` traz `lancamento_id` e `tem_pdf`. O certificado A1
+  serve para BUSCAR o XML na SEFAZ, não para imprimir o DANFE.
 - **A página `/certificado-upload` é pública** (autoriza pelo token de uso
   único): `upload-certificado` precisa de `verify_jwt = false` no
   `config.toml`, senão o gateway recusa o envio antes de a função rodar —

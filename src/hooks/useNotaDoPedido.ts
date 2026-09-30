@@ -35,6 +35,10 @@ export type NotaDoPedido = {
   tem_xml: boolean;
   /** O XML da nota, quando é ele que está arquivado: o espelho da NF-e é lido dele. */
   arquivo_xml: string | null;
+  /** O título ao qual a nota está ligada — é nele que o DANFE gerado é guardado. */
+  lancamento_id: string | null;
+  /** O arquivo aberto é um PDF (DANFE)? Se não, o DANFE ainda pode ser gerado do XML. */
+  tem_pdf: boolean;
 };
 
 export function useNotasDosPedidos(contratoId: string | undefined) {
@@ -114,6 +118,8 @@ export function useNotasDosPedidos(contratoId: string | undefined) {
           numero: d?.numero ?? l.numero_documento ?? null,
           tem_xml: !!(d?.arquivo_xml || xmlPorLancamento.get(l.id)),
           arquivo_xml: d?.arquivo_xml ?? xmlPorLancamento.get(l.id) ?? null,
+          lancamento_id: l.id,
+          tem_pdf: !!d?.storage_path && /\.pdf$/i.test(d.arquivo_nome ?? ''),
         };
       }
       return mapa;
