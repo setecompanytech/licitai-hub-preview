@@ -71,3 +71,29 @@ export function confereCnpj(inspecao, cnpj) {
   if (!inspecao?.ok || !inspecao.cnpj) return null;
   return inspecao.cnpj === digitos(cnpj);
 }
+
+/**
+ * A chave privada e a cadeia em PEM, extraídas pelo OpenSSL (com -legacy
+ * quando o .pfx é antigo). O TLS do Node (OpenSSL 3 sem o provedor legado)
+ * recusa .pfx da AC SAFEWEB e afins com "mac verify failure" mesmo com a
+ * senha certa; entregando PEM, o Node não precisa abrir o PKCS#12. Tudo em
+ * memória: a saída vem pelo stdout, o arquivo temporário é apagado.
+ */
+export function materialTls({ pfxBase64, senha }) {
+  const pasta = mkdtempSync(join(tmpdir(), 'pfx-'));
+  const arquivo = join(pasta, 'c.pfx');
+  try {
+    writeFileSync(arquivo, Buffer.from(pfxBase64, 'base64'), { mode: 0o600 });
+    const base = ['pkcs12', '-in', arquivo, '-nodes', '-passin', 'env:PFX_SENHA'];
+    let r = rodarOpenssl(base, senha ?? '');
+    if (r.status !== 0 && /unsupported|legacy/i.test((r.stderr ?? '') + (r.error?.message ?? ''))) r = rodarOpenssl([...base, '-legacy'], senha ?? '');
+    if (r.status !== 0) return { erro: /mac verify|invalid password|password/i.test(r.stderr ?? '') ? 'A senha do certificado não abre o .pfx' : `O OpenSSL não abriu o .pfx: ${(r.stderr ?? '').trim().split('\n').slice(-1)[0]}` };
+    const saida = r.stdout ?? '';
+    const chave = /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC )?PRIVATE KEY-----/.exec(saida)?.[0] ?? null;
+    const certs = saida.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
+    if (!chave || certs.length === 0) return { erro: 'O .pfx não tem chave privada e certificado legíveis.' };
+    return { key: chave, cert: certs.join('\n') };
+  } finally {
+    rmSync(pasta, { recursive: true, force: true });
+  }
+}

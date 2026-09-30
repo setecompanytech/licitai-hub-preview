@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { confereCnpj, inspecionarPfx } from '../lib/certificado.js';
+import { confereCnpj, inspecionarPfx, materialTls } from '../lib/certificado.js';
 
 const temOpenssl = spawnSync('openssl', ['version']).status === 0;
 
@@ -24,6 +24,11 @@ test('abre o .pfx com a senha certa, diz o CNPJ e a validade; senha errada é di
     assert.equal(certo.vencido, false);
     assert.equal(confereCnpj(certo, '12.345.678/0001-99'), true);
     assert.equal(confereCnpj(certo, '33734346000172'), false);
+
+    const material = materialTls({ pfxBase64, senha: 'abc123' });
+    assert.match(material.key, /BEGIN (RSA )?PRIVATE KEY/);
+    assert.match(material.cert, /BEGIN CERTIFICATE/);
+    assert.match(materialTls({ pfxBase64, senha: 'outra' }).erro, /senha/);
 
     const errado = inspecionarPfx({ pfxBase64, senha: 'outra' });
     assert.equal(errado.ok, false);

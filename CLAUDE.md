@@ -962,6 +962,12 @@ configurar o proxy". O que existe no código:
   mensagem certa em vez de "mac verify failure". `POST /certificado/testar`
   e `modo: "testar_certificado"` na edge alimentam "Testar o certificado"
   no cartão do A1.
+- **O TLS do Node não abre .pfx da AC SAFEWEB (PKCS#12 legado, RC2/3DES)**
+  mesmo com a senha certa: "mac verify failure" com o OpenSSL 3 sem o
+  provedor legado — e o teste pela CLI passa porque tenta `-legacy`. O proxy
+  extrai chave e cadeia em PEM pelo OpenSSL (`materialTls`, stdout, sem
+  arquivo de saída) e entrega `{ key, cert }` ao `https.request`; o .pfx
+  direto fica só como reserva.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 

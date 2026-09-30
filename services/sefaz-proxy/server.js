@@ -13,7 +13,7 @@
  */
 import http from 'node:http';
 import { chamarSefaz, envelopeDistDFe, motivoDoStatus, parseRetDistDFe, resumoDoDocumento } from './lib/sefaz.js';
-import { confereCnpj, inspecionarPfx } from './lib/certificado.js';
+import { confereCnpj, inspecionarPfx, materialTls } from './lib/certificado.js';
 
 const PORTA = Number(process.env.PORT || 8787);
 const TOKEN = process.env.PROXY_TOKEN;
@@ -60,9 +60,11 @@ async function consultar(corpo, consulta) {
   const { cnpj, ambiente = 'producao', uf_autor, pfx_base64, senha } = corpo;
   if (!pfx_base64 || !senha) throw new Error('Certificado (.pfx em base64) e senha são obrigatórios');
   conferirCertificado(corpo);
+  const material = materialTls({ pfxBase64: pfx_base64, senha });
+  if ('erro' in material) throw new Error(material.erro);
   const envelope = envelopeDistDFe({ cnpj, ambiente, ufAutor: uf_autor, consulta });
   const inicio = Date.now();
-  const { status, corpo: xml } = await chamarSefaz({ pfxBase64: pfx_base64, senha, envelope, ambiente });
+  const { status, corpo: xml } = await chamarSefaz({ pfxBase64: pfx_base64, senha, key: material.key, cert: material.cert, envelope, ambiente });
   const ret = parseRetDistDFe(xml);
   const documentos = ret.docs.map(resumoDoDocumento);
   console.log(`[sefaz] ${consulta.chave ? 'chave' : 'nsu'} cnpj=${mascara(cnpj)} http=${status} cStat=${ret.cStat} docs=${documentos.length} ${Date.now() - inicio}ms`);

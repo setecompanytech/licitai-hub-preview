@@ -55,11 +55,12 @@ export default function FinIntegracoesFiscais() {
     setTeste("testando");
     setTeste(await testarCertificadoA1(empresaAtiva.id));
   };
-  const atualizarCertificado = async () => {
+  const atualizarCertificado = async (avisar = false) => {
     if (!empresaAtiva?.id) return;
     const s = await statusDoCertificadoA1(empresaAtiva.id);
     setCertificado(s);
     setUltimaLeituraDoCert(Date.now());
+    if (avisar) toast({ title: "Estado do certificado atualizado", description: s?.tem_certificado ? `Enviado: ${s.arquivo ?? ""}` : "Nenhum certificado enviado ainda." });
   };
   useEffect(() => {
     if (!empresaAtiva?.id) return;
@@ -202,7 +203,7 @@ export default function FinIntegracoesFiscais() {
                   {gerandoLink ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}
                   {certificado && certificado !== "carregando" && certificado.tem_certificado ? "Enviar outro certificado" : "Gerar link de envio"}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => void atualizarCertificado()} title={ultimaLeituraDoCert ? `Lido às ${new Date(ultimaLeituraDoCert).toLocaleTimeString("pt-BR")}` : undefined}>
+                <Button size="sm" variant="ghost" onClick={() => void atualizarCertificado(true)} title={ultimaLeituraDoCert ? `Lido às ${new Date(ultimaLeituraDoCert).toLocaleTimeString("pt-BR")}` : undefined}>
                   <RefreshCw aria-hidden="true" />Atualizar
                 </Button>
                 {certificado !== "carregando" && certificado?.tem_certificado && (

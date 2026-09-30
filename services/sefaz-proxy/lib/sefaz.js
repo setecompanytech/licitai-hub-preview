@@ -142,9 +142,11 @@ export function motivoDoStatus(cStat, xMotivo) {
 }
 
 /** A chamada em si: mTLS com o .pfx e a senha, SOAP 1.2, resposta como texto. */
-export function chamarSefaz({ pfxBase64, senha, envelope, ambiente = 'producao', timeoutMs = 45000 }) {
+export function chamarSefaz({ pfxBase64, senha, key, cert, envelope, ambiente = 'producao', timeoutMs = 45000 }) {
   const url = new URL(ENDPOINTS[ambiente] ?? ENDPOINTS.producao);
-  const pfx = Buffer.from(pfxBase64, 'base64');
+  // PEM (chave + cadeia) quando o chamador já abriu o .pfx pelo OpenSSL; o
+  // .pfx direto fica como reserva.
+  const credencial = key && cert ? { key, cert } : { pfx: Buffer.from(pfxBase64, 'base64'), passphrase: senha };
   return new Promise((resolve, reject) => {
     let req;
     try {
@@ -157,8 +159,7 @@ export function chamarSefaz({ pfxBase64, senha, envelope, ambiente = 'producao',
           'Content-Type': `application/soap+xml; charset=utf-8; action="${SOAP_ACTION}"`,
           'Content-Length': Buffer.byteLength(envelope),
         },
-        pfx,
-        passphrase: senha,
+        ...credencial,
         // A cadeia da SEFAZ é ICP-Brasil; o Node valida com a lista do sistema.
         rejectUnauthorized: true,
         timeout: timeoutMs,
