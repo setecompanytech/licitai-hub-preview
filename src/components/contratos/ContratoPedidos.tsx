@@ -455,32 +455,27 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     setSalvandoLote(true);
     const cestas = parseFloat(edicaoDoLote.unidades_compostas.replace(',', '.'));
     const emp = edicaoDoLote.empenho_id && edicaoDoLote.empenho_id !== 'nenhum' ? empenhosDoContrato.find((e) => e.id === edicaoDoLote.empenho_id) ?? null : null;
-    const comum = {
-      nota_fiscal: edicaoDoLote.nota_fiscal.trim() || null,
-      data_pedido: edicaoDoLote.data_pedido || null,
-      data_entrega: edicaoDoLote.data_entrega || null,
-      status: edicaoDoLote.status,
-      empenho_id: emp?.id ?? null, numero_empenho: emp?.numero ?? null, tipo_empenho: emp?.tipo ?? null,
-      unidade_composta: edicaoDoLote.unidade_composta.trim() || null,
-      unidades_compostas: Number.isFinite(cestas) && cestas > 0 ? cestas : null,
-      observacoes: edicaoDoLote.observacoes.trim() || null,
-    };
-    const { error } = await supabase.from('contrato_pedidos').update(comum as never).in('id', edicaoDoLote.partes);
-    // A descrição do lote é o prefixo antes de " · " em cada parte ("NF-e 595 · AÇÚCAR… (item 1/18)"):
-    // renomear o lote troca o prefixo e preserva o item de cada parte.
-    const prefixo = edicaoDoLote.descricao.trim();
-    let erroDesc: string | null = null;
-    if (!error && prefixo) {
-      const partesDoLote = pedidos.filter((p) => edicaoDoLote.partes.includes(p.id));
-      const resultados = await Promise.all(partesDoLote.map((p) => {
-        const atual = String(p.descricao ?? '');
-        const resto = atual.includes(' · ') ? atual.slice(atual.indexOf(' · ') + 3) : '';
-        return supabase.from('contrato_pedidos').update({ descricao: resto ? `${prefixo} · ${resto}` : prefixo } as never).eq('id', p.id);
-      }));
-      erroDesc = resultados.find((r) => r.error)?.error?.message ?? null;
-    }
+    // Uma chamada, uma transação (migration 20260930000005): duas levas paralelas
+    // de 18 UPDATEs davam "deadlock detected" nos gatilhos por pedido.
+    const { error } = await supabase.rpc('editar_lote_de_pedidos' as never, {
+      p_lote_id: edicaoDoLote.id,
+      p_campos: {
+        nota_fiscal: edicaoDoLote.nota_fiscal.trim(),
+        data_pedido: edicaoDoLote.data_pedido,
+        data_entrega: edicaoDoLote.data_entrega,
+        status: edicaoDoLote.status,
+        empenho_id: emp?.id ?? '', numero_empenho: emp?.numero ?? '', tipo_empenho: emp?.tipo ?? '',
+        unidade_composta: edicaoDoLote.unidade_composta.trim(),
+        unidades_compostas: Number.isFinite(cestas) && cestas > 0 ? String(cestas) : '',
+        observacoes: edicaoDoLote.observacoes.trim(),
+      },
+      p_descricao: edicaoDoLote.descricao.trim() || null,
+    } as never);
     setSalvandoLote(false);
-    if (error || erroDesc) { toast.error('Não foi possível salvar o lote', { description: error?.message ?? erroDesc ?? '' }); return; }
+    if (error) {
+      toast.error('Não foi possível salvar o lote', { description: error.message.includes('editar_lote_de_pedidos') ? 'A função editar_lote_de_pedidos ainda não existe no banco: cole a migration 20260930000005.' : error.message });
+      return;
+    }
     toast.success(`Lote ${edicaoDoLote.numero} atualizado nas ${edicaoDoLote.partes.length} partes.`);
     setEdicaoDoLote(null);
     load();

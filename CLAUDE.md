@@ -881,9 +881,11 @@ o título único fica sem `lote_id`, apagar título é no Financeiro); o botão
 da Extração trava enquanto vincula. A nota do lote (arquivo do título e
 espelho do XML) aparece na linha e no painel do lote (`notaDoLote`). O
 detalhe do pedido abre em caixa (Dialog em duas colunas), não mais no
-painel lateral. **Excluir lote é uma RPC** (`excluir_lote_de_pedidos`,
-migration 20260930000003, transação única): parte a parte pelo navegador
-parou no meio. Prazo nas linhas é `resumido` (ícone + palavra; a frase abre
+painel lateral. **Excluir e EDITAR lote são RPCs** (`excluir_lote_de_pedidos`,
+migration 20260930000003; `editar_lote_de_pedidos`, migration 20260930000005,
+partes travadas em ordem fixa): parte a parte pelo navegador parou no meio
+e, na edição, deu "deadlock detected" (duas levas paralelas × gatilhos por
+pedido). Nunca disparar N UPDATEs paralelos nas partes de um lote. Prazo nas linhas é `resumido` (ícone + palavra; a frase abre
 ao clicar). Na linha do lote só o número e "Abrir lote" abrem a caixa. **O lote é a nota; a parte é o item (30/09):** as ações da nota
 (registrar ordem, pré-NF, Kanban, kit, ordem/empenho, excluir lote) moram
 na caixa do lote ("Ações do lote"); a parte de um lote mostra só custo,

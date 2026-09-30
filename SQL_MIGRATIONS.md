@@ -19993,3 +19993,11 @@ em 20/08/2026, art. 124, II, "d"), no molde do 1º TA: aditivo + 4 linhas em
 alterados ganham `valor_unitario_original = valor_unitario`. Idempotente;
 ensaiado com BEGIN…ROLLBACK. Arquivo:
 `supabase/migrations/20260930000004_dados_4o_termo_aditivo_772_2024.sql`.
+
+## 20260930000005 — editar lote de pedidos numa transação (30/09/2026)
+
+RPC `editar_lote_de_pedidos(p_lote_id, p_campos jsonb, p_descricao)`
+(SECURITY DEFINER, membro da empresa): trava as partes em ordem fixa e grava
+nota, datas, situação, empenho, cesta, observações e a descrição (prefixo)
+numa transação. Duas levas paralelas pelo navegador davam "deadlock
+detected". Arquivo: `supabase/migrations/20260930000005_editar_lote_de_pedidos.sql`.
