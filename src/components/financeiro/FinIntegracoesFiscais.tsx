@@ -16,6 +16,7 @@ import EstadoVazio from "@/components/shared/EstadoVazio";
 import { FileSpreadsheet, RefreshCw, Plus, Loader2, Calculator, Building2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { statusDoCertificadoA1, type StatusDoCertificado } from "@/lib/financeiro/xml-por-chave";
+import { motivoDaEdgeFunction } from "@/lib/erro-edge-function";
 import { ShieldCheck, Copy } from "lucide-react";
 
 const TRIBUTOS = [
@@ -47,11 +48,28 @@ export default function FinIntegracoesFiscais() {
   const [certificado, setCertificado] = useState<StatusDoCertificado | null | "carregando">("carregando");
   const [linkDeEnvio, setLinkDeEnvio] = useState<string | null>(null);
   const [gerandoLink, setGerandoLink] = useState(false);
+  const [ultimaLeituraDoCert, setUltimaLeituraDoCert] = useState(0);
+  const atualizarCertificado = async () => {
+    if (!empresaAtiva?.id) return;
+    const s = await statusDoCertificadoA1(empresaAtiva.id);
+    setCertificado(s);
+    setUltimaLeituraDoCert(Date.now());
+  };
   useEffect(() => {
     if (!empresaAtiva?.id) return;
     setCertificado("carregando");
-    void statusDoCertificadoA1(empresaAtiva.id).then((s) => setCertificado(s));
+    void atualizarCertificado();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresaAtiva?.id]);
+  // O envio acontece em OUTRA aba (a página do link): enquanto houver link
+  // gerado e ainda não houver certificado, o cartão se atualiza sozinho.
+  useEffect(() => {
+    if (!linkDeEnvio || !empresaAtiva?.id) return;
+    if (certificado !== "carregando" && certificado?.tem_certificado) return;
+    const id = window.setInterval(() => { void atualizarCertificado(); }, 8000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkDeEnvio, empresaAtiva?.id, certificado]);
   const gerarLinkDeEnvio = async () => {
     if (!empresaAtiva?.id) return;
     setGerandoLink(true);
@@ -117,16 +135,18 @@ export default function FinIntegracoesFiscais() {
       if (error) throw error;
       const resp = data as any;
       if (resp?.configuracao_pendente) {
-        toast({
-          title: "Configuração pendente",
-          description: "Configure SEFAZ_PROXY_URL nas Integrações para ativar o pull automático. Importação manual via XML continua disponível.",
-        });
+        toast({ title: "Configuração pendente", description: resp?.message ?? "Configure o certificado A1 e o proxy da SEFAZ (cartão acima)." });
+      } else if (resp?.ok === false) {
+        toast({ title: "A SEFAZ não foi consultada", description: resp?.message ?? resp?.erro ?? "Veja o motivo na coluna Status.", variant: "destructive" });
       } else {
         toast({ title: "SEFAZ consultado", description: `${resp?.importadas || 0} NF-e importadas.` });
       }
       await carregar();
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      const motivo = (await motivoDaEdgeFunction(e)) ?? e?.message;
+      toast({ title: "Erro ao consultar a SEFAZ", description: motivo, variant: "destructive" });
+      await carregar();
+      return;
     } finally {
       setPuxando(null);
     }
@@ -166,13 +186,18 @@ export default function FinIntegracoesFiscais() {
               )}
               {certificado !== "carregando" && (
                 <p className="text-xs text-muted-foreground">
-                  Proxy da SEFAZ: {certificado?.proxy_configurado ? <span className="text-success-ink">configurado</span> : <span className="text-warning-ink">não configurado (SEFAZ_PROXY_URL e SEFAZ_PROXY_TOKEN nas edge functions — ver services/sefaz-proxy/README.md)</span>}
+                  Proxy da SEFAZ: {certificado?.proxy_configurado
+                    ? <span className="text-success-ink">configurado</span>
+                    : <span className="text-warning-ink">{certificado?.proxy_motivo ?? "não configurado (SEFAZ_PROXY_URL e SEFAZ_PROXY_TOKEN nas edge functions — ver services/sefaz-proxy/README.md)"}</span>}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" onClick={() => void gerarLinkDeEnvio()} disabled={gerandoLink}>
                   {gerandoLink ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}
                   {certificado && certificado !== "carregando" && certificado.tem_certificado ? "Enviar outro certificado" : "Gerar link de envio"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => void atualizarCertificado()} title={ultimaLeituraDoCert ? `Lido às ${new Date(ultimaLeituraDoCert).toLocaleTimeString("pt-BR")}` : undefined}>
+                  <RefreshCw aria-hidden="true" />Atualizar
                 </Button>
                 {linkDeEnvio && (
                   <>

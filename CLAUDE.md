@@ -947,6 +947,12 @@ configurar o proxy". O que existe no código:
   foi o "Erro ao enviar certificado" de 30/09 (nenhum token da tabela
   tinha sido usado desde junho). Edge nova chamada por página sem login →
   sempre `verify_jwt = false` no config.
+- **`SEFAZ_PROXY_URL` precisa ser http(s)**: em 30/09 o secret recebeu o
+  token e a edge caía em 500 no fetch ("non-2xx"). `urlDoProxy()` e
+  `chamarProxy()` (em `_shared/certificado-a1.ts`) conferem a URL, traduzem
+  rede/401 em motivo e as edges devolvem 200 com `ok:false` — o agendamento
+  guarda o motivo em `ultimo_erro`. O cartão do A1 se atualiza sozinho
+  enquanto há link de envio aberto (o envio é em outra aba).
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 

@@ -29,6 +29,8 @@ export type StatusDoCertificado = {
   enviado_em: string | null;
   com_senha: boolean;
   proxy_configurado: boolean;
+  /** Quando o proxy não está configurado: o que falta, dito pela edge. */
+  proxy_motivo?: string | null;
 };
 
 export async function buscarXmlPorChave(empresaId: string, chave: string): Promise<ResultadoDaBusca> {

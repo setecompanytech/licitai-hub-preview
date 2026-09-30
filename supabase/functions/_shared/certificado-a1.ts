@@ -72,3 +72,32 @@ export async function carregarCertificadoA1(admin: Admin, empresaId: string): Pr
   }
   return { certificado: { pfxBase64: paraBase64(await arquivo.arrayBuffer()), senha, arquivo: envio.cert_file_path, enviadoEm: envio.used_at } };
 }
+
+/**
+ * A URL do proxy, conferida: precisa ser http(s). Em 30/09 o secret
+ * SEFAZ_PROXY_URL recebeu o TOKEN por engano e a edge caía em 500 no fetch.
+ */
+export function urlDoProxy(): { url: string } | { erro: string } {
+  const bruto = (Deno.env.get("SEFAZ_PROXY_URL") ?? "").trim();
+  const token = (Deno.env.get("SEFAZ_PROXY_TOKEN") ?? "").trim();
+  if (!bruto || !token) return { erro: "O proxy da SEFAZ ainda não está configurado: faltam SEFAZ_PROXY_URL e/ou SEFAZ_PROXY_TOKEN nas edge functions (services/sefaz-proxy/README.md)." };
+  if (!/^https?:\/\/[^\s/]+/i.test(bruto)) return { erro: `SEFAZ_PROXY_URL não é um endereço http(s) — o valor gravado começa com "${bruto.slice(0, 8)}…" (parece o token). Grave a URL do proxy (ex.: https://praefectus-sefaz-proxy.fly.dev).` };
+  return { url: bruto.replace(/\/$/, "") };
+}
+
+/** A chamada ao proxy, com falha de rede dita em português. */
+export async function chamarProxy(url: string, rota: string, corpo: unknown, timeoutMs = 60000): Promise<{ status: number; corpo: string }> {
+  const token = (Deno.env.get("SEFAZ_PROXY_TOKEN") ?? "").trim();
+  try {
+    const resp = await fetch(`${url}${rota}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-proxy-token": token },
+      body: JSON.stringify(corpo),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return { status: resp.status, corpo: await resp.text() };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`O proxy da SEFAZ (${url}) não respondeu: ${msg}. Confira se o serviço está no ar (GET ${url}/saude).`);
+  }
+}

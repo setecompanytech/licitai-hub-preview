@@ -11,7 +11,7 @@
  * O certificado e a senha nunca voltam ao navegador nem vão para o log.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { carregarCertificadoA1, statusDoCertificado } from "../_shared/certificado-a1.ts";
+import { carregarCertificadoA1, chamarProxy, statusDoCertificado, urlDoProxy } from "../_shared/certificado-a1.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,20 +57,17 @@ Deno.serve(async (req) => {
     const { data: membro } = await admin.from("empresa_membros").select("user_id").eq("empresa_id", empresaId).eq("user_id", userId).maybeSingle();
     if (!membro) return json({ error: "Seu usuário não é membro da empresa selecionada." }, 403);
 
-    const proxyUrl = Deno.env.get("SEFAZ_PROXY_URL");
-    const proxyToken = Deno.env.get("SEFAZ_PROXY_TOKEN");
+    const proxy = urlDoProxy();
 
     if (body.modo === "status") {
       const status = await statusDoCertificado(admin, empresaId);
-      return json({ ...status, proxy_configurado: !!(proxyUrl && proxyToken) });
+      return json({ ...status, proxy_configurado: "url" in proxy, proxy_motivo: "erro" in proxy ? proxy.erro : null });
     }
 
     const chave = String(body.chave ?? "").replace(/\D/g, "");
     if (!chaveValida(chave)) return json({ error: "Chave de acesso inválida: precisa de 44 dígitos com dígito verificador correto." }, 400);
 
-    if (!proxyUrl || !proxyToken) {
-      return json({ ok: false, setup_required: true, motivo: "O proxy da SEFAZ ainda não está configurado (SEFAZ_PROXY_URL e SEFAZ_PROXY_TOKEN). Veja services/sefaz-proxy/README.md." });
-    }
+    if ("erro" in proxy) return json({ ok: false, setup_required: true, motivo: proxy.erro });
 
     const { data: emp } = await admin.from("empresas").select("cnpj").eq("id", empresaId).maybeSingle();
     const cnpj = String(emp?.cnpj ?? "").replace(/\D/g, "");
@@ -80,20 +77,20 @@ Deno.serve(async (req) => {
     if ("erro" in cert) return json({ ok: false, sem_certificado: !!cert.sem_certificado, motivo: cert.erro });
 
     const inicio = Date.now();
-    const resp = await fetch(`${proxyUrl.replace(/\/$/, "")}/consulta-chave`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-proxy-token": proxyToken },
-      body: JSON.stringify({
+    let resp: { status: number; corpo: string };
+    try {
+      resp = await chamarProxy(proxy.url, "/consulta-chave", {
         cnpj, chave, ambiente: Deno.env.get("SEFAZ_AMBIENTE") === "homologacao" ? "homologacao" : "producao",
         uf_autor: chave.slice(0, 2), pfx_base64: cert.certificado.pfxBase64, senha: cert.certificado.senha,
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
-    const texto = await resp.text();
+      });
+    } catch (e) {
+      return json({ ok: false, setup_required: true, motivo: e instanceof Error ? e.message : String(e) });
+    }
     let ret: { ok?: boolean; cStat?: string; mensagem?: string; error?: string; documentos?: DocDoProxy[] } = {};
-    try { ret = JSON.parse(texto); } catch { ret = { error: texto.slice(0, 300) }; }
+    try { ret = JSON.parse(resp.corpo); } catch { ret = { error: resp.corpo.slice(0, 300) }; }
     console.log(`[nfe-xml-por-chave] empresa=${empresaId} chave=…${chave.slice(-8)} http=${resp.status} cStat=${ret.cStat ?? "-"} ${Date.now() - inicio}ms`);
-    if (!resp.ok || ret.error) return json({ ok: false, motivo: `O proxy da SEFAZ falhou: ${ret.error ?? `HTTP ${resp.status}`}` });
+    if (resp.status === 401) return json({ ok: false, setup_required: true, motivo: "O proxy recusou o token: SEFAZ_PROXY_TOKEN (edge) e PROXY_TOKEN (proxy) precisam ser iguais." });
+    if (resp.status < 200 || resp.status >= 300 || ret.error) return json({ ok: false, motivo: `O proxy da SEFAZ falhou: ${ret.error ?? `HTTP ${resp.status}`}` });
 
     const docs = ret.documentos ?? [];
     const inteira = docs.find((d) => d.tipo === "procNFe" && d.chave === chave) ?? docs.find((d) => d.tipo === "procNFe");

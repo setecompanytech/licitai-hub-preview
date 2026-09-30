@@ -3,7 +3,7 @@
 // Usa proxy externo (SEFAZ_PROXY_URL + SEFAZ_PROXY_TOKEN, services/sefaz-proxy) para mTLS
 // com o certificado A1 da empresa (bucket `certificados` + senha cifrada); fallback grava status.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { carregarCertificadoA1 } from "../_shared/certificado-a1.ts";
+import { carregarCertificadoA1, chamarProxy, urlDoProxy } from "../_shared/certificado-a1.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,19 +34,15 @@ Deno.serve(async (req) => {
     const { data: isMember } = await supabase.rpc("is_empresa_member", { _user_id: user.id, _empresa_id: agend.empresa_id });
     if (!isMember) return new Response(JSON.stringify({ error: "Sem acesso" }), { status: 403, headers: corsHeaders });
 
-    const proxyUrl = Deno.env.get("SEFAZ_PROXY_URL");
-    if (!proxyUrl) {
-      // Marca como pendente de configuração
+    const proxy = urlDoProxy();
+    if ("erro" in proxy) {
+      // Marca como pendente de configuração — com o motivo dito.
       await supabase.from("fin_sefaz_agendamentos").update({
         ultimo_status: "configuracao_pendente",
-        ultimo_erro: "SEFAZ_PROXY_URL não configurado. Configure o proxy mTLS em Configurações > Integrações.",
+        ultimo_erro: proxy.erro,
         ultima_execucao: new Date().toISOString(),
       }).eq("id", agendamento_id);
-      return new Response(JSON.stringify({
-        ok: false,
-        configuracao_pendente: true,
-        message: "Proxy SEFAZ ainda não configurado. Importação manual via XML continua disponível.",
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: false, configuracao_pendente: true, message: proxy.erro }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // O certificado A1 da empresa vai junto: o proxy não guarda nada (30/09).
@@ -57,29 +53,35 @@ Deno.serve(async (req) => {
       }).eq("id", agendamento_id);
       return new Response(JSON.stringify({ ok: false, configuracao_pendente: true, message: cert.erro }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    // Chama proxy mTLS (DistribuicaoDFe)
-    const proxyResp = await fetch(`${proxyUrl.replace(/\/$/, "")}/distribuicao-dfe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-proxy-token": Deno.env.get("SEFAZ_PROXY_TOKEN") || "" },
-      body: JSON.stringify({
+    // Chama proxy mTLS (DistribuicaoDFe). Falha de rede ou de token vira
+    // registro no agendamento e resposta 200 com o motivo — nunca "non-2xx".
+    let proxyResp: { status: number; corpo: string };
+    try {
+      proxyResp = await chamarProxy(proxy.url, "/distribuicao-dfe", {
         cnpj: agend.cnpj,
         ultimo_nsu: agend.ultimo_nsu || "0",
         ambiente: Deno.env.get("SEFAZ_AMBIENTE") === "homologacao" ? "homologacao" : "producao",
         pfx_base64: cert.certificado.pfxBase64,
         senha: cert.certificado.senha,
-      }),
-    });
+      }, 120000);
+    } catch (e) {
+      const erro = e instanceof Error ? e.message : String(e);
+      await supabase.from("fin_sefaz_agendamentos").update({ ultimo_status: "erro", ultimo_erro: erro.slice(0, 500), ultima_execucao: new Date().toISOString() }).eq("id", agendamento_id);
+      return new Response(JSON.stringify({ ok: false, erro, message: erro }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    if (!proxyResp.ok) {
-      const erro = await proxyResp.text();
+    if (proxyResp.status < 200 || proxyResp.status >= 300) {
+      const erro = proxyResp.status === 401
+        ? "O proxy recusou o token: SEFAZ_PROXY_TOKEN (edge) e PROXY_TOKEN (proxy) precisam ser iguais."
+        : `Proxy respondeu HTTP ${proxyResp.status}: ${proxyResp.corpo.slice(0, 300)}`;
       await supabase.from("fin_sefaz_agendamentos").update({
         ultimo_status: "erro", ultimo_erro: erro.slice(0, 500),
         ultima_execucao: new Date().toISOString(),
       }).eq("id", agendamento_id);
-      return new Response(JSON.stringify({ ok: false, erro }), { status: 502, headers: corsHeaders });
+      return new Response(JSON.stringify({ ok: false, erro, message: erro }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const result = await proxyResp.json();
+    const result = JSON.parse(proxyResp.corpo);
     // Só a nota inteira (procNFe) vira registro; o resumo (resNFe) espera a manifestação.
     const documentos = (result?.documentos || []).filter((d: { tipo?: string }) => d?.tipo !== "resNFe");
     let importadas = 0;
