@@ -965,6 +965,13 @@ configurar o proxy". O que existe no código:
   (`gerarDanfeDaNota`, invalida `nf-por-pedido`); NF-e recebidas baixa o
   DANFE. `NotaDoPedido` traz `lancamento_id` e `tem_pdf`. O certificado A1
   serve para BUSCAR o XML na SEFAZ, não para imprimir o DANFE.
+- **`financeiro_documentos_fiscais` tem UNIQUE (empresa_id, chave_acesso).**
+  O XML importado depois de um DANFE em PDF com a mesma chave era recusado
+  em silêncio (30/09) e o título ficava sem documento. A edge atualiza o
+  registro que já tem a chave (XML + título, PDF preservado); um segundo
+  arquivo da mesma nota (DANFE gerado) entra SEM chave, ligado ao título
+  (`chaveJaArquivada` em `useDocumentoFiscal`). O `aviso` da importação
+  aparece na tela.
 - **A página `/certificado-upload` é pública** (autoriza pelo token de uso
   único): `upload-certificado` precisa de `verify_jwt = false` no
   `config.toml`, senão o gateway recusa o envio antes de a função rodar —

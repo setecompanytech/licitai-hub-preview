@@ -8,6 +8,9 @@ export interface ResultadoImportacao {
   nome: string;
   status: "processada" | "duplicada" | "erro";
   erro?: string;
+  /** Lançada, mas algo secundário falhou (o XML não pôde ser arquivado, por exemplo). */
+  aviso?: string;
+  lancamento_id?: string | null;
   tipo?: "nfe" | "nfse";
   direcao?: "entrada" | "saida";
   valor?: number;

@@ -172,7 +172,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const { data: docsPorNumero } = useDocumentosPorNumeroNota();
   // A nota pelo VÍNCULO, não pelo número digitado. Ver useNotaDoPedido.
   const { data: notaDoPedido } = useNotasDosPedidos(contratoId);
-  const { abrirArquivo, guardarArquivo } = useDocumentoFiscal();
+  const { abrirArquivo, guardarArquivo, chaveJaArquivada } = useDocumentoFiscal();
   const [gerandoDanfe, setGerandoDanfe] = useState<string | null>(null);
   /**
    * O DANFE gerado do XML (30/09): quem tem o XML autorizado imprime o DANFE.
@@ -187,7 +187,9 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       const arquivo = arquivoDanfe(nfe);
       const doc = await guardarArquivo(arquivo, {
         tipo: 'nfe', numero: nfe.numero_nf ? String(nfe.numero_nf) : null, serie: nfe.serie ? String(nfe.serie) : null,
-        chave_acesso: nfe.chave_acesso || null, data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
+        // A chave é única por empresa no cofre: o XML já a ocupa; o PDF entra ligado ao título.
+        chave_acesso: (await chaveJaArquivada(nfe.chave_acesso)) ? null : (nfe.chave_acesso || null),
+        data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
         valor_total: Number(nfe.v_nf) || 0, lancamento_id: nd.lancamento_id,
       });
       if (!doc) { toast.error('O DANFE foi gerado, mas não pôde ser guardado no cofre.'); return; }
@@ -2722,33 +2724,6 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   ]}
                 />
               </BlocoDoPainel>
-              <div className="xl:col-span-2">
-              {/* As ações da NOTA moram aqui (30/09): o lote é a nota; a parte é o item. */}
-              <BlocoDoPainel titulo="Ações do lote">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog} title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
-                    <Upload aria-hidden="true" /> Registrar ordem/empenho
-                  </Button>
-                  <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
-                    <Receipt aria-hidden="true" /> Gerar pré-NF
-                  </Button>
-                  <Button size="sm" variant="outline" className="g-controle" title="Abrir Gestão de Compras para criar o pedido pelo funil comercial" onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
-                    <ShoppingCart aria-hidden="true" /> Criar no Kanban
-                  </Button>
-                  {loteAberto.partes[0] && (
-                    <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
-                  )}
-                  {loteAberto.partes[0] && (
-                    <Button size="sm" variant="outline" className="g-controle" onClick={() => void abrirOrdem(loteAberto.partes[0])} title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este lote">
-                      <FileText aria-hidden="true" /> Ordem / Empenho
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
-                    <Trash2 aria-hidden="true" /> Excluir lote
-                  </Button>
-                </div>
-              </BlocoDoPainel>
-              </div>
               <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
@@ -2799,6 +2774,33 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   </table>
                 </div>
               </BlocoDoPainel>
+              <div className="xl:col-span-2">
+              {/* As ações da NOTA moram aqui (30/09): o lote é a nota; a parte é o item. */}
+              <BlocoDoPainel titulo="Ações do lote">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" className="g-controle" onClick={openNewDialog} title="Anexar a Ordem de Fornecimento ou Nota de Empenho e registrar o pedido">
+                    <Upload aria-hidden="true" /> Registrar ordem/empenho
+                  </Button>
+                  <Button size="sm" variant="outline" className="g-controle" onClick={() => setPreNfDialogOpen(true)} disabled={pedidos.filter(p => p.status !== 'cancelado').length === 0}>
+                    <Receipt aria-hidden="true" /> Gerar pré-NF
+                  </Button>
+                  <Button size="sm" variant="outline" className="g-controle" title="Abrir Gestão de Compras para criar o pedido pelo funil comercial" onClick={() => navigate(`/gestao-compras?novo_contrato=${contratoId}`)}>
+                    <ShoppingCart aria-hidden="true" /> Criar no Kanban
+                  </Button>
+                  {loteAberto.partes[0] && (
+                    <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
+                  )}
+                  {loteAberto.partes[0] && (
+                    <Button size="sm" variant="outline" className="g-controle" onClick={() => void abrirOrdem(loteAberto.partes[0])} title="Abrir a Ordem de Fornecimento ou a Nota de Empenho que autorizou este lote">
+                      <FileText aria-hidden="true" /> Ordem / Empenho
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
+                    <Trash2 aria-hidden="true" /> Excluir lote
+                  </Button>
+                </div>
+              </BlocoDoPainel>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setLoteSelecionado(null)}>Fechar</Button>

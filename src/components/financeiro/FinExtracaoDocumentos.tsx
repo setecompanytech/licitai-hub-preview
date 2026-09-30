@@ -153,7 +153,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [docs, setDocs] = useState<DocItem[]>([]);
-  const { guardarArquivo, vincularLancamento } = useDocumentoFiscal();
+  const { guardarArquivo, chaveJaArquivada, vincularLancamento } = useDocumentoFiscal();
   const { empresaAtiva } = useEmpresa();
   const cnpjDaEmpresa = empresaAtiva?.cnpj ?? null;
   const navigate = useNavigate();
@@ -241,6 +241,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
         // E as LINHAS de produto (30/09): sem elas, a nota de 18 produtos chegava
         // ao vínculo como "1.000 unidades a R$ 17,28" e nenhum item casava.
         const lido = await dadosDoXml(item.file, resultado);
+        if (resultado.aviso) toast.warning(resultado.aviso, { duration: 12000 });
         // O DANFE nasce com o XML (30/09): gerado da nota autorizada e guardado
         // no cofre, ligado ao título — sem ninguém precisar enviar PDF depois.
         const danfeId = await guardarDanfeDoXml(item.file, (resultado as { lancamento_id?: string | null }).lancamento_id ?? null);
@@ -373,7 +374,7 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
       if (jaTem) return (jaTem as unknown as { id: string }).id;
       const doc = await guardarArquivo(arquivoDanfe(nfe), {
         tipo: "nfe", numero: nfe.numero_nf ? String(nfe.numero_nf) : null, serie: nfe.serie ? String(nfe.serie) : null,
-        chave_acesso: chave, data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
+        chave_acesso: (await chaveJaArquivada(chave)) ? null : chave, data_emissao: nfe.data_emissao ? String(nfe.data_emissao).slice(0, 10) : null,
         valor_total: Number(nfe.v_nf) || 0, lancamento_id: lancamentoId,
       });
       return doc?.id ?? null;

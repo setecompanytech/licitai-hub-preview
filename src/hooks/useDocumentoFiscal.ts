@@ -98,6 +98,23 @@ export function useDocumentoFiscal() {
   }, [empresaAtiva?.id, user?.id]);
 
   /** Amarra o documento ao lançamento depois que ele nasce. */
+  /**
+   * A chave de acesso é única por empresa no cofre (30/09): um segundo
+   * arquivo da mesma nota (o DANFE gerado ao lado do XML) entra sem a chave,
+   * ligado ao título — senão o INSERT é recusado em silêncio.
+   */
+  const chaveJaArquivada = useCallback(async (chave: string | null | undefined): Promise<boolean> => {
+    if (!chave || !empresaAtiva?.id) return false;
+    const { data } = await supabase
+      .from('financeiro_documentos_fiscais' as never)
+      .select('id')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('chave_acesso', chave)
+      .limit(1)
+      .maybeSingle();
+    return !!data;
+  }, [empresaAtiva?.id]);
+
   const vincularLancamento = useCallback(async (documentoId: string, lancamentoId: string) => {
     const { error } = await supabase
       .from('financeiro_documentos_fiscais' as never)
@@ -118,7 +135,7 @@ export function useDocumentoFiscal() {
     return data?.signedUrl ?? null;
   }, []);
 
-  return { guardarArquivo, vincularLancamento, abrirArquivo };
+  return { guardarArquivo, chaveJaArquivada, vincularLancamento, abrirArquivo };
 }
 
 

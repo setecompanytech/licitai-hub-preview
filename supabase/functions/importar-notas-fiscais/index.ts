@@ -332,25 +332,35 @@ Deno.serve(async (req) => {
        * útil. Mas o resultado carrega o aviso, para que a ausência não passe
        * por sucesso — a conferência do Financeiro cobra o documento depois.
        */
-      const { error: docErr } = await admin
-        .from("financeiro_documentos_fiscais")
-        .insert({
-          empresa_id: empresaId,
-          tipo: nota.tipo,
-          numero: nota.numero,
-          serie: nota.serie,
-          chave_acesso: nota.chave_acesso,
-          data_emissao: nota.data_emissao,
-          valor_total: nota.valor_total ?? 0,
-          lancamento_id: lanc.id,
-          arquivo_xml: xml,
-          arquivo_nome: nome,
-          arquivo_mime: "application/xml",
-          arquivo_bytes: xml.length,
-          enviado_por: userId,
-          origem: "manual",
-          origem_job: "importar-notas-fiscais",
-        });
+      // (empresa_id, chave_acesso) é ÚNICO na tabela (30/09): quando o DANFE em
+      // PDF da mesma nota já foi arquivado, o INSERT era recusado em silêncio
+      // e o título ficava sem documento. Agora o registro que já tem a chave
+      // recebe o XML e o título; o PDF que ele guarda continua lá.
+      const { data: docComAChave } = nota.chave_acesso
+        ? await admin.from("financeiro_documentos_fiscais").select("id, lancamento_id").eq("empresa_id", empresaId).eq("chave_acesso", nota.chave_acesso).maybeSingle()
+        : { data: null };
+      const camposDaNota = {
+        tipo: nota.tipo,
+        numero: nota.numero,
+        serie: nota.serie,
+        data_emissao: nota.data_emissao,
+        valor_total: nota.valor_total ?? 0,
+        lancamento_id: lanc.id,
+        arquivo_xml: xml,
+        origem_job: "importar-notas-fiscais",
+      };
+      const { error: docErr } = docComAChave
+        ? await admin.from("financeiro_documentos_fiscais").update(camposDaNota).eq("id", docComAChave.id)
+        : await admin.from("financeiro_documentos_fiscais").insert({
+            empresa_id: empresaId,
+            chave_acesso: nota.chave_acesso,
+            arquivo_nome: nome,
+            arquivo_mime: "application/xml",
+            arquivo_bytes: xml.length,
+            enviado_por: userId,
+            origem: "manual",
+            ...camposDaNota,
+          });
 
       criadas++;
       resultados.push({
