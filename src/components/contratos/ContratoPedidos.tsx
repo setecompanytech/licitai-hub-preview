@@ -446,6 +446,26 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    * pelas RPCs a partir dos pedidos.
    */
   const [trocaDeEmpenho, setTrocaDeEmpenho] = useState<{ rotulo: string; pedidos: string[]; atual: string | null } | null>(null);
+  /** Editar o lote (30/09): o que é da NOTA vale para todas as partes — número da nota, data, situação e a cesta. */
+  const [edicaoDoLote, setEdicaoDoLote] = useState<{ id: string; numero: string; partes: string[]; nota_fiscal: string; data_pedido: string; status: string; unidade_composta: string; unidades_compostas: string } | null>(null);
+  const [salvandoLote, setSalvandoLote] = useState(false);
+  const salvarEdicaoDoLote = async () => {
+    if (!edicaoDoLote) return;
+    setSalvandoLote(true);
+    const cestas = parseFloat(edicaoDoLote.unidades_compostas.replace(',', '.'));
+    const { error } = await supabase.from('contrato_pedidos').update({
+      nota_fiscal: edicaoDoLote.nota_fiscal.trim() || null,
+      data_pedido: edicaoDoLote.data_pedido || null,
+      status: edicaoDoLote.status,
+      unidade_composta: edicaoDoLote.unidade_composta.trim() || null,
+      unidades_compostas: Number.isFinite(cestas) && cestas > 0 ? cestas : null,
+    } as never).in('id', edicaoDoLote.partes);
+    setSalvandoLote(false);
+    if (error) { toast.error('Não foi possível salvar o lote', { description: error.message }); return; }
+    toast.success(`Lote ${edicaoDoLote.numero} atualizado nas ${edicaoDoLote.partes.length} partes.`);
+    setEdicaoDoLote(null);
+    load();
+  };
   const [novoEmpenhoId, setNovoEmpenhoId] = useState<string>('');
   const [trocandoEmpenho, setTrocandoEmpenho] = useState(false);
   const confirmarTrocaDeEmpenho = async () => {
@@ -2806,6 +2826,10 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     Gerar pré-NF e Criar no Kanban criam coisa nova no contrato e
                     moram na barra da aba; o documento do empenho abre pela Origem. */}
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" className="g-controle" title="Número da nota, data, situação e cesta — vale para todas as partes"
+                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '' })}>
+                    <Pencil aria-hidden="true" /> Editar
+                  </Button>
                   {loteAberto.partes[0] && (
                     <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
                   )}
@@ -3013,12 +3037,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : prev === 'desc' ? null : 'asc')}
                           className="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          Pedido
+                          Nº pedido
                           {sortOrder === 'asc' ? <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" /> : sortOrder === 'desc' ? <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" /> : <ArrowUpDown aria-hidden="true" className="h-3.5 w-3.5 opacity-50" />}
                         </button>
                       </TableHead>
-                      <TableHead className="whitespace-nowrap">Item</TableHead>
+                      <TableHead className="whitespace-nowrap">Descrição</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Quantidade</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Valor</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Prazo</TableHead>
                       <TableHead className="whitespace-nowrap text-center">Situação</TableHead>
                       <TableHead className="min-w-[12rem] whitespace-nowrap">NF-e</TableHead>
@@ -3071,10 +3096,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               {/* Texto, não link: o número e "Abrir lote" já abrem a caixa (30/09). */}
                               <span className="line-clamp-2 block leading-snug">{rotuloDoLote(lote)}</span>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap text-right tabular-nums">
-                              <div>{lote.partes.length} itens</div>
-                              <div className="g-meta font-medium text-muted-foreground">{fmt(lote.valor_total)}</div>
-                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right tabular-nums">{lote.partes.length} itens</TableCell>
+                            <TableCell className="whitespace-nowrap text-right tabular-nums font-medium">{fmt(lote.valor_total)}</TableCell>
                             <TableCell className="min-w-[8rem] max-w-[10rem] text-center">
                               <div className="whitespace-nowrap">{lote.data_pedido ? new Date(lote.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</div>
                               <AvisoDePrazoDeEntrega resumido contrato={prazos} dataDoPedido={lote.data_pedido} dataDeEntrega={lote.status === 'entregue' ? (lote.partes[0]?.data_entrega ?? null) : null} />
@@ -3167,10 +3190,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                           {/* Quantidade e valor no mesmo bloco: são duas leituras do
                               mesmo fato, e separá-las custava uma coluna que empurrava
                               as ações para fora da tela. */}
-                          <TableCell className="whitespace-nowrap text-right tabular-nums">
-                            <div>{p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</div>
-                            <div className="g-meta font-medium text-muted-foreground">{fmt(p.valor_total)}</div>
-                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-right tabular-nums">{p.quantidade == null ? '—' : Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="whitespace-nowrap text-right tabular-nums font-medium">{fmt(p.valor_total)}</TableCell>
                           {/* Sem `whitespace-nowrap` na célula inteira: o aviso de
                               prazo — "Prazo vencido há 113 dia(s) — limite era
                               10/05/2026" — travava a coluna nessa largura e empurrava
@@ -4220,6 +4241,38 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
             <DialogDescription>Origem, item, valores, nota e ações do pedido.</DialogDescription>
           </DialogHeader>
           {painelDoPedido}
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar lote (30/09) */}
+      <Dialog open={!!edicaoDoLote} onOpenChange={(v) => { if (!v && !salvandoLote) setEdicaoDoLote(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar lote {edicaoDoLote?.numero}</DialogTitle>
+            <DialogDescription>O que é da nota vale para as {edicaoDoLote?.partes.length} partes. Quantidade e preço de cada item se editam na parte.</DialogDescription>
+          </DialogHeader>
+          {edicaoDoLote && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label>Nota fiscal (nº)</Label><Input value={edicaoDoLote.nota_fiscal} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, nota_fiscal: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Data do pedido</Label><Input type="date" value={edicaoDoLote.data_pedido} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, data_pedido: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Situação</Label>
+                <Select value={edicaoDoLote.status} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="entregue">Entregue</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Unidade composta</Label><Input placeholder="cesta básica" value={edicaoDoLote.unidade_composta} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidade_composta: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Quantas a nota entrega</Label><Input inputMode="decimal" className="tabular-nums" value={edicaoDoLote.unidades_compostas} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidades_compostas: e.target.value })} /></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdicaoDoLote(null)} disabled={salvandoLote}>Cancelar</Button>
+            <Button onClick={() => void salvarEdicaoDoLote()} disabled={salvandoLote}>{salvandoLote && <Loader2 aria-hidden="true" className="animate-spin" />}Salvar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

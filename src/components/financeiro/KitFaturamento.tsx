@@ -326,17 +326,23 @@ export default function KitFaturamento({ pedido, compacto = false }: Props & { /
             </div>
           ) : (
             <div className="space-y-4">
-              {(vencidas.length > 0 || ausentes.length > 0) && (
+              {vencidas.length > 0 && (
+                <Alert variant="warning">
+                  <AlertTriangle aria-hidden="true" />
+                  <AlertTitle>{vencidas.length} certidão(ões) vencida(s) — vão no pacote, marcadas</AlertTitle>
+                  <AlertDescription>
+                    {vencidas.map((c) => c.nome).join(', ')}. O documento vai completo e o índice diz o vencimento.
+                    A lei manda manter a habilitação (Lei 14.133/2021, art. 92, XVI), mas não autoriza reter o
+                    pagamento por certidão vencida — renove em Jurídico → Documentos.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {ausentes.length > 0 && (
                 <Alert variant="destructive">
                   <AlertTriangle aria-hidden="true" />
-                  <AlertTitle>
-                    {vencidas.length > 0 && `${vencidas.length} certidão(ões) vencida(s)`}
-                    {vencidas.length > 0 && ausentes.length > 0 && ' · '}
-                    {ausentes.length > 0 && `${ausentes.length} não cadastrada(s)`}
-                  </AlertTitle>
+                  <AlertTitle>{ausentes.length} certidão(ões) não cadastrada(s)</AlertTitle>
                   <AlertDescription>
-                    Não entram no pacote. Renove em Jurídico → Documentos antes de enviar ao
-                    órgão — certidão vencida volta como pendência e trava o pagamento.
+                    {ausentes.map((c) => c.nome).join(', ')}: sem arquivo no sistema, não há o que anexar. Cadastre em Jurídico → Documentos.
                   </AlertDescription>
                 </Alert>
               )}

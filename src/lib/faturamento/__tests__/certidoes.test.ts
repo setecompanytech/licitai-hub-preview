@@ -45,13 +45,16 @@ describe('montagem do pacote', () => {
     expect(avaliarCertidoes([doc(nome, '2026-12-31')], HOJE)[1].situacao).toBe('valida');
   });
 
-  it('vencida fica de fora do envio; o resto entra', () => {
+  it('vencida ENTRA no envio (marcada); só a não cadastrada fica de fora', () => {
     const linhas = avaliarCertidoes(
       [doc(CERTIDOES_DO_FATURAMENTO[0], '2026-08-01'), doc(CERTIDOES_DO_FATURAMENTO[1], '2026-12-31')],
       HOJE,
     );
-    expect(podeEnviar(linhas[0])).toBe(false);
+    // Vencida ENTRA no pacote (30/09): a lei não prevê reter o pagamento por isso; o índice avisa.
+    expect(linhas[0].situacao).toBe('vencida');
+    expect(podeEnviar(linhas[0])).toBe(true);
     expect(podeEnviar(linhas[1])).toBe(true);
+    expect(podeEnviar({ nome: 'x', documento: null, situacao: 'ausente', diasRestantes: null })).toBe(false);
   });
 });
 

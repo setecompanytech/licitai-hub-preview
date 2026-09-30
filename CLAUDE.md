@@ -880,7 +880,13 @@ só há o XML; o "espelho" saiu da aba Pedidos (é leitura do mesmo XML). Na
 Origem do lote, o número da nota É o link. "Ações do lote" tem só o que age
 sobre o lote: Recibo e certidões, Trocar empenho, Excluir lote — Registrar
 ordem/empenho, Gerar pré-NF e Criar no Kanban criam coisa nova no contrato
-e ficam na barra da aba; o documento do empenho abre pela Origem.
+e ficam na barra da aba; o documento do empenho abre pela Origem. "Editar" no lote (`edicaoDoLote`) grava nota, data, situação e cesta em
+todas as partes. Tabela: "Nº pedido", "Descrição", Quantidade e Valor em
+colunas separadas.
+- **Kit de faturamento leva a certidão VENCIDA, marcada (30/09):** a lei
+  manda manter a habilitação (Lei 14.133/2021, art. 92, XVI) mas não
+  autoriza reter o pagamento por certidão vencida; `podeEnviar` só exclui a
+  não cadastrada; a tela e o índice dizem o vencimento.
 
 ### NF-e entra pelo XML; DANFE em PDF é reconhecido pela chave (30/09/2026)
 

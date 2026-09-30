@@ -86,9 +86,15 @@ export function avaliarCertidoes(
   });
 }
 
-/** Entram no pacote as que podem ser enviadas hoje. */
+/**
+ * Entra no pacote toda certidão que EXISTE — inclusive a vencida (30/09).
+ * A lei manda manter a habilitação (Lei 14.133/2021, art. 92, XVI), mas não
+ * autoriza reter o pagamento por certidão vencida: o documento vai completo
+ * e o vencimento é dito na tela e no índice. Só a não cadastrada fica fora,
+ * porque não há arquivo.
+ */
 export const podeEnviar = (c: CertidaoAvaliada): boolean =>
-  c.situacao === 'valida' || c.situacao === 'vence_em_breve' || c.situacao === 'sem_validade';
+  c.situacao !== 'ausente' && !!c.documento;
 
 /** Nome de arquivo legível: o órgão recebe "CND-Federal.pdf", não um uuid. */
 export function nomeDeArquivo(nomeCertidao: string, caminhoOriginal: string | null): string {

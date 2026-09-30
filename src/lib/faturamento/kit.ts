@@ -59,7 +59,7 @@ export function indiceDoKit(
           valida: 'anexada',
           vence_em_breve: `anexada — VENCE EM ${c.diasRestantes} DIA(S)`,
           sem_validade: 'anexada — sem data de validade cadastrada',
-          vencida: `NÃO ANEXADA — VENCIDA há ${Math.abs(c.diasRestantes ?? 0)} dia(s)`,
+          vencida: `anexada — VENCIDA há ${Math.abs(c.diasRestantes ?? 0)} dia(s); renovar (a lei não prevê retenção do pagamento por isso)`,
           ausente: 'NÃO ANEXADA — não cadastrada no sistema',
         } as const)[c.situacao];
     linhas.push(`${c.nome}`, `    validade: ${validade}  ·  ${situacao}`);
