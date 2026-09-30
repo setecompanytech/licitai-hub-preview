@@ -1,16 +1,19 @@
-# Exemplo para o Fly.io (fly launch --no-deploy; depois fly secrets set PROXY_TOKEN=...)
-app = "praefectus-sefaz-proxy"
-primary_region = "gru"
+# fly.toml app configuration file generated for praefectus-sefaz-proxy on 2026-09-30T12:53:31-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'praefectus-sefaz-proxy'
+primary_region = 'gru'
 
 [build]
-
 [http_service]
   internal_port = 8787
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'

@@ -51,3 +51,24 @@ export async function statusDoCertificadoA1(empresaId: string): Promise<StatusDo
 export function arquivoDoXml(xml: string, chave: string): File {
   return new File([xml], `NFe-${chave.replace(/\D/g, '')}.xml`, { type: 'text/xml' });
 }
+
+export type TesteDoCertificado = {
+  ok: boolean;
+  motivo?: string | null;
+  sem_certificado?: boolean;
+  titular?: string;
+  cnpj?: string | null;
+  confere_cnpj?: boolean | null;
+  valido_ate?: string;
+  vencido?: boolean;
+  emissor?: string;
+  arquivo?: string;
+};
+
+/** Abre o .pfx no proxy (sem falar com a SEFAZ): senha, titular, CNPJ e validade. */
+export async function testarCertificadoA1(empresaId: string): Promise<TesteDoCertificado> {
+  const { data, error } = await supabase.functions.invoke('nfe-xml-por-chave', { body: { empresa_id: empresaId, modo: 'testar_certificado' } });
+  if (error) return { ok: false, motivo: (await motivoDaEdgeFunction(error)) ?? error.message };
+  if (data?.error) return { ok: false, motivo: String(data.error) };
+  return data as TesteDoCertificado;
+}

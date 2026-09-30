@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EstadoVazio from "@/components/shared/EstadoVazio";
 import { FileSpreadsheet, RefreshCw, Plus, Loader2, Calculator, Building2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { statusDoCertificadoA1, type StatusDoCertificado } from "@/lib/financeiro/xml-por-chave";
+import { statusDoCertificadoA1, testarCertificadoA1, type StatusDoCertificado, type TesteDoCertificado } from "@/lib/financeiro/xml-por-chave";
 import { motivoDaEdgeFunction } from "@/lib/erro-edge-function";
 import { ShieldCheck, Copy } from "lucide-react";
 
@@ -49,6 +49,12 @@ export default function FinIntegracoesFiscais() {
   const [linkDeEnvio, setLinkDeEnvio] = useState<string | null>(null);
   const [gerandoLink, setGerandoLink] = useState(false);
   const [ultimaLeituraDoCert, setUltimaLeituraDoCert] = useState(0);
+  const [teste, setTeste] = useState<TesteDoCertificado | null | "testando">(null);
+  const testarCertificado = async () => {
+    if (!empresaAtiva?.id) return;
+    setTeste("testando");
+    setTeste(await testarCertificadoA1(empresaAtiva.id));
+  };
   const atualizarCertificado = async () => {
     if (!empresaAtiva?.id) return;
     const s = await statusDoCertificadoA1(empresaAtiva.id);
@@ -199,6 +205,11 @@ export default function FinIntegracoesFiscais() {
                 <Button size="sm" variant="ghost" onClick={() => void atualizarCertificado()} title={ultimaLeituraDoCert ? `Lido às ${new Date(ultimaLeituraDoCert).toLocaleTimeString("pt-BR")}` : undefined}>
                   <RefreshCw aria-hidden="true" />Atualizar
                 </Button>
+                {certificado !== "carregando" && certificado?.tem_certificado && (
+                  <Button size="sm" variant="outline" onClick={() => void testarCertificado()} disabled={teste === "testando"} title="Abre o .pfx no proxy para conferir senha, titular, CNPJ e validade — sem consultar a SEFAZ">
+                    {teste === "testando" ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}Testar o certificado
+                  </Button>
+                )}
                 {linkDeEnvio && (
                   <>
                     <a href={linkDeEnvio} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline-offset-2 hover:underline">Abrir a página de envio</a>
@@ -208,6 +219,22 @@ export default function FinIntegracoesFiscais() {
                   </>
                 )}
               </div>
+              {teste && teste !== "testando" && (
+                <Alert variant={teste.ok && !teste.vencido && teste.confere_cnpj !== false ? "default" : "destructive"}>
+                  <AlertDescription>
+                    {teste.ok ? (
+                      <>
+                        A senha abre o certificado. Titular: <b>{teste.titular}</b>{teste.cnpj ? ` · CNPJ ${teste.cnpj}` : ""}
+                        {teste.valido_ate ? ` · válido até ${new Date(teste.valido_ate).toLocaleDateString("pt-BR")}` : ""}{teste.emissor ? ` · emitido por ${teste.emissor}` : ""}.
+                        {teste.vencido && <> <b>Vencido.</b></>}
+                        {teste.confere_cnpj === false && <> <b>Atenção:</b> o CNPJ do certificado não é o da empresa — a SEFAZ só atende o próprio interessado.</>}
+                      </>
+                    ) : (
+                      <>{teste.motivo ?? "O certificado não pôde ser aberto."}</>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
           <Card>

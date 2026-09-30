@@ -11,6 +11,7 @@ pedido traz os dois, usa e esquece.
 | --- | --- | --- |
 | `POST /consulta-chave` | `{ cnpj, chave, ambiente?, uf_autor?, pfx_base64, senha }` | `{ ok, cStat, mensagem, documentos: [{ tipo: 'procNFe'\|'resNFe', chave, numero, serie, emitente_cnpj, valor_total, data_emissao, xml }] }` |
 | `POST /distribuicao-dfe` | `{ cnpj, ultimo_nsu, ambiente?, uf_autor?, pfx_base64, senha }` | o mesmo, mais `ultimo_nsu` e `max_nsu` |
+| `POST /certificado/testar` | `{ cnpj?, pfx_base64, senha }` | `{ ok, titular, cnpj, valido_ate, vencido, confere_cnpj }` ou `{ ok:false, motivo: 'senha_incorreta'\|'formato'\|'invalido', mensagem }` |
 | `GET /saude` | — | `{ ok: true }` |
 
 Cabeçalho obrigatório nas rotas POST: `x-proxy-token: <PROXY_TOKEN>`.

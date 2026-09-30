@@ -8,10 +8,12 @@
  *
  *   POST /consulta-chave     { cnpj, chave, ambiente?, uf_autor?, pfx_base64, senha }
  *   POST /distribuicao-dfe   { cnpj, ultimo_nsu, ambiente?, uf_autor?, pfx_base64, senha }
+ *   POST /certificado/testar { cnpj?, pfx_base64, senha }  → quem é o certificado, validade, senha confere
  *   GET  /saude
  */
 import http from 'node:http';
 import { chamarSefaz, envelopeDistDFe, motivoDoStatus, parseRetDistDFe, resumoDoDocumento } from './lib/sefaz.js';
+import { confereCnpj, inspecionarPfx } from './lib/certificado.js';
 
 const PORTA = Number(process.env.PORT || 8787);
 const TOKEN = process.env.PROXY_TOKEN;
@@ -44,9 +46,20 @@ const lerCorpo = (req) =>
 
 const mascara = (cnpj) => String(cnpj ?? '').replace(/\D/g, '').replace(/^(\d{2})\d{8}(\d{4})$/, '$1********$2');
 
+/** Antes da SEFAZ: a senha abre? está vencido? é do CNPJ consultado? */
+function conferirCertificado(corpo) {
+  const inspecao = inspecionarPfx({ pfxBase64: corpo.pfx_base64, senha: corpo.senha });
+  if (!inspecao.ok) throw new Error(inspecao.mensagem);
+  if (inspecao.vencido) throw new Error(`Certificado vencido em ${inspecao.valido_ate.slice(0, 10)} (${inspecao.titular}).`);
+  const confere = confereCnpj(inspecao, corpo.cnpj);
+  if (confere === false) throw new Error(`O certificado é do CNPJ ${inspecao.cnpj} (${inspecao.titular}), e a consulta é para ${String(corpo.cnpj).replace(/\D/g, '')}: a SEFAZ só atende o próprio interessado.`);
+  return inspecao;
+}
+
 async function consultar(corpo, consulta) {
   const { cnpj, ambiente = 'producao', uf_autor, pfx_base64, senha } = corpo;
   if (!pfx_base64 || !senha) throw new Error('Certificado (.pfx em base64) e senha são obrigatórios');
+  conferirCertificado(corpo);
   const envelope = envelopeDistDFe({ cnpj, ambiente, ufAutor: uf_autor, consulta });
   const inicio = Date.now();
   const { status, corpo: xml } = await chamarSefaz({ pfxBase64: pfx_base64, senha, envelope, ambiente });
@@ -77,6 +90,11 @@ const servidor = http.createServer(async (req, res) => {
     }
     if (req.url === '/distribuicao-dfe') {
       return json(res, 200, await consultar(corpo, { ultNSU: corpo.ultimo_nsu ?? '0' }));
+    }
+    if (req.url === '/certificado/testar') {
+      const inspecao = inspecionarPfx({ pfxBase64: corpo.pfx_base64, senha: corpo.senha });
+      console.log(`[sefaz] testar-certificado ok=${inspecao.ok} ${inspecao.ok ? `cnpj=${mascara(inspecao.cnpj)} ate=${inspecao.valido_ate.slice(0, 10)}` : inspecao.motivo}`);
+      return json(res, 200, { ...inspecao, confere_cnpj: corpo.cnpj ? confereCnpj(inspecao, corpo.cnpj) : null });
     }
     return json(res, 404, { error: 'rota desconhecida' });
   } catch (e) {

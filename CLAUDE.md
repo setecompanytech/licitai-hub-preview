@@ -953,6 +953,15 @@ configurar o proxy". O que existe no código:
   rede/401 em motivo e as edges devolvem 200 com `ok:false` — o agendamento
   guarda o motivo em `ultimo_erro`. O cartão do A1 se atualiza sozinho
   enquanto há link de envio aberto (o envio é em outra aba).
+- **`GET /v1/projects/{ref}/secrets` da Management API devolve DIGEST**, não
+  o valor: um "valor hex de 64" ali não prova nada sobre o conteúdo. Nunca
+  diagnosticar segredo por essa rota.
+- **O proxy abre o .pfx antes da SEFAZ** (`lib/certificado.js`, OpenSSL na
+  imagem, senha por variável de ambiente, arquivo temporário 0600): senha
+  errada, formato antigo, vencido ou CNPJ diferente do consultado viram
+  mensagem certa em vez de "mac verify failure". `POST /certificado/testar`
+  e `modo: "testar_certificado"` na edge alimentam "Testar o certificado"
+  no cartão do A1.
 
 ### Preço na data da nota e a cesta básica (30/09/2026, tarde)
 

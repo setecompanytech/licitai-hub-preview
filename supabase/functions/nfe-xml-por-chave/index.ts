@@ -64,6 +64,24 @@ Deno.serve(async (req) => {
       return json({ ...status, proxy_configurado: "url" in proxy, proxy_motivo: "erro" in proxy ? proxy.erro : null });
     }
 
+    // Testar o certificado (30/09): a senha abre? é do CNPJ da empresa? vence quando?
+    if (body.modo === "testar_certificado") {
+      if ("erro" in proxy) return json({ ok: false, motivo: proxy.erro });
+      const { data: empT } = await admin.from("empresas").select("cnpj").eq("id", empresaId).maybeSingle();
+      const certT = await carregarCertificadoA1(admin, empresaId);
+      if ("erro" in certT) return json({ ok: false, sem_certificado: !!certT.sem_certificado, motivo: certT.erro });
+      try {
+        const r = await chamarProxy(proxy.url, "/certificado/testar", { cnpj: String(empT?.cnpj ?? "").replace(/\D/g, ""), pfx_base64: certT.certificado.pfxBase64, senha: certT.certificado.senha }, 30000);
+        if (r.status === 401) return json({ ok: false, motivo: "O proxy recusou o token: SEFAZ_PROXY_TOKEN (edge) e PROXY_TOKEN (proxy) precisam ser iguais." });
+        let dados: Record<string, unknown> = {};
+        try { dados = JSON.parse(r.corpo); } catch { dados = { ok: false, mensagem: r.corpo.slice(0, 200) }; }
+        const ok = dados.ok === true;
+        return json({ ok, ...dados, motivo: ok ? null : (dados.mensagem ?? dados.error ?? "O proxy não abriu o certificado."), arquivo: certT.certificado.arquivo.split("/").pop() });
+      } catch (e) {
+        return json({ ok: false, motivo: e instanceof Error ? e.message : String(e) });
+      }
+    }
+
     const chave = String(body.chave ?? "").replace(/\D/g, "");
     if (!chaveValida(chave)) return json({ error: "Chave de acesso inválida: precisa de 44 dígitos com dígito verificador correto." }, 400);
 

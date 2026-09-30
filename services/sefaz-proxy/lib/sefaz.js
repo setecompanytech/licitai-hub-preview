@@ -146,7 +146,9 @@ export function chamarSefaz({ pfxBase64, senha, envelope, ambiente = 'producao',
   const url = new URL(ENDPOINTS[ambiente] ?? ENDPOINTS.producao);
   const pfx = Buffer.from(pfxBase64, 'base64');
   return new Promise((resolve, reject) => {
-    const req = https.request(
+    let req;
+    try {
+    req = https.request(
       {
         method: 'POST',
         hostname: url.hostname,
@@ -171,6 +173,10 @@ export function chamarSefaz({ pfxBase64, senha, envelope, ambiente = 'producao',
     req.on('error', (e) => reject(new Error(traduzErroTls(e))));
     req.write(envelope);
     req.end();
+    } catch (e) {
+      // Erro ao montar o contexto TLS (o .pfx e a senha) sai síncrono daqui.
+      reject(new Error(traduzErroTls(e)));
+    }
   });
 }
 
