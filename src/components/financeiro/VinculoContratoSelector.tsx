@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { unidadeLegivel } from "@/lib/texto/unidade";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,7 +34,7 @@ import EstadoVazio from "@/components/shared/EstadoVazio";
 import { empenhoCancelado, ROTULO_DO_EMPENHO } from "@/lib/contratos/empenho";
 import { quantidadeConfiavel } from "@/lib/financeiro/quantidade-da-nota";
 import { avisoDeVariosItens, diferencaParaANota, divergenciasDasPartes, fatiasPorPartes, ordenarItensDoContrato, partesCompletas, resumoDaUnidadeComposta, rotuloDoItem, sugerirPartes, sugerirUnidadesCompostas, type Divergencia, type ItemDaNota, type ParteDoVinculo } from "@/lib/financeiro/partes-do-vinculo";
-import { precoDoItemEm, tabelaDePrecosPorTermo, type PassoDePreco, type PrecoDeReferencia, type TermoComData } from "@/lib/contratos/preco-na-data";
+import { dataDoTermo, ordenarTermos, precoDoItemEm, precosNoTermo, type PassoDePreco, type PrecoDeReferencia, type TermoComData } from "@/lib/contratos/preco-na-data";
 import { formatarMoedaBr, formatarQuantidade, parseQuantidade } from "@/lib/compras/numeros";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link2, FileText, Loader2, Check, ChevronsUpDown, X, AlertTriangle, AlertCircle, Layers } from "lucide-react";
@@ -349,18 +349,28 @@ export default function VinculoContratoSelector({
     return i && i.valor_unitario > 0 ? i.valor_unitario : null;
   };
 
-  // A tabela de preços por termo (30/09): cada termo é uma coluna acumulada —
-  // "o 1º TA já com os 18 itens". É o que o seletor de termo mostra e o que a
-  // auditoria lê: quanto cada termo mudou em cada item, em R$ e em %.
-  const tabelaDePrecos = useMemo(() => tabelaDePrecosPorTermo(itensBrutos, aditivos, passosDePreco), [itensBrutos, aditivos, passosDePreco]);
-  const [mostrarTabelaDePrecos, setMostrarTabelaDePrecos] = useState(false);
-  const alteradosPorTermo = useMemo(() => new Map(tabelaDePrecos.colunas.map((c) => [c.aditivo_id, c.itensAlterados])), [tabelaDePrecos]);
-  /** Copia os preços de referência do termo escolhido (ou da data) para o unitário de cada parte marcada. */
-  const usarPrecosDoTermo = () => {
-    const partes = (value.partes ?? []).map((p) => ({ ...p, valor_unitario: precoContratadoDe(p.contrato_item_id) ?? p.valor_unitario }));
-    const faltantes = itemIds.filter((id) => !partes.some((p) => p.contrato_item_id === id)).map((id) => ({ contrato_item_id: id, quantidade: 0, valor_unitario: precoContratadoDe(id) ?? 0 }));
-    onChange({ ...value, partes: [...partes, ...faltantes] });
+  /**
+   * O termo de referência (30/09) é OBRIGATÓRIO: é a coluna de preços que
+   * vale para esta nota — contrato original e termos anteriores, acumulados.
+   * Trocar o termo reescreve o unitário de todas as partes marcadas.
+   */
+  const aplicarTermo = (aditivoId: string | null) => {
+    const precos = precosNoTermo(itensBrutos, aditivos, passosDePreco, aditivoId);
+    const partes = value.partes?.map((p) => ({ ...p, valor_unitario: precos.get(p.contrato_item_id) ?? p.valor_unitario }));
+    onChange({ ...value, origem_aditivo_id: aditivoId, partes });
   };
+  // Escolhido sozinho pela data do documento: o último termo com efeitos até
+  // ela; nenhum → Contrato Original. Uma vez por contrato; a escolha da pessoa vence.
+  const termoAutoAplicado = useRef<string | null>(null);
+  useEffect(() => {
+    if (!value.contrato_id || loadingItens || termoAutoAplicado.current === value.contrato_id) return;
+    termoAutoAplicado.current = value.contrato_id;
+    if (value.origem_aditivo_id || !dataDoDocumento) return;
+    const data = dataDoDocumento.slice(0, 10);
+    const vigente = ordenarTermos(aditivos).filter((t) => { const d = dataDoTermo(t); return !!d && d <= data; }).pop();
+    if (vigente) aplicarTermo(vigente.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.contrato_id, loadingItens, aditivos, dataDoDocumento]);
 
   // Lista canônica de itens vinculados (suporte a múltiplos)
   const itemIds = useMemo<string[]>(() => {
@@ -373,6 +383,16 @@ export default function VinculoContratoSelector({
     () => itens.filter((i) => itemIds.includes(i.id)),
     [itens, itemIds],
   );
+  /** A nota faturou preço diferente do termo em quais itens? Uma linha só, quando houver. */
+  const itensComPrecoDiferenteDoTermo = useMemo(() => {
+    if (!itensDaNota?.length) return [] as string[];
+    const marcados = itens.filter((i) => itemIds.includes(i.id));
+    return sugerirPartes(marcados.map((i) => ({ id: i.id, descricao: i.descricao, valor_unitario: null })), itensDaNota)
+      .filter((p) => p.quantidade > 0 && p.valor_unitario > 0)
+      .filter((p) => { const ref = precoContratadoDe(p.contrato_item_id); return ref != null && Math.abs(ref - p.valor_unitario) > 0.01; })
+      .map((p) => { const i = itens.find((x) => x.id === p.contrato_item_id); return i ? rotuloDoItem(i, itens.indexOf(i)).replace("Item ", "") : p.contrato_item_id; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, itemIds, itensDaNota]);
 
   // Quando há vários itens marcados, agregamos saldos para validação consolidada.
   const itemSel = useMemo<ItemOpcao | null>(() => {
@@ -558,16 +578,17 @@ export default function VinculoContratoSelector({
     const daLinha = linhaDoItem && linhaDoItem.quantidade > 0 ? linhaDoItem : null;
 
     // As partes por item acompanham a marcação: entra com sugestão da nota, sai quando desmarca.
+    // Quantidade vem da linha da nota; o UNITÁRIO é o do termo de referência (30/09).
     const partesNovas = novos.length >= 2
       ? sugerirPartes(itensMarcados.map((i) => ({ id: i.id, descricao: i.descricao, valor_unitario: i.valor_unitario })), itensDaNota, value.partes ?? [])
+          .map((p) => ({ ...p, valor_unitario: itensMarcados.find((i) => i.id === p.contrato_item_id)?.valor_unitario ?? p.valor_unitario }))
       : undefined;
     onChange({
       ...value,
       partes: partesNovas,
       contrato_item_ids: novos,
       contrato_item_id: novos[0] ?? null,
-      origem_aditivo_id:
-        itensMarcados[0]?.origem_aditivo_id ?? value.origem_aditivo_id ?? null,
+      origem_aditivo_id: value.origem_aditivo_id ?? null,
       valor_unitario: daLinha ? daLinha.valor_unitario : vuSugerido,
       quantidade: daLinha
         ? daLinha.quantidade
@@ -835,6 +856,24 @@ export default function VinculoContratoSelector({
           </div>
         )}
 
+        {/* O termo de referência dos preços (30/09): obrigatório, escolhido pela
+            data da nota, muda os preços de todos os itens de uma vez. */}
+        {value.contrato_id && aditivos.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>Termo de referência dos preços{dataDoDocumento ? ` — pela data da nota, ${dataDoDocumento.slice(0, 10).split("-").reverse().join("/")}` : ""}</Label>
+            <Select value={value.origem_aditivo_id ?? "__contrato__"} onValueChange={(v) => aplicarTermo(v === "__contrato__" ? null : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__contrato__">📄 Contrato Original</SelectItem>
+                {ordenarTermos(aditivos).map((a) => (
+                  <SelectItem key={a.id} value={a.id}>📎 {a.numero_aditivo} ({a.tipo})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Os {itens.length} itens assumem os preços vigentes nesse termo — contrato original e termos anteriores, acumulados.</p>
+          </div>
+        )}
+
         {/* Itens do contrato — múltipla seleção (cota principal + cota reservada) */}
         {value.contrato_id && (
           <div className="space-y-1.5">
@@ -1029,7 +1068,10 @@ export default function VinculoContratoSelector({
                       <AlertDescription>{aviso}</AlertDescription>
                     </Alert>
                   )}
-                  <p className="text-xs font-medium text-foreground">Quantidade e unitário por item{itensDaNota?.length ? " — sugeridos pelas linhas da nota, confira" : ""}</p>
+                  <p className="text-xs font-medium text-foreground">Quantidade e unitário por item{itensDaNota?.length ? " — quantidades da nota · preços do termo de referência" : ""}</p>
+                  {itensComPrecoDiferenteDoTermo.length > 0 && (
+                    <p className="text-xs text-warning-ink">A nota faturou preço diferente do termo no(s) item(ns) {itensComPrecoDiferenteDoTermo.join(", ")} — confira antes de lançar.</p>
+                  )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
@@ -1137,85 +1179,6 @@ export default function VinculoContratoSelector({
           </div>
         )}
 
-        {/* Aditivo origem */}
-        {value.contrato_id && aditivos.length > 0 && (
-          <div className="space-y-1.5">
-            <Label>Aditivo de origem (opcional) — define o preço de referência dos itens{dataDoDocumento ? `; sem escolha, vale o preço na data do documento (${dataDoDocumento.slice(0, 10).split("-").reverse().join("/")})` : ""}</Label>
-            <Select
-              value={value.origem_aditivo_id ?? "__contrato__"}
-              onValueChange={(v) =>
-                onChange({
-                  ...value,
-                  origem_aditivo_id: v === "__contrato__" ? null : v,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__contrato__">
-                  📄 Contrato Original
-                </SelectItem>
-                {aditivos.map((a) => {
-                  const n = alteradosPorTermo.get(a.id) ?? 0;
-                  return (
-                    <SelectItem key={a.id} value={a.id}>
-                      📎 {a.numero_aditivo} ({a.tipo}){n > 0 ? ` · ${n} preço(s) alterado(s)` : " · preços do termo anterior"}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {/* A tabela de preços do contrato, termo a termo: o que cada um mudou
-                em cada item (R$ e %). O preço de referência desta nota é a coluna
-                do termo escolhido — ou a da data do documento. */}
-            {itens.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => setMostrarTabelaDePrecos((v) => !v)} aria-expanded={mostrarTabelaDePrecos}>
-                    {mostrarTabelaDePrecos ? "Ocultar" : "Ver"} os preços do contrato termo a termo ({itens.length} itens · {tabelaDePrecos.colunas.length} termo(s))
-                  </Button>
-                  {itensSelecionados.length > 1 && (
-                    <Button type="button" variant="outline" size="sm" onClick={usarPrecosDoTermo} title="Copia o preço de referência de cada item marcado (o do termo escolhido, ou o da data do documento) para o unitário das partes">
-                      Usar os preços {value.origem_aditivo_id ? "deste termo" : "de referência"} nas partes
-                    </Button>
-                  )}
-                </div>
-                {mostrarTabelaDePrecos && (
-                  <div className="overflow-x-auto rounded-md border border-border">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-secondary text-left text-muted-foreground">
-                          <th className="px-2 py-1 whitespace-nowrap">Item</th>
-                          <th className="px-2 py-1 text-right whitespace-nowrap">Original</th>
-                          {tabelaDePrecos.colunas.map((c) => (
-                            <th key={c.aditivo_id} className={cn("px-2 py-1 text-right whitespace-nowrap", value.origem_aditivo_id === c.aditivo_id && "text-primary")} title={`${c.itensAlterados} preço(s) alterado(s)${c.data ? ` · efeitos ${c.data.split("-").reverse().join("/")}` : ""}`}>
-                              {c.rotulo}{c.itensAlterados === 0 ? " (=)" : ""}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tabelaDePrecos.linhas.map((l, idx) => (
-                          <tr key={l.contrato_item_id} className={cn("border-t border-border", itemIds.includes(l.contrato_item_id) && "bg-primary-tint/40")}>
-                            <td className="px-2 py-1 max-w-[16rem]"><span className="font-medium tabular-nums">{l.codigo_item ?? idx + 1}</span> <span className="line-clamp-1" title={l.descricao}>{l.descricao}</span></td>
-                            <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">{fmt(l.original)}</td>
-                            {l.porTermo.map((c) => (
-                              <td key={c.aditivo_id} className={cn("px-2 py-1 text-right tabular-nums whitespace-nowrap", c.mudou ? "font-medium text-foreground" : "text-muted-foreground")} title={c.mudou ? `${c.deltaReais >= 0 ? "+" : ""}${fmt(c.deltaReais)} (${c.deltaPct != null ? `${c.deltaPct >= 0 ? "+" : ""}${c.deltaPct.toFixed(2)}%` : "—"})` : "sem alteração neste termo"}>
-                                {fmt(c.valor)}{c.mudou && c.deltaPct != null && <span className={cn("ml-1 text-[10px]", c.deltaPct >= 0 ? "text-warning-ink" : "text-success-ink")}>{c.deltaPct >= 0 ? "+" : ""}{c.deltaPct.toFixed(1)}%</span>}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

@@ -294,12 +294,16 @@ medida que os documentos chegam. Regras que valem no código (migration
   (migration `20260923000003`, medida antes: um único item divergia).
 - **Cada termo é uma COLUNA acumulada de preços (30/09):**
   `tabelaDePrecosPorTermo` / `precosNoTermo` em `lib/contratos/preco-na-data.ts`
-  — "o 1º TA já com os 18 itens": o item que o termo não mexeu carrega o
-  preço da coluna anterior; Δ em R$ e % por célula é a auditoria. O seletor
-  de vínculo mostra a tabela, diz quantos preços cada termo alterou e tem
-  "Usar os preços deste termo nas partes"; o rótulo do item no Registrar
-  ordem/empenho é o preço NO TERMO/DATA do pedido (`rotuloDoItemNoFormulario`),
-  não o último termo aplicado a qualquer item. Pedido lançado guarda
+  — cada coluna parte do CONTRATO ORIGINAL e acumula todos os termos
+  anteriores: o item que o termo não mexeu carrega o preço da coluna
+  anterior. No vínculo da nota o termo é OBRIGATÓRIO ("Termo de referência
+  dos preços", antes da lista de itens): escolhido sozinho pela data da nota
+  (último termo com efeitos até ela; nenhum → original), e trocar reescreve o
+  unitário de todas as partes (`aplicarTermo`/`precosNoTermo`); as partes
+  nascem com quantidade da nota e preço do termo, e uma linha avisa em quais
+  itens a nota faturou preço diferente. Sem tabela nem botão no vínculo
+  (decisão do dono: menos leitura). O rótulo do item no Registrar
+  ordem/empenho é o preço NO TERMO/DATA do pedido (`rotuloDoItemNoFormulario`). Pedido lançado guarda
   `origem_aditivo_id` (nulo = original): os lotes 595/651 (2024) são
   "Contrato Original" com os preços originais, coerentes com a data.
   O 4º TA do 772/2024 estava ausente do banco: migration de dados
