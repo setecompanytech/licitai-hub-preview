@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { lerLinhaDigitavel } from '@/lib/financeiro/boleto';
 import { hojeLocal } from "@/lib/financeiro/data-local";
-import { normalizarChaveNfe, chaveNfeSuspeita } from "@/lib/financeiro/chave-nfe";
+import { normalizarChaveNfe, chaveNfeSuspeita, chaveNfeValida } from "@/lib/financeiro/chave-nfe";
 import { danfeDaChave, lerDanfe, pastaDaDirecao, type DanfeLido } from "@/lib/financeiro/danfe-texto";
 import { textoDasPaginas } from "@/lib/pdf-text-extractor";
 import { arquivoDoXml, buscarXmlPorChave } from "@/lib/financeiro/xml-por-chave";
@@ -18,6 +18,8 @@ import { useDocumentoFiscal } from "@/hooks/useDocumentoFiscal";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
@@ -207,6 +209,33 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
   }, []);
 
   const limparTudo = () => setDocs([]);
+
+  // ── Pela chave de acesso (30/09): o XML vem da SEFAZ com o A1 da empresa e
+  // segue o caminho do XML enviado — título, itens, DANFE gerado.
+  const [chaveDigitada, setChaveDigitada] = useState("");
+  const [buscandoChave, setBuscandoChave] = useState(false);
+  const chaveLimpa = chaveDigitada.replace(/\D/g, "");
+  const buscarPelaChave = async () => {
+    if (!empresaId) return;
+    if (!chaveNfeValida(chaveLimpa)) { toast.error("Chave de acesso inválida: são 44 dígitos com dígito verificador."); return; }
+    setBuscandoChave(true);
+    try {
+      const r = await buscarXmlPorChave(empresaId, chaveLimpa);
+      if (r.ok === false) {
+        toast.error("A SEFAZ não entregou o XML.", { description: r.motivo, duration: 15000, action: r.sem_certificado ? { label: "Enviar o certificado", onClick: () => navigate("/financeiro/integracoes_fiscais") } : undefined });
+        return;
+      }
+      const file = arquivoDoXml(r.xml, chaveLimpa);
+      const item: DocItem = { id: `${file.name}-${Date.now()}`, file, kind: "xml", status: "processando" };
+      setDocs((prev) => [...prev, item]);
+      setChaveDigitada("");
+      const lido = await processarUm(item);
+      setDocs((prev) => prev.map((d) => (d.id === item.id ? lido : d)));
+      if (lido.status === "ok") toast.success(`NF-e ${r.resumo?.numero ?? ""} trazida da SEFAZ e lançada pelo XML.`);
+    } finally {
+      setBuscandoChave(false);
+    }
+  };
 
   const processarUm = async (item: DocItem): Promise<DocItem> => {
     /**
@@ -1334,6 +1363,21 @@ export default function FinExtracaoDocumentos({ open, onOpenChange, tipo }: Prop
                   e.target.value = "";
                 }}
               />
+            </div>
+
+            {/* Pela chave (30/09): a SEFAZ entrega o XML das notas em que a empresa é
+                destinatária/transportadora, autorizadas nos últimos 90 dias. */}
+            <div className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2">
+              <div className="min-w-[16rem] flex-1 space-y-1">
+                <Label htmlFor="extracao-chave" className="text-xs">Ou informe a chave de acesso (44 dígitos) — o XML vem da SEFAZ e o DANFE nasce junto</Label>
+                <Input id="extracao-chave" inputMode="numeric" placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" className="h-9 font-mono text-xs tabular-nums"
+                  value={chaveDigitada} onChange={(e) => setChaveDigitada(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void buscarPelaChave(); } }} />
+              </div>
+              <Button size="sm" onClick={() => void buscarPelaChave()} disabled={buscandoChave || chaveLimpa.length !== 44} title="Busca o XML na SEFAZ com o certificado A1 da empresa (NFeDistribuicaoDFe)">
+                {buscandoChave ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Link2 aria-hidden="true" />}Buscar na SEFAZ
+              </Button>
+              <p className="basis-full text-xs text-muted-foreground">A SEFAZ entrega pela chave as notas em que a empresa é destinatária ou transportadora, autorizadas nos últimos 90 dias. Nota emitida pela própria empresa vem do sistema emissor.</p>
             </div>
 
             {/* Aviso — só enquanto não há arquivo: com arquivo, o espaço é do trabalho. */}

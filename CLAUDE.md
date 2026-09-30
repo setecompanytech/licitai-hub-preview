@@ -979,6 +979,10 @@ configurar o proxy". O que existe no código:
 - **SEFAZ 632 = nota com mais de 90 dias**: o DistribuicaoDFe por chave só
   entrega notas recentes; nota antiga vem do sistema emissor. O proxy e a
   edge dizem isso (137 idem: a empresa não é parte da nota).
+- **Extração pela chave de acesso** (30/09): campo na Extração de
+  Documentos chama `buscarXmlPorChave`, o XML vira `File` e passa por
+  `processarUm` como XML enviado (título, itens, DANFE gerado). Mesmos
+  limites da SEFAZ (destinatária/transportadora, 90 dias).
 - **A página `/certificado-upload` é pública** (autoriza pelo token de uso
   único): `upload-certificado` precisa de `verify_jwt = false` no
   `config.toml`, senão o gateway recusa o envio antes de a função rodar —
