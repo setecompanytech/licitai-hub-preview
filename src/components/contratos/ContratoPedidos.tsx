@@ -15,7 +15,7 @@ import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
-import { agruparEmLotes, rotuloDoLote, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
+import { agruparEmLotes, rotuloDoLote, descricaoSemParte, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
 import { parseNFeXML } from '@/lib/parseNFe';
 import { arquivoDanfe, abrirDanfe } from '@/lib/financeiro/danfe-pdf';
 import type { NotaDoPedido } from '@/hooks/useNotaDoPedido';
@@ -447,21 +447,39 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    */
   const [trocaDeEmpenho, setTrocaDeEmpenho] = useState<{ rotulo: string; pedidos: string[]; atual: string | null } | null>(null);
   /** Editar o lote (30/09): o que é da NOTA vale para todas as partes — número da nota, data, situação e a cesta. */
-  const [edicaoDoLote, setEdicaoDoLote] = useState<{ id: string; numero: string; partes: string[]; nota_fiscal: string; data_pedido: string; status: string; unidade_composta: string; unidades_compostas: string } | null>(null);
+  const [edicaoDoLote, setEdicaoDoLote] = useState<{ id: string; numero: string; partes: string[]; descricao: string; nota_fiscal: string; data_pedido: string; data_entrega: string; status: string; empenho_id: string; unidade_composta: string; unidades_compostas: string; observacoes: string } | null>(null);
   const [salvandoLote, setSalvandoLote] = useState(false);
   const salvarEdicaoDoLote = async () => {
     if (!edicaoDoLote) return;
     setSalvandoLote(true);
     const cestas = parseFloat(edicaoDoLote.unidades_compostas.replace(',', '.'));
-    const { error } = await supabase.from('contrato_pedidos').update({
+    const emp = edicaoDoLote.empenho_id && edicaoDoLote.empenho_id !== 'nenhum' ? empenhosDoContrato.find((e) => e.id === edicaoDoLote.empenho_id) ?? null : null;
+    const comum = {
       nota_fiscal: edicaoDoLote.nota_fiscal.trim() || null,
       data_pedido: edicaoDoLote.data_pedido || null,
+      data_entrega: edicaoDoLote.data_entrega || null,
       status: edicaoDoLote.status,
+      empenho_id: emp?.id ?? null, numero_empenho: emp?.numero ?? null, tipo_empenho: emp?.tipo ?? null,
       unidade_composta: edicaoDoLote.unidade_composta.trim() || null,
       unidades_compostas: Number.isFinite(cestas) && cestas > 0 ? cestas : null,
-    } as never).in('id', edicaoDoLote.partes);
+      observacoes: edicaoDoLote.observacoes.trim() || null,
+    };
+    const { error } = await supabase.from('contrato_pedidos').update(comum as never).in('id', edicaoDoLote.partes);
+    // A descrição do lote é o prefixo antes de " · " em cada parte ("NF-e 595 · AÇÚCAR… (item 1/18)"):
+    // renomear o lote troca o prefixo e preserva o item de cada parte.
+    const prefixo = edicaoDoLote.descricao.trim();
+    let erroDesc: string | null = null;
+    if (!error && prefixo) {
+      const partesDoLote = pedidos.filter((p) => edicaoDoLote.partes.includes(p.id));
+      const resultados = await Promise.all(partesDoLote.map((p) => {
+        const atual = String(p.descricao ?? '');
+        const resto = atual.includes(' · ') ? atual.slice(atual.indexOf(' · ') + 3) : '';
+        return supabase.from('contrato_pedidos').update({ descricao: resto ? `${prefixo} · ${resto}` : prefixo } as never).eq('id', p.id);
+      }));
+      erroDesc = resultados.find((r) => r.error)?.error?.message ?? null;
+    }
     setSalvandoLote(false);
-    if (error) { toast.error('Não foi possível salvar o lote', { description: error.message }); return; }
+    if (error || erroDesc) { toast.error('Não foi possível salvar o lote', { description: error?.message ?? erroDesc ?? '' }); return; }
     toast.success(`Lote ${edicaoDoLote.numero} atualizado nas ${edicaoDoLote.partes.length} partes.`);
     setEdicaoDoLote(null);
     load();
@@ -2827,16 +2845,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     moram na barra da aba; o documento do empenho abre pela Origem. */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" className="g-controle" title="Número da nota, data, situação e cesta — vale para todas as partes"
-                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '' })}>
+                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), descricao: descricaoSemParte(loteAberto.partes[0]?.descricao).split(' · ')[0] ?? '', nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', data_entrega: loteAberto.partes[0]?.data_entrega ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', empenho_id: loteAberto.empenho_id ?? 'nenhum', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '', observacoes: loteAberto.partes[0]?.observacoes ?? '' })}>
                     <Pencil aria-hidden="true" /> Editar
                   </Button>
                   {loteAberto.partes[0] && (
                     <KitFaturamento pedido={{ id: loteAberto.partes[0].id, numero_pedido: loteAberto.numero, valor_total: loteAberto.valor_total, nota_fiscal: loteAberto.nota_fiscal, contrato_id: contratoId }} />
                   )}
-                  <Button size="sm" variant="outline" className="g-controle" title="Trocar o empenho que autoriza este lote — vale para as 18 partes e recalcula os saldos"
-                    onClick={() => { setNovoEmpenhoId(loteAberto.empenho_id ?? 'nenhum'); setTrocaDeEmpenho({ rotulo: `lote ${loteAberto.numero} (${loteAberto.partes.length} partes)`, pedidos: loteAberto.partes.map((p) => p.id), atual: loteAberto.empenho_id ?? null }); }}>
-                    <FileText aria-hidden="true" /> Trocar empenho
-                  </Button>
                   <Button size="sm" variant="outline" className="g-controle text-destructive-ink hover:bg-destructive-tint hover:text-destructive-ink" onClick={() => setDeleteDialog({ id: loteAberto.id, numero: `${loteAberto.numero} (lote)`, lote: { id: loteAberto.id, partes: loteAberto.partes.map((p) => p.id) } })} title="Exclui as partes deste lote com motivo no histórico do Admin">
                     <Trash2 aria-hidden="true" /> Excluir lote
                   </Button>
@@ -3090,7 +3104,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               <button type="button" className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }} aria-expanded={selecionadoLote} title="Abrir o lote: as partes, item a item">
                                 {lote.numero}
                               </button>
-                              <div className="g-meta text-muted-foreground">lote · {lote.partes.length} partes{lote.numero_empenho ? ` · emp. ${lote.numero_empenho}` : ''}</div>
+                              <div className="g-meta whitespace-nowrap text-muted-foreground">lote{lote.numero_empenho ? ` · emp. ${lote.numero_empenho}` : ''}</div>
                             </TableCell>
                             <TableCell className="min-w-[12rem] max-w-[17rem]">
                               {/* Texto, não link: o número e "Abrir lote" já abrem a caixa (30/09). */}
@@ -3106,14 +3120,13 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               <SeloSituacao tom={tomDoStatus(lote.status)}>{cfgLote.label}</SeloSituacao>
                               {lote.progresso && <div className="g-meta text-muted-foreground">{lote.progresso}</div>}
                             </TableCell>
-                            <TableCell className="min-w-[12rem]">
+                            <TableCell className="whitespace-nowrap">
                               {lote.nota_fiscal ? (
-                                <div className="space-y-0.5">
-                                  <span className="inline-flex items-center rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="inline-flex w-fit items-center rounded-md border border-border bg-secondary px-2 py-0.5 text-xs font-medium">
                                     <FileText aria-hidden="true" className="mr-1 inline h-3 w-3" />{formatarNumeroNfe(lote.nota_fiscal) ?? lote.nota_fiscal}
                                   </span>
-                                  {notaDoLote(lote) ?? <div className="g-meta text-muted-foreground">sem arquivo — anexe o XML ou o DANFE pela Extração de Documentos</div>}
-                                  <div className="g-meta text-muted-foreground">rateada em {lote.partes.length} partes</div>
+                                  {notaDoLote(lote) ?? <span className="g-meta text-muted-foreground" title="Anexe o XML ou o DANFE pela Extração de Documentos">sem arquivo</span>}
                                 </div>
                               ) : <span className="g-meta text-muted-foreground">sem nota</span>}
                             </TableCell>
@@ -4246,15 +4259,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
       {/* Editar lote (30/09) */}
       <Dialog open={!!edicaoDoLote} onOpenChange={(v) => { if (!v && !salvandoLote) setEdicaoDoLote(null); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar lote {edicaoDoLote?.numero}</DialogTitle>
             <DialogDescription>O que é da nota vale para as {edicaoDoLote?.partes.length} partes. Quantidade e preço de cada item se editam na parte.</DialogDescription>
           </DialogHeader>
           {edicaoDoLote && (
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2"><Label>Descrição do lote</Label><Input value={edicaoDoLote.descricao} placeholder="NF-e 595" onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, descricao: e.target.value })} /><p className="g-meta text-muted-foreground">Renomeia o lote; cada parte mantém o nome do item ("{edicaoDoLote.descricao || 'NF-e 595'} · AÇÚCAR… (item 1/{edicaoDoLote.partes.length})").</p></div>
               <div className="space-y-1.5"><Label>Nota fiscal (nº)</Label><Input value={edicaoDoLote.nota_fiscal} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, nota_fiscal: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Empenho que autoriza (art. 60)</Label>
+                <Select value={edicaoDoLote.empenho_id} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, empenho_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Escolha o empenho" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Sem vínculo com empenho</SelectItem>
+                    {empenhosDoContrato.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{e.numero} — {ROTULO_DO_EMPENHO[e.tipo as 'ordinario'] ?? e.tipo}{e.cancelado ? ' · CANCELADO' : ` · vigente ${fmt(e.vigente)}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5"><Label>Data do pedido</Label><Input type="date" value={edicaoDoLote.data_pedido} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, data_pedido: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Entrega prevista</Label><Input type="date" value={edicaoDoLote.data_entrega} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, data_entrega: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Situação</Label>
                 <Select value={edicaoDoLote.status} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -4267,6 +4293,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div className="space-y-1.5"><Label>Unidade composta</Label><Input placeholder="cesta básica" value={edicaoDoLote.unidade_composta} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidade_composta: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Quantas a nota entrega</Label><Input inputMode="decimal" className="tabular-nums" value={edicaoDoLote.unidades_compostas} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidades_compostas: e.target.value })} /></div>
+              <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea rows={3} value={edicaoDoLote.observacoes} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, observacoes: e.target.value })} /></div>
             </div>
           )}
           <DialogFooter>
