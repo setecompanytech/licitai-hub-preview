@@ -3112,7 +3112,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                               <button type="button" className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { setPedidoSelecionado(null); setLoteSelecionado(lote.id); }} aria-expanded={selecionadoLote} title="Abrir o lote: as partes, item a item">
                                 {lote.numero}
                               </button>
-                              <div className="g-meta whitespace-nowrap text-muted-foreground">lote{lote.numero_empenho ? ` · emp. ${lote.numero_empenho}` : ''}</div>
+                              <div className="g-meta whitespace-nowrap text-muted-foreground">lote</div>
                             </TableCell>
                             <TableCell className="min-w-[12rem] max-w-[17rem]">
                               {/* Texto, não link: o número e "Abrir lote" já abrem a caixa (30/09). */}
