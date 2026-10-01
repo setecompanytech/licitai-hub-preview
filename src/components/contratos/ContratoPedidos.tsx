@@ -2782,7 +2782,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <DialogDescription>{rotuloDoLote(loteAberto)} — cada parte é um pedido do item do contrato: consome o saldo dele e tem as próprias ações.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+            <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)] items-start">
+              <div className="flex min-w-0 flex-col gap-4">
               <BlocoDoPainel titulo="Origem">
                 <ListaDeCampos
                   campos={[
@@ -2830,16 +2831,16 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-xs text-muted-foreground">
-                          <th className="py-1 pr-3 text-left font-medium"></th>
+                          <th className="py-1 pr-3 text-left font-medium w-[40%]"></th>
                           {cestas > 0 && <th className="py-1 pr-3 text-right font-medium whitespace-nowrap">Por {nome}</th>}
-                          <th className="py-1 text-right font-medium whitespace-nowrap">{cestas > 0 ? `Nota (${cestas.toLocaleString('pt-BR')} ${nome}s)` : 'Nota'}</th>
+                          <th className="py-1 text-right font-medium whitespace-nowrap">Nota{cestas > 0 ? ` (${cestas.toLocaleString('pt-BR')})` : ''}</th>
                         </tr>
                       </thead>
                       <tbody>
                         <Linha rotulo="Venda (faturado)" un={l.porUnidade ? fmt(l.porUnidade.faturado) : ''} tot={fmt(l.faturado)} />
                         <Linha rotulo={<>(−) Custo de compra{!comCusto && <span className="ml-1 g-meta text-muted-foreground">não declarado — Editar</span>}</>} un={comCusto && l.porUnidade ? fmt(l.porUnidade.custo) : '—'} tot={comCusto ? fmt(l.custo) : '—'} />
-                        <Linha rotulo={<>Lucro bruto{comCusto && l.margemPct != null && <span className="ml-1 font-normal text-muted-foreground">({l.margemPct.toFixed(1)}% sobre a venda)</span>}</>} un={comCusto && l.porUnidade ? fmt(l.porUnidade.lucro) : '—'} tot={comCusto ? fmt(l.lucroBruto) : '—'} forte cor={comCusto ? (l.lucroBruto < 0 ? 'text-destructive-ink' : 'text-success-ink') : ''} />
-                        {comCusto && <Linha rotulo={<span className="text-muted-foreground">Custo como % da venda</span>} un="" tot={`${((l.custo / l.faturado) * 100).toFixed(1)}%`} />}
+                        <Linha rotulo={<>Lucro bruto{comCusto && l.margemPct != null && <span className="block g-meta font-normal text-muted-foreground">{l.margemPct.toFixed(1)}% sobre a venda</span>}</>} un={comCusto && l.porUnidade ? fmt(l.porUnidade.lucro) : '—'} tot={comCusto ? fmt(l.lucroBruto) : '—'} forte cor={comCusto ? (l.lucroBruto < 0 ? 'text-destructive-ink' : 'text-success-ink') : ''} />
+                        {comCusto && <Linha rotulo={<span className="text-muted-foreground">Custo ÷ venda</span>} un="" tot={`${((l.custo / l.faturado) * 100).toFixed(1)}%`} />}
                       </tbody>
                     </table>
                     <p className="mt-2 g-meta text-muted-foreground">
@@ -2850,6 +2851,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                   </BlocoDoPainel>
                 );
               })()}
+              </div>
               <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">

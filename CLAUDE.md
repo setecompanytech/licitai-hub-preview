@@ -6,6 +6,19 @@ App de gestão de licitações. Vite + React 18 + TypeScript + Tailwind + shadcn
 > ⚠️ Este repo **também é editado pelo Lovable**, que commita direto no `main`. O remoto muda sem
 > ação local. Por isso: **sempre sincronizar antes de mexer e antes de qualquer push.**
 
+> 📐 **Regra de layout (dono, 30/09/2026): antes de inserir, remover ou mover um
+> bloco numa tela, ler a estrutura que o contém; depois, conferir o resultado.**
+> Grade com colunas nomeadas (`grid-cols-[22rem_minmax(0,1fr)]`) tem N filhos:
+> um filho a mais entra na coluna errada e empurra o seguinte para a estreita
+> (foi assim que a tabela de itens do lote caiu numa coluna de 20rem em 30/09).
+> Bloco novo numa coluna entra DENTRO de um `<div className="flex flex-col
+> gap-4">` daquela coluna, nunca como irmão solto da grade. Texto em célula
+> de valor é `whitespace-nowrap tabular-nums`; rótulo longo quebra em linha
+> própria (`block g-meta`), não ao lado do número. Caixa (Dialog) que ganha
+> conteúdo ganha largura (`sm:max-w-4xl`) e rolagem interna
+> (`max-h-[92vh] overflow-y-auto`). A conferência é obrigatória: tsc e build
+> não enxergam coluna cortada.
+
 > 🎨 **Mexendo em aparência?** O app segue o **Design System v3** (comando do dono, 19/09/2026):
 > leia `docs/design-system-praefectus.md` **antes** de escolher qualquer cor, raio ou tamanho —
 > ele traz os tokens, a tipografia (Inter), as anatomias (página, KPI, tabela, status, modal) e
