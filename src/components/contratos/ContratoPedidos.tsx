@@ -1090,6 +1090,18 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
   const itensFiltrados = useMemo((): ContratoItem[] => filtrarPorSituacao(itens, situacaoDosItens, origemFilter), [itens, situacaoDosItens, origemFilter]);
   const termosNoFiltro = useMemo(() => termosDoFiltro(situacaoDosItens), [situacaoDosItens]);
 
+  /** O termo em vigor na data do pedido — o que o seletor mostra como automático. */
+  const termoPelaDataDoPedido = useMemo(() => {
+    const d = form.data_pedido?.slice(0, 10);
+    if (!d) return null;
+    const dataDe = (a: AditivoRef) => (a.data_efeitos ?? a.data_assinatura ?? a.data_aditivo ?? '').slice(0, 10);
+    let achado: string | null = null;
+    for (const a of [...aditivos].sort((x, y) => dataDe(x).localeCompare(dataDe(y)))) {
+      if (dataDe(a) && dataDe(a) <= d) achado = a.numero_aditivo;
+    }
+    return achado;
+  }, [aditivos, form.data_pedido]);
+
   const handleItemChange = (itemId: string) => {
     setForm(f => {
       const item = itens.find(i => i.id === itemId);
@@ -3853,6 +3865,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 <div className="space-y-1.5">
                   <Label>Data do Pedido</Label>
                   <Input type="date" value={form.data_pedido} onChange={e => setForm(f => ({ ...f, data_pedido: e.target.value }))} />
+                  {/* O termo de referência (30/09): em qual janela do contrato o
+                      pedido cai e qual preço o acompanha. Sem escolha, a janela
+                      e o preço são os da data — o mesmo critério do Contas a
+                      Receber. Mora na célula da data para a grade não mudar. */}
+                  {aditivos.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="g-meta text-muted-foreground">Termo de referência</Label>
+                      <Select value={form.origem_aditivo_id || '__data__'} onValueChange={v => setForm(f => ({ ...f, origem_aditivo_id: v === '__data__' ? '' : v }))}>
+                        <SelectTrigger className="h-8" aria-label="Termo de referência"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__data__">Pela data do pedido{termoPelaDataDoPedido ? ` (${termoPelaDataDoPedido})` : ' (contrato original)'}</SelectItem>
+                          {aditivos.map(a => <SelectItem key={a.id} value={a.id}>{a.numero_aditivo}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Data de Entrega (prevista)</Label>

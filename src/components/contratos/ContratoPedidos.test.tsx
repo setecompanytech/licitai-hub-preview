@@ -198,8 +198,9 @@ describe('Aba Pedidos — o que consome e o que autoriza vivem em subabas', () =
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
     const cabecalho = within(screen.getByRole('table')).getAllByRole('columnheader').map(c => c.textContent?.trim());
     // "Custo" (22/09) só para admin/Financeiro — o mock desta suíte é admin.
+    // Cabeçalhos renomeados a pedido do dono (30/09): "Nº pedido", "Descrição" e a coluna Valor.
     expect(cabecalho).toEqual([
-      'Pedido', 'Item', 'Quantidade', 'Prazo', 'Situação', 'NF-e', 'Custo', 'Etapa operacional', 'Ações',
+      'Nº pedido', 'Descrição', 'Quantidade', 'Valor', 'Prazo', 'Situação', 'NF-e', 'Custo', 'Etapa operacional', 'Ações',
     ]);
   });
 
@@ -278,7 +279,8 @@ describe('Lote de pedidos (29/09) — a nota rateada em N itens é uma linha só
     montar();
     const linha = await screen.findByTestId('linha-lote-L-595');
     expect(within(linha).getByText('595')).toBeInTheDocument();
-    expect(within(linha).getByText('NF-e 595 · 2 itens do contrato')).toBeInTheDocument();
+    // A descrição do lote é só o prefixo (30/09): sem "· N itens do contrato".
+    expect(within(linha).getAllByText('NF-e 595').length).toBeGreaterThan(0);
     expect(within(linha).getByText(/520,00/)).toBeInTheDocument();
     expect(within(linha).getByText('Parcial')).toBeInTheDocument();
     expect(within(linha).getByText('1 de 2 entregue(s)')).toBeInTheDocument();
@@ -299,10 +301,10 @@ describe('Lote de pedidos (29/09) — a nota rateada em N itens é uma linha só
     expect(within(painel).getByText('Descrição')).toBeInTheDocument();
     expect(within(painel).getByText('Unidade')).toBeInTheDocument();
     // Ordem pelo número do item: IT-1/IT-2 não são numéricos → cai na parte; clicar em "Item" inverte.
-    const linhasAntes = within(painel).getAllByRole('row').slice(1, 3).map((r) => r.textContent ?? '');
+    const linhasAntes = within(painel).getAllByRole('row').map((r) => r.textContent ?? '').filter((t) => /595-\d/.test(t));
     expect(linhasAntes[0]).toContain('595-1');
     fireEvent.click(within(painel).getByRole('button', { name: /^Item/ }));
-    const linhasDepois = within(painel).getAllByRole('row').slice(1, 3).map((r) => r.textContent ?? '');
+    const linhasDepois = within(painel).getAllByRole('row').map((r) => r.textContent ?? '').filter((t) => /595-\d/.test(t));
     expect(linhasDepois[0]).toContain('595-2');
     fireEvent.click(within(painel).getByText('595-2'));
     await waitFor(() => expect(screen.getByText('Pedido 595-2')).toBeInTheDocument());
@@ -319,7 +321,7 @@ describe('Aba Pedidos — o painel do pedido selecionado', () => {
     await waitFor(() => expect(screen.getByText('Entrega de teste')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Entrega de teste'));
 
-    await waitFor(() => expect(screen.getByText('Pedido OF-TESTE-1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Detalhe do pedido OF-TESTE-1')).toBeInTheDocument());
     expect(screen.getByText('Contrato')).toBeInTheDocument();
     expect(screen.getByText('TESTE-1')).toBeInTheDocument();
     expect(screen.getByText('Órgão')).toBeInTheDocument();
@@ -350,8 +352,9 @@ describe('Desfazer quitação (21/09) — a linha quitada tem lápis e desfazer,
     }];
     const tela = within(montar().container);
     fireEvent.click(await tela.findByRole('button', { name: 'OF-TESTE-1' }));
-    await waitFor(() => expect(tela.getByText('Pedido OF-TESTE-1')).toBeInTheDocument());
-    expect(tela.getByText('Empenho de origem')).toBeInTheDocument();
+    // A caixa do pedido (30/09) nasce num portal, fora do container: `screen`.
+    await waitFor(() => expect(screen.getByText('Detalhe do pedido OF-TESTE-1')).toBeInTheDocument());
+    expect(screen.getByText('Empenho de origem')).toBeInTheDocument();
   });
 
   it('pedido sem NF quitada mantém a lixeira e não oferece "Desfazer quitação"', async () => {

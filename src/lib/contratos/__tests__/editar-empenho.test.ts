@@ -9,7 +9,7 @@ const linha = (p: Partial<LinhaDoEmpenho>): LinhaDoEmpenho => ({ key: 'k', contr
 
 describe('editar empenho', () => {
   it('abre o formulário a partir do registro', () => {
-    expect(formularioDoEmpenho(ORIGINAL)).toEqual({ numero: '0062352024', tipo: 'ordinario', data_emissao: '2024-06-14', valor: '17283', quantidade: '2800', unidade: 'un', observacao: '' });
+    expect(formularioDoEmpenho(ORIGINAL)).toEqual({ numero: '0062352024', tipo: 'ordinario', data_emissao: '2024-06-14', valor: '17283', quantidade: '2800', unidade: 'un', observacao: '', origem_aditivo_id: '' });
   });
   it('trocar a espécie à mão desfaz a leitura do documento (origem manual, trecho apagado); manter preserva', () => {
     const f = { ...formularioDoEmpenho(ORIGINAL), tipo: 'global' as const };

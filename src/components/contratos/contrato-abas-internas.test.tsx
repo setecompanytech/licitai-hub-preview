@@ -99,7 +99,7 @@ describe('smoke — Itens/Lotes', () => {
   it('renderiza indicadores, filtros e tabela, e abre o painel do item', async () => {
     envolver(<ContratoItens contratoId="c-1" />);
     await waitFor(() => expect(screen.getByText('Item de teste')).toBeInTheDocument());
-    expect(screen.getByText('Total efetivo')).toBeInTheDocument();
+    expect(screen.getByText('Contratado na vida do contrato')).toBeInTheDocument();
     expect(screen.getByText('Saldo dos itens')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Buscar por descrição/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Item de teste'));

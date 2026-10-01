@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UNIDADES } from '@/lib/unidades';
 import { ordenarItensPorNumero, rotuloCurtoDoTermo, trajetoriaDoPreco } from '@/lib/contratos/itens-do-termo';
+import { janelasDoContrato, rotuloDaSituacao, type EmpenhoDaJanela, type LinhaDaJanela, type PedidoDaJanela } from '@/lib/contratos/janelas-do-contrato';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +66,9 @@ type PassoDoTermo = {
 type Aditivo = {
   id: string; numero_aditivo: string; tipo: string;
   quantidade_acrescimo?: number | null; quantidade_supressao?: number | null;
+  valor_acrescimo?: number | null; valor_supressao?: number | null;
+  data_efeitos?: string | null; data_assinatura?: string | null; data_aditivo?: string | null;
+  periodo_inicio?: string | null; periodo_fim?: string | null; nova_data_fim?: string | null;
 };
 
 type ContratoMeta = {
@@ -73,6 +77,9 @@ type ContratoMeta = {
   tipo_estrutura?: 'itens' | 'lotes' | string | null;
   valor_global?: number | null;
   valor_consumido?: number | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  data_assinatura?: string | null;
 };
 
 /** Chave de agrupamento para identificar o mesmo item físico entre versões */
@@ -101,6 +108,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const [aditivos, setAditivos] = useState<Aditivo[]>([]);
   /** Por item, os termos aplicados em ordem: é a trajetória do preço na coluna Situação. */
   const [passosPorItem, setPassosPorItem] = useState<Record<string, PassoDoTermo[]>>({});
+  /** As linhas dos termos, os pedidos e os empenhos: a matéria-prima das janelas por período (30/09). */
+  const [linhasDosTermos, setLinhasDosTermos] = useState<LinhaDaJanela[]>([]);
+  const [pedidosDoContrato, setPedidosDoContrato] = useState<PedidoDaJanela[]>([]);
+  const [empenhosDoContrato, setEmpenhosDoContrato] = useState<EmpenhoDaJanela[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -229,74 +240,62 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
   const totalContratadoEfetivo =
     (Number(meta?.valor_consumido) || 0) + totalSaldoEfetivo;
 
-  // ——— Camadas por Situação (Contrato Original × cada termo aditivo) ———
-  // O saldo do contrato é um pote único: pedidos NÃO são carimbados por termo.
-  // Para conferir "quanto resta de cada camada", a atribuição é FIFO — o consumo
-  // abate primeiro o Contrato Original e depois cada termo, na ordem de registro.
-  // Acréscimo de quantidade por camada: a diferença (vigente − contratada) do item
-  // é repartida entre os termos na proporção dos acréscimos registrados em cada um.
-  // Régua de conferência gerencial, não segregação jurídica de saldos.
-  type Camada = { capacidade: number; consumido: number; saldo: number };
-  const camadasPorItem = useMemo(() => {
-    const acrescDe = (a: Aditivo) =>
-      Math.max((Number(a.quantidade_acrescimo) || 0) - (Number(a.quantidade_supressao) || 0), 0);
-    const somaAcresc = aditivos.reduce((s, a) => s + acrescDe(a), 0);
-    const mapa = new Map<string, Map<string, Camada>>();
-    for (const item of itensMesclados) {
-      const vigente = qtdVigenteDe(item);
-      const acrescimoItem = Math.max(vigente - (Number(item.quantidade_contratada) || 0), 0);
-      const caps: Array<[string, number]> = [['original', vigente - acrescimoItem]];
-      for (const a of aditivos) {
-        caps.push([a.id, somaAcresc > 0 ? acrescimoItem * (acrescDe(a) / somaAcresc) : 0]);
-      }
-      let restante = Number(item.quantidade_consumida) || 0;
-      const porCamada = new Map<string, Camada>();
-      for (const [key, cap] of caps) {
-        const consumido = Math.min(restante, cap);
-        restante -= consumido;
-        porCamada.set(key, { capacidade: cap, consumido, saldo: cap - consumido });
-      }
-      mapa.set(item.id, porCamada);
-    }
-    return mapa;
-    // qtdVigenteDe é recriada a cada render mas só varia com ehAta (meta);
-    // listar meta?.tipo_documento cobre a dependência real sem recomputar à toa.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itensMesclados, aditivos, meta?.tipo_documento]);
+  // ——— As JANELAS do contrato (30/09): saldo por período de vigência ———
+  // Cada termo abre uma janela de tempo; a renovação abre um período e repõe
+  // as quantidades; o que sobrou de um período encerrado é "não executado",
+  // nunca saldo. Regra pura em lib/contratos/janelas-do-contrato.ts.
+  const visao = useMemo(() => janelasDoContrato(
+    { data_inicio: meta?.data_inicio ?? null, data_fim: meta?.data_fim ?? null, data_assinatura: meta?.data_assinatura ?? null },
+    aditivos,
+    linhasDosTermos,
+    itensMesclados.map((i) => ({ id: i.id, codigo_item: i.codigo_item, descricao: i.descricao, quantidade_contratada: i.quantidade_contratada, valor_unitario: i.valor_unitario, valor_unitario_original: i.valor_unitario_original })),
+    pedidosDoContrato,
+    empenhosDoContrato,
+  ), [meta?.data_inicio, meta?.data_fim, meta?.data_assinatura, aditivos, linhasDosTermos, itensMesclados, pedidosDoContrato, empenhosDoContrato]);
+  const janelaSel = situacao !== 'todas' ? visao.janelas.find((j) => j.id === situacao) ?? null : null;
+  const periodoCorrente = visao.periodos.find((p) => p.corrente) ?? null;
+  const vidaDe = (itemId: string) => (ehAta ? null : visao.porItem.get(itemId)?.vida ?? null);
+  const dataBr = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—');
 
-  const labelSituacao = situacao === 'original'
-    ? (meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original')
-    : (aditivos.find(a => a.id === situacao)?.numero_aditivo ?? '');
+  const labelSituacao = janelaSel
+    ? (janelaSel.id === 'original' && meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : janelaSel.rotulo)
+    : '';
 
   const loadData = async () => {
     setLoading(true);
-    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global, valor_consumido').eq('id', contratoId).maybeSingle();
+    const metaRes = await supabase.from('contratos').select('tipo_documento, ata_srp_id, tipo_estrutura, empresa_id, valor_global, valor_consumido, data_inicio, data_fim, data_assinatura').eq('id', contratoId).maybeSingle();
     const m = metaRes.data as ContratoMeta | null;
     setMeta(m);
 
     const empresaId = (m as any)?.empresa_id || empresaAtiva?.id;
 
-    const [itensRes, aditivosRes, produtosRes] = await Promise.all([
+    const [itensRes, aditivosRes, produtosRes, pedidosRes, empenhosRes] = await Promise.all([
       supabase.from('contrato_itens').select('*').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
-      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo, quantidade_acrescimo, quantidade_supressao').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
+      supabase.from('contrato_aditivos').select('id, numero_aditivo, tipo, quantidade_acrescimo, quantidade_supressao, valor_acrescimo, valor_supressao, data_efeitos, data_assinatura, data_aditivo, periodo_inicio, periodo_fim, nova_data_fim').eq('contrato_id', contratoId).order('created_at', { ascending: true }),
       empresaId
         ? supabase.from('produtos').select('id, codigo, descricao, unidade, preco_venda').eq('empresa_id', empresaId).order('descricao')
         : Promise.resolve({ data: [] }),
+      // Quem consome é o pedido; o empenho reserva. Os dois caem na janela do
+      // termo que carimba e, sem carimbo, na da data (30/09).
+      supabase.from('contrato_pedidos').select('id, contrato_item_id, quantidade, valor_total, data_pedido, origem_aditivo_id, status, empenho_id').eq('contrato_id', contratoId).limit(5000),
+      supabase.from('contrato_empenhos' as never).select('id, numero, quantidade, valor, data_emissao, origem_aditivo_id').eq('contrato_id', contratoId).limit(1000),
     ]);
     setItens((itensRes.data as any[]) || []);
     setAditivos((aditivosRes.data as any[]) || []);
     setProdutos((produtosRes.data as any[]) || []);
+    setPedidosDoContrato(((pedidosRes.data ?? []) as unknown as PedidoDaJanela[]) || []);
+    setEmpenhosDoContrato(((empenhosRes.data ?? []) as unknown as EmpenhoDaJanela[]) || []);
 
     // As linhas dos termos aplicadas a cada item (26/09). A tabela vem de
     // migration colada à mão: ausente, a coluna Situação segue como antes.
     const { data: linhasDosTermos } = await supabase
       .from('contrato_aditivo_itens' as never)
-      .select('contrato_item_id, valor_unitario_anterior, valor_unitario_novo, quantidade_acrescimo, quantidade_supressao, aplicado_em, aditivo:contrato_aditivos(numero_aditivo, data_efeitos, data_assinatura)')
+      .select('aditivo_id, contrato_item_id, valor_unitario_anterior, valor_unitario_novo, quantidade_acrescimo, quantidade_supressao, aplicado_em, aditivo:contrato_aditivos(numero_aditivo, data_efeitos, data_assinatura)')
       .eq('contrato_id', contratoId)
       .not('aplicado_em', 'is', null)
       .order('aplicado_em', { ascending: true });
     type LinhaDoTermoLida = {
-      contrato_item_id: string; valor_unitario_anterior: number | null; valor_unitario_novo: number | null;
+      aditivo_id: string; contrato_item_id: string; valor_unitario_anterior: number | null; valor_unitario_novo: number | null;
       quantidade_acrescimo: number | null; quantidade_supressao: number | null;
       aditivo: { numero_aditivo: string | null; data_efeitos: string | null; data_assinatura: string | null } | null;
     };
@@ -313,6 +312,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
       });
     }
     setPassosPorItem(passos);
+    setLinhasDosTermos(((linhasDosTermos ?? []) as unknown as LinhaDaJanela[]));
 
     if (m?.tipo_documento === 'contrato' && m.ata_srp_id) {
       const ataItensRes = await supabase.from('contrato_itens').select('*').eq('contrato_id', m.ata_srp_id).order('created_at', { ascending: true });
@@ -593,8 +593,11 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
 
   // Divergência entre os dois livros do contrato — ver o comentário do cálculo.
   const valorGlobalDoContrato = Number((meta as { valor_global?: number } | null)?.valor_global) || 0;
-  const divergencia = valorGlobalDoContrato > 0 && totalContratadoEfetivo > 0
-    ? totalContratadoEfetivo - valorGlobalDoContrato
+  // A soma dos itens na VIDA do contrato: cada período pela quantidade reposta
+  // ao preço vigente, cada reequilíbrio pela diferença sobre o que restava.
+  const somaDosItensNaVida = ehAta ? totalContratadoEfetivo : visao.totais.vida.contratadoRS;
+  const divergencia = valorGlobalDoContrato > 0 && somaDosItensNaVida > 0
+    ? somaDosItensNaVida - valorGlobalDoContrato
     : 0;
   const divergenciaRelevante = Math.abs(divergencia) > valorGlobalDoContrato * 0.01;
 
@@ -643,13 +646,20 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           {
             rotulo: `Consumido${ehAta ? ' (contratos derivados)' : ''}`,
             numerico: true,
-            valor: `${consumidaDe(itemVisualizado).toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)}`,
+            valor: `${(vidaDe(itemVisualizado.id)?.consumido ?? consumidaDe(itemVisualizado)).toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)}`,
           },
           {
-            rotulo: 'Saldo',
+            rotulo: periodoCorrente && visao.periodos.length > 1 ? 'Saldo do período corrente' : 'Saldo',
             numerico: true,
-            valor: `${saldoQtdDe(itemVisualizado).toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)} · ${fmt(saldoFinanceiroDe(itemVisualizado))}`,
+            valor: (() => {
+              const v = vidaDe(itemVisualizado.id);
+              if (!v) return `${saldoQtdDe(itemVisualizado).toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)} · ${fmt(saldoFinanceiroDe(itemVisualizado))}`;
+              return `${v.saldoCorrente.toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)} · ${fmt(v.saldoCorrente * v.precoVigente)}`;
+            })(),
           },
+          ...(vidaDe(itemVisualizado.id)?.naoExecutado
+            ? [{ rotulo: 'Não executado (períodos encerrados)', numerico: true, valor: `${vidaDe(itemVisualizado.id)!.naoExecutado.toLocaleString('pt-BR')} ${uni(itemVisualizado.unidade)}` }]
+            : []),
           { rotulo: 'Origem', valor: getOrigemLabel(itemVisualizado.origem_aditivo_id) },
         ]}
       />
@@ -692,27 +702,65 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           milhões sem ninguém acusar. */}
       <FaixaIndicadores
         itens={[
-          {
-            rotulo: 'Total efetivo',
-            // Sem item cadastrado não existe total apurado. R$ 0,00 aqui
-            // afirmaria que o contrato não vale nada, num contrato que tem
-            // valor global — é exatamente a confusão que a regra 1 proíbe.
-            valor: itens.length > 0 ? fmt(totalContratadoEfetivo) : null,
-            razaoIndisponivel: 'Sem itens cadastrados',
-            detalhe: 'consumido real + saldo × preço vigente',
-            icone: Package,
-            tom: 'neutro',
-          },
-          {
-            rotulo: 'Saldo dos itens',
-            valor: itens.length > 0 ? fmt(totalSaldoEfetivo) : null,
-            razaoIndisponivel: 'Sem itens cadastrados',
-            detalhe: ehAta
-              ? 'quantidade registrada − consumida pelos derivados, ao preço vigente'
-              : 'saldo de quantidade × preço vigente de cada item',
-            icone: Layers,
-            tom: totalSaldoEfetivo > 0 ? 'ok' : 'aviso',
-          },
+          // Sem item cadastrado não existe total apurado. R$ 0,00 aqui
+          // afirmaria que o contrato não vale nada, num contrato que tem
+          // valor global — é exatamente a confusão que a regra 1 proíbe.
+          ...(ehAta
+            ? [
+                { rotulo: 'Total efetivo', valor: itens.length > 0 ? fmt(totalContratadoEfetivo) : null, razaoIndisponivel: 'Sem itens cadastrados', detalhe: 'consumido real + saldo × preço vigente', icone: Package, tom: 'neutro' as const },
+                { rotulo: 'Saldo dos itens', valor: itens.length > 0 ? fmt(totalSaldoEfetivo) : null, razaoIndisponivel: 'Sem itens cadastrados', detalhe: 'quantidade registrada − consumida pelos derivados, ao preço vigente', icone: Layers, tom: totalSaldoEfetivo > 0 ? 'ok' as const : 'aviso' as const },
+              ]
+            : janelaSel
+              ? (() => {
+                  const t = visao.totais.porJanela.get(janelaSel.id)!;
+                  const termo = aditivos.find((a) => a.id === janelaSel.id);
+                  const registrado = termo ? (Number(termo.valor_acrescimo) || 0) - (Number(termo.valor_supressao) || 0) : null;
+                  const saldoDaJanela = [...visao.porItem.values()].reduce((s, x) => { const c = x.porJanela.get(janelaSel.id); return s + (c ? Math.max(c.saldo, 0) * c.preco : 0); }, 0);
+                  return [
+                    {
+                      rotulo: janelaSel.abrePeriodo ? 'Valor do período' : 'Valor do termo',
+                      valor: itens.length > 0 ? fmt(t.valor) : null,
+                      razaoIndisponivel: 'Sem itens cadastrados',
+                      detalhe: registrado != null
+                        ? (Math.abs(registrado - t.valor) < 0.005 ? `igual ao registrado em Arquivos e Aditivos` : `registrado em Arquivos e Aditivos: ${fmt(registrado)}`)
+                        : (janelaSel.abrePeriodo ? 'quantidade contratada × preço da contratação' : 'o que o termo mudou'),
+                      icone: Package,
+                      tom: 'neutro' as const,
+                    },
+                    {
+                      rotulo: 'Saldo da janela',
+                      valor: itens.length > 0 ? fmt(saldoDaJanela) : null,
+                      razaoIndisponivel: 'Sem itens cadastrados',
+                      detalhe: t.empenhos > 0 ? `empenhado a faturar: ${fmt(t.aFaturarRS)} (${t.empenhos} empenho${t.empenhos > 1 ? 's' : ''})` : 'sem empenho nesta janela',
+                      icone: Layers,
+                      tom: janelaSel.encerrada ? 'aviso' as const : saldoDaJanela > 0 ? 'ok' as const : 'aviso' as const,
+                    },
+                  ];
+                })()
+              : [
+                  {
+                    rotulo: 'Contratado na vida do contrato',
+                    valor: itens.length > 0 ? fmt(visao.totais.vida.contratadoRS) : null,
+                    razaoIndisponivel: 'Sem itens cadastrados',
+                    detalhe: visao.periodos.length > 1
+                      ? `${visao.periodos.length} períodos · executado ${fmt(visao.totais.vida.executadoRS)}`
+                      : `executado ${fmt(visao.totais.vida.executadoRS)}`,
+                    icone: Package,
+                    tom: 'neutro' as const,
+                  },
+                  {
+                    rotulo: visao.periodos.length > 1 ? 'Saldo do período corrente' : 'Saldo dos itens',
+                    valor: itens.length > 0 ? fmt(visao.totais.vida.saldoCorrenteRS) : null,
+                    razaoIndisponivel: 'Sem itens cadastrados',
+                    detalhe: visao.totais.vida.naoExecutadoRS > 0
+                      ? `não executado em períodos encerrados: ${fmt(visao.totais.vida.naoExecutadoRS)}`
+                      : visao.totais.vida.empenhadoAFaturarRS > 0
+                        ? `empenhado a faturar: ${fmt(visao.totais.vida.empenhadoAFaturarRS)}`
+                        : 'saldo de quantidade × preço vigente de cada item',
+                    icone: Layers,
+                    tom: visao.totais.vida.saldoCorrenteRS > 0 ? 'ok' as const : 'aviso' as const,
+                  },
+                ]),
           {
             rotulo: meta?.tipo_estrutura === 'lotes' ? 'Lotes e itens' : 'Itens cadastrados',
             valor: consolidado && itens.length !== itensMesclados.length
@@ -795,16 +843,18 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
           <Select value={situacao} onValueChange={setSituacao}>
             <SelectTrigger
               className="g-controle w-auto min-w-[180px] gap-1 rounded-[var(--g-raio)]"
-              aria-label="Filtrar o saldo por camada"
-              title="Filtrar o saldo por camada: contrato original ou cada termo aditivo"
+              aria-label="Termo de referência"
+              title="Ver o contrato como estava em cada termo: preço, quantidade do período, consumo e saldo daquela janela"
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Situação: todas as camadas</SelectItem>
-              <SelectItem value="original">{meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : 'Contrato Original'}</SelectItem>
-              {aditivos.map(a => (
-                <SelectItem key={a.id} value={a.id}>{a.numero_aditivo}</SelectItem>
+              <SelectItem value="todas">Conciliação do contrato</SelectItem>
+              {visao.janelas.map((j) => (
+                <SelectItem key={j.id} value={j.id}>
+                  {j.id === 'original' && meta?.tipo_documento === 'ata_srp' ? 'ATA Original' : j.rotulo}
+                  {j.corrente ? ' · corrente' : j.encerrada ? ' · encerrada' : ''}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -842,12 +892,33 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
             aoFechar={() => setItemVisualizado(null)}
           >
             <div className="flex min-w-0 flex-col gap-2">
-              {consolidado && situacao !== 'todas' && (
-                <p className="g-meta text-muted-foreground">
-                  Conferindo a camada <span className="font-medium text-foreground">{labelSituacao}</span> —
-                  atribuição FIFO: o consumo abate primeiro o Contrato Original e depois cada termo,
-                  na ordem de registro. Os pedidos não são carimbados por termo aditivo; esta visão
-                  é uma régua de conferência.
+              {consolidado && janelaSel && (() => {
+                const t = visao.totais.porJanela.get(janelaSel.id)!;
+                const periodo = visao.periodos[janelaSel.periodo];
+                return (
+                  <p className="g-meta text-muted-foreground" data-testid="legenda-da-janela">
+                    <span className="font-medium text-foreground">{labelSituacao}</span>
+                    {' · '}{dataBr(janelaSel.inicio)} a {dataBr(janelaSel.fim)}
+                    {visao.periodos.length > 1 && <> · {periodo.rotulo.toLowerCase()}{periodo.encerrado ? ' (encerrado)' : periodo.corrente ? ' (corrente)' : ''}</>}
+                    {janelaSel.abrePeriodo && janelaSel.id !== 'original' && ' · renovação: repõe as quantidades (art. 107)'}
+                    {janelaSel.tipo === 'preco' && ' · reequilíbrio: o preço novo vale para o que restava do período'}
+                    {janelaSel.semPeriodo && ' · renovação sem período registrado: tratada como acréscimo'}
+                    {' · '}{t.consumidoUn.toLocaleString('pt-BR')} un faturadas ({fmt(t.consumidoRS)})
+                    {t.empenhos > 0 && <> · {t.empenhos} empenho{t.empenhos > 1 ? 's' : ''}: {fmt(t.empenhadoRS)}, a faturar {fmt(t.aFaturarRS)}</>}
+                    {' · '}o lançamento cai na janela do termo que o carimba; sem carimbo, na da sua data
+                  </p>
+                );
+              })()}
+              {consolidado && !janelaSel && visao.periodos.length > 1 && (
+                <p className="g-meta text-muted-foreground" data-testid="legenda-da-conciliacao">
+                  {visao.periodos.map((p, i) => (
+                    <span key={p.indice}>
+                      {i > 0 && ' · '}
+                      <span className="font-medium text-foreground">{p.rotulo}</span> {dataBr(p.inicio)} a {dataBr(p.fim)}
+                      {p.encerrado ? ' (encerrado)' : p.corrente ? ' (corrente)' : ''}
+                    </span>
+                  ))}
+                  {' · '}o que sobrou de um período encerrado é "não executado" e não entra no seguinte
                 </p>
               )}
               {itensVisiveis.length === 0 ? (
@@ -890,18 +961,26 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                 // com aditivo de quantidade, medir sobre a original dizia 79%
                 // enquanto saldo e consumo somavam outra base — as contas não
                 // fechavam à vista (09/09).
-                const qtdVigente = qtdVigenteDe(item);
+                // A vida do item nas janelas (30/09): contratado nos períodos,
+                // consumido, não executado e saldo do período corrente. ATA
+                // segue as colunas próprias (quem consome são os derivados).
+                const vida = vidaDe(item.id);
+                const qtdVigente = vida ? vida.contratado : qtdVigenteDe(item);
                 const baseQtd = qtdVigente > (item.quantidade_contratada || 0) ? qtdVigente : (item.quantidade_contratada || 0);
-                const pct = baseQtd > 0 ? (consumidaDe(item) / baseQtd) * 100 : 0;
-                const lowStock = pct >= 80;
+                const consumidoVida = vida ? vida.consumido : consumidaDe(item);
+                const pct = baseQtd > 0 ? (consumidoVida / baseQtd) * 100 : 0;
+                const saldoVida = vida ? vida.saldoCorrente : saldoQtdDe(item);
+                const saldoVidaRS = vida ? vida.saldoCorrente * vida.precoVigente : saldoFinanceiroDe(item);
+                const periodoDoItem = vida?.porPeriodo.find((p) => p.indice === (periodoCorrente?.indice ?? 0));
+                const lowStock = periodoDoItem && periodoDoItem.quantidade > 0
+                  ? periodoDoItem.consumido / periodoDoItem.quantidade >= 0.8
+                  : pct >= 80;
 
-                // Camada escolhida no filtro de Situação (visão consolidada):
-                // as colunas Qtd/Consumido/Saldo passam a medir só essa camada.
-                const camadaSel = (consolidado && situacao !== 'todas'
-                  ? camadasPorItem.get(item.id)?.get(situacao)
-                  : null) ?? null;
-                const pctCamada = camadaSel && camadaSel.capacidade > 0
-                  ? (camadaSel.consumido / camadaSel.capacidade) * 100 : 0;
+                // Janela escolhida no filtro (visão consolidada): as colunas
+                // passam a medir só aquela janela — preço do termo, quantidade
+                // do período, consumo e saldo dela.
+                const cel = (consolidado && janelaSel && !ehAta ? visao.porItem.get(item.id)?.porJanela.get(janelaSel.id) : null) ?? null;
+                const pctJanela = cel && cel.quantidade > 0 ? (cel.consumido / cel.quantidade) * 100 : 0;
                 const nf = (n: number) => Number(n.toFixed(2)).toLocaleString('pt-BR');
 
                 // Lógica de badge de situação para visão consolidada
@@ -934,12 +1013,12 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       ? { prefixo: 'Novo', curto: rotuloCurtoDoTermo(aditivoModificador.numero_aditivo), completo: aditivoModificador.numero_aditivo }
                       : null;
                 // Para visão plana (todos os registros), usa a lógica original
-                const origemLabel = camadaSel ? labelSituacao : !consolidado
+                const origemLabel = cel ? rotuloDaSituacao(cel) : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
                   : termoDaSituacao
                     ? `${termoDaSituacao.prefixo}: ${termoDaSituacao.curto}`
                     : meta?.tipo_documento === 'ata_srp' ? 'ATA SRP' : 'Contrato Original';
-                const explicacaoDaSituacao = consolidado && !camadaSel && termoDaSituacao && termoDaSituacao.curto !== termoDaSituacao.completo
+                const explicacaoDaSituacao = consolidado && !cel && termoDaSituacao && termoDaSituacao.curto !== termoDaSituacao.completo
                   ? `${termoDaSituacao.prefixo}: ${termoDaSituacao.completo}`
                   : undefined;
 
@@ -1069,19 +1148,21 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">
-                      {camadaSel ? (
+                      {cel ? (
                         <>
-                          {nf(camadaSel.capacidade)}
-                          {camadaSel.capacidade > 0 ? (
-                            <div className="g-meta text-muted-foreground">de {qtdVigente.toLocaleString('pt-BR')} vigentes</div>
-                          ) : (
-                            <div className="g-meta text-muted-foreground">termo sem acréscimo de quantidade</div>
-                          )}
+                          {nf(cel.quantidade)}
+                          <div className="g-meta text-muted-foreground">
+                            {janelaSel?.abrePeriodo ? (janelaSel.id === 'original' ? 'contratada' : `reposta pelo ${janelaSel.rotuloCurto}`) : `restante do período (${cel.origemQtd})`}
+                          </div>
                         </>
                       ) : (
                         <>
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
-                      {qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
+                      {vida && visao.periodos.length > 1 ? (
+                        <div className="g-meta text-muted-foreground" title="Soma das quantidades de todos os períodos (contratada + repostas por renovação + acréscimos)">
+                          na vida: {vida.contratado.toLocaleString('pt-BR')} · {visao.periodos.length} períodos
+                        </div>
+                      ) : qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
                         <div className="g-meta text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
                           vigente: {qtdVigente.toLocaleString('pt-BR')}
                         </div>
@@ -1109,14 +1190,22 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                             inteiro ao lado de um Valor de R$ 0,00 (09/09). */}
                         <div>
                           <span>total </span>
-                          {camadaSel
-                            ? (camadaSel.capacidade > 0 ? fmt(camadaSel.capacidade * (Number(item.custo_unitario) || 0)) : '—')
+                          {cel
+                            ? (cel.quantidade > 0 ? fmt(cel.quantidade * (Number(item.custo_unitario) || 0)) : '—')
                             : (item.custo_total != null ? fmt(item.custo_total) : '—')}
                         </div>
                       </TableCell>
                     )}
                     <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">
-                      {fmt(item.valor_unitario)}<span className="text-muted-foreground">/un</span>
+                      {fmt(cel ? cel.preco : item.valor_unitario)}<span className="text-muted-foreground">/un</span>
+                      {cel && cel.precoMudouAqui && cel.precoAnterior != null && (
+                        <div className="g-meta font-normal" data-testid={`variacao-${item.id}`}>
+                          <span className="text-muted-foreground line-through">{fmt(cel.precoAnterior)}</span>
+                          <span className={cel.deltaPct != null && cel.deltaPct >= 0 ? ' text-success-ink' : ' text-destructive-ink'}>
+                            {' '}{cel.deltaPct != null && cel.deltaPct >= 0 ? '+' : ''}{cel.deltaPct?.toFixed(1).replace('.', ',')}%
+                          </span>
+                        </div>
+                      )}
                       {(() => {
                         // Divergência contrato × ATA tem DUAS histórias, e a nota
                         // precisa contar a certa (09/09): preço do contrato acima do
@@ -1148,22 +1237,21 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                           </div>
                         );
                       })()}
-                      <div className="g-meta text-muted-foreground"><span>total </span><span className="text-foreground">{fmt(camadaSel ? camadaSel.capacidade * (item.valor_unitario || 0) : item.valor_total)}</span></div>
+                      <div className="g-meta text-muted-foreground"><span>total </span><span className="text-foreground">{fmt(cel ? cel.quantidade * cel.preco : item.valor_total)}</span></div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">
-                      {camadaSel ? (
-                        camadaSel.capacidade > 0 ? (
-                          <>
-                            {nf(camadaSel.consumido)}
-                            <span className="text-muted-foreground ml-1" title={`Consumo atribuído à camada ${labelSituacao} (FIFO)`}>({pctCamada.toFixed(0)}%)</span>
-                          </>
-                        ) : <span className="text-muted-foreground">—</span>
+                      {cel ? (
+                        <>
+                          {nf(cel.consumido)}
+                          <span className="text-muted-foreground ml-1" title={`Faturado nesta janela (${labelSituacao}): pedidos carimbados com o termo ou datados nela`}>({pctJanela.toFixed(0)}%)</span>
+                          {cel.consumidoRS > 0 && <div className="g-meta text-muted-foreground">{fmt(cel.consumidoRS)}</div>}
+                        </>
                       ) : (
                         <>
-                          {consumidaDe(item).toLocaleString('pt-BR')}
+                          {consumidoVida.toLocaleString('pt-BR')}
                           <span
                             className="text-muted-foreground ml-1"
-                            title={ehAta ? 'Consumido pelos contratos derivados da ata' : 'Sobre a quantidade vigente (contratada + aditivos)'}
+                            title={ehAta ? 'Consumido pelos contratos derivados da ata' : 'Sobre o contratado na vida do contrato'}
                           >({pct.toFixed(0)}%)</span>
                           {ehAta && consumidaDe(item) > 0 && (
                             <div className="g-meta text-muted-foreground">pelos contratos derivados</div>
@@ -1172,20 +1260,25 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       )}
                     </TableCell>
                     <TableCell className={`whitespace-nowrap text-right font-medium tabular-nums ${lowStock ? 'text-warning-ink' : 'text-success-ink'}`}>
-                      {camadaSel ? (
-                        camadaSel.capacidade > 0 ? (
-                          <>
-                            <div>{nf(camadaSel.saldo)}</div>
-                            <div>{fmt(camadaSel.saldo * (item.valor_unitario || 0))}</div>
-                          </>
-                        ) : <span className="text-muted-foreground font-normal">—</span>
+                      {cel ? (
+                        <>
+                          <div>{nf(cel.saldo)}</div>
+                          <div>{fmt(cel.saldo * cel.preco)}</div>
+                          {janelaSel?.encerrada && cel.saldo > 0 && <div className="g-meta font-normal text-warning-ink">não executado</div>}
+                        </>
                       ) : (
                         <>
                           {/* Saldo em R$ sempre CALCULADO (saldo × preço vigente): a coluna
                               saldo_financeiro do banco acumula acréscimo de aditivo por cima
-                              do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09). */}
-                          <div>{saldoQtdDe(item).toLocaleString('pt-BR')}</div>
-                          <div>{fmt(saldoFinanceiroDe(item))}</div>
+                              do preço reequilibrado e chegou a exibir R$ 3,8 mi a mais (09/09).
+                              Com períodos (30/09), é o saldo do PERÍODO CORRENTE. */}
+                          <div>{saldoVida.toLocaleString('pt-BR')}</div>
+                          <div>{fmt(saldoVidaRS)}</div>
+                          {vida && vida.naoExecutado > 0 && (
+                            <div className="g-meta font-normal text-muted-foreground" title="Sobras de períodos encerrados: não entram no saldo corrente">
+                              não executado: {vida.naoExecutado.toLocaleString('pt-BR')}
+                            </div>
+                          )}
                         </>
                       )}
                     </TableCell>

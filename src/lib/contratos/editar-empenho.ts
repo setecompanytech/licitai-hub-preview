@@ -13,10 +13,13 @@ export type EmpenhoOriginal = {
   id: string; numero: string; tipo: string; tipo_origem: string; tipo_trecho: string | null;
   valor: number | null; quantidade: number | null; unidade: string | null; data_emissao: string | null;
   exercicio: number | null; observacao: string | null; arquivo_id: string | null;
+  /** O termo de referência (janela do contrato). Nulo = pela data de emissão. */
+  origem_aditivo_id?: string | null;
 };
 
 export type FormularioDoEmpenho = {
   numero: string; tipo: TipoDeEmpenhoEditavel | ''; data_emissao: string; valor: string; quantidade: string; unidade: string; observacao: string;
+  origem_aditivo_id: string;
 };
 
 export type LinhaDoEmpenho = {
@@ -37,6 +40,7 @@ export function formularioDoEmpenho(e: EmpenhoOriginal): FormularioDoEmpenho {
     numero: e.numero, tipo: (['ordinario', 'global', 'estimativo'].includes(e.tipo) ? e.tipo : '') as FormularioDoEmpenho['tipo'],
     data_emissao: e.data_emissao ?? '', valor: e.valor != null ? String(e.valor) : '', quantidade: e.quantidade != null ? String(e.quantidade) : '',
     unidade: e.unidade ?? 'un', observacao: e.observacao ?? '',
+    origem_aditivo_id: e.origem_aditivo_id ?? '',
   };
 }
 
@@ -92,6 +96,9 @@ export function montarAtualizacaoDoEmpenho(original: EmpenhoOriginal, f: Formula
       data_emissao: dataEmissao,
       exercicio,
       observacao: f.observacao.trim() || null,
+      // O carimbo do termo (30/09): o empenho cai na janela do termo escolhido;
+      // sem escolha, na da data de emissão.
+      origem_aditivo_id: f.origem_aditivo_id || null,
       updated_at: new Date().toISOString(),
     },
     itens: linhasValidas.map((l) => ({

@@ -1088,3 +1088,31 @@ configurar o proxy". O que existe no código:
   aparecem com 1 ou 2 itens (cota principal + reservada); para 3+ o que
   vale são as partes e a cesta.
 
+## Saldo por período de vigência — as JANELAS do contrato (30/09/2026)
+
+- O contrato é estimativo: cada período tem a SUA quantidade. A renovação
+  (termo `prorrogacao` com `periodo_inicio`) abre um período e REPÕE; o
+  reequilíbrio troca preço dentro do período e vale para o que restava; a
+  alteração quantitativa acresce/suprime. O que sobrou de um período
+  encerrado é "não executado" — nunca entra no seguinte. O sistema não
+  declara caducidade: mostra o restante, que muda enquanto o dono alimenta.
+- Regra pura em `src/lib/contratos/janelas-do-contrato.ts`
+  (`janelasDoContrato`): janelas por termo, períodos, célula por item ×
+  janela (quantidade, preço, Δ%, consumido, saldo, valor), vida do item e
+  totais (empenhado a faturar por janela). Teste com os dados reais do
+  772/2024 em `__tests__/janelas-do-contrato.test.ts` — o 4º TA fecha ao
+  centavo (39.516,29) e a vida fica a 0,76% do Valor Global.
+- No banco, `recalcular_saldos_itens_do_contrato` (migration 20260930000008)
+  mede o PERÍODO CORRENTE; `quantidade_consumida` segue sendo vida inteira.
+  Job `saldos-por-periodo-diario` recalcula pelo calendário.
+- Quem consome é o PEDIDO; o EMPENHO reserva (não é por item → só por
+  janela). O lançamento cai na janela do termo que o carimba
+  (`origem_aditivo_id` no pedido e no empenho) e, sem carimbo, na da data.
+  Contas a Receber já obriga o termo; a OF da Gestão e o empenho têm o
+  seletor "Termo de referência" com a opção automática "pela data".
+- Aba Itens/Lotes: o filtro é "Termo de referência" (Conciliação do contrato
+  + uma janela por termo). Numa janela, as colunas medem SÓ ela; na
+  conciliação, Qtd = contratada (+ "na vida"), Saldo = período corrente
+  (+ "não executado"). O aviso do Valor Global compara a soma dos itens na
+  VIDA (períodos ao preço vigente + reequilíbrios sobre o que restava).
+

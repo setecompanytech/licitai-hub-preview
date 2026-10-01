@@ -20018,3 +20018,18 @@ como parcela nomeada "declarada à mão". Arquivo:
 (não há `min` para uuid: "function min(uuid) does not exist"). Recriadas com
 `(array_agg(contrato_id))[1]`. As migrations 000003/000005 foram corrigidas na
 origem. Arquivo: `supabase/migrations/20260930000007_lote_sem_min_uuid.sql`.
+
+## 20260930000008 — saldo do item por período de vigência (30/09/2026)
+
+O saldo era um pote: toda linha de termo aplicada somava quantidade, e a
+renovação (art. 107) virava acréscimo — o 772/2024 oferecia 196.924 un com
+67.508 no período corrente. `recalcular_saldos_itens_do_contrato` passa a
+medir o PERÍODO CORRENTE (renovação com `periodo_inicio` abre período e repõe;
+o que sobrou do anterior é "não executado"); o pedido cai no período pelo
+carimbo `origem_aditivo_id` e, sem carimbo, pela data. Nova
+`periodo_do_contrato_na_data(contrato, data)`. `contrato_empenhos` ganha
+`origem_aditivo_id`. Job diário `saldos-por-periodo-diario` (03h40) recalcula
+os contratos com períodos, porque o período corrente muda com o calendário.
+Contrato sem renovação com período conta como antes (ensaio em ROLLBACK:
+zero itens de outros contratos mudaram). Arquivo:
+`supabase/migrations/20260930000008_saldo_do_item_por_periodo_de_vigencia.sql`.

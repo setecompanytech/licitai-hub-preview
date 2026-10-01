@@ -51,6 +51,8 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
+  /** Os termos do contrato, para o carimbo de referência do empenho (30/09). */
+  const [termos, setTermos] = useState<Array<{ id: string; numero_aditivo: string; data_efeitos: string | null; data_assinatura: string | null; data_aditivo: string | null; periodo_inicio: string | null }>>([]);
   const [apagarPdf, setApagarPdf] = useState(true);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
       setCarregando(true);
       try {
         const [e, itens, pedidos, movs] = await Promise.all([
-          db.from('contrato_empenhos').select('id, numero, tipo, tipo_origem, tipo_trecho, valor, quantidade, unidade, data_emissao, exercicio, observacao, arquivo_id').eq('id', empenho.id).single(),
+          db.from('contrato_empenhos').select('id, numero, tipo, tipo_origem, tipo_trecho, valor, quantidade, unidade, data_emissao, exercicio, observacao, arquivo_id, origem_aditivo_id').eq('id', empenho.id).single(),
           db.from('contrato_empenho_itens').select('id, contrato_item_id, cota, descricao, quantidade, unidade, valor_unitario').eq('empenho_id', empenho.id).order('created_at', { ascending: true }),
           db.from('contrato_pedidos').select('id', { count: 'exact', head: true }).eq('empenho_id', empenho.id),
           db.from('contrato_empenho_movimentos').select('id', { count: 'exact', head: true }).eq('empenho_id', empenho.id),
@@ -75,6 +77,8 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
         }
         setOriginal(o);
         setForm(formularioDoEmpenho(o));
+        const t = await db.from('contrato_aditivos').select('id, numero_aditivo, data_efeitos, data_assinatura, data_aditivo, periodo_inicio').eq('contrato_id', contratoId).order('created_at', { ascending: true });
+        if (vivo) setTermos((t.data ?? []) as typeof termos);
         setLinhas(((itens.data ?? []) as Array<Record<string, unknown>>).map((l) => ({
           key: String(l.id), id: String(l.id), contrato_item_id: (l.contrato_item_id as string | null) ?? '', descricao: String(l.descricao ?? ''),
           cota: ((l.cota as string | null) ?? '') as LinhaDoEmpenho['cota'], quantidade: qtdBr(l.quantidade), unidade: String(l.unidade ?? ''), valor_unitario: moedaBr(l.valor_unitario),
@@ -97,6 +101,18 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
     mudarLinha(key, { contrato_item_id: itemId === '__nenhum__' ? '' : itemId, ...(item ? { descricao: item.descricao, unidade: item.unidade ?? '', valor_unitario: item.valor_unitario != null ? String(item.valor_unitario) : '' } : {}) });
   };
   const totais = totaisDasLinhas(linhas);
+
+  // O termo em vigor na data de emissão: a renovação pelo início do período, os demais pela data de efeitos.
+  const termoPelaData = (() => {
+    const d = form?.data_emissao?.slice(0, 10);
+    if (!d) return null;
+    let achado: string | null = null;
+    for (const t of [...termos].sort((a, b) => String(a.periodo_inicio ?? a.data_efeitos ?? a.data_assinatura ?? a.data_aditivo ?? '').localeCompare(String(b.periodo_inicio ?? b.data_efeitos ?? b.data_assinatura ?? b.data_aditivo ?? '')))) {
+      const ini = (t.periodo_inicio ?? t.data_efeitos ?? t.data_assinatura ?? t.data_aditivo ?? '').slice(0, 10);
+      if (ini && ini <= d) achado = t.numero_aditivo;
+    }
+    return achado;
+  })();
 
   const salvar = async () => {
     if (!original || !form || !empresaId) return;
@@ -210,6 +226,21 @@ export default function EditarEmpenhoDialog({ empenho, contratoId, empresaId, it
               <div className="space-y-1.5">
                 <Label htmlFor="ee-qtd">Quantidade</Label>
                 <Input id="ee-qtd" inputMode="decimal" value={totais.linhasValidas.length ? qtdBr(totais.quantidade) : form.quantidade} disabled={totais.linhasValidas.length > 0} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} className="text-right tabular-nums" />
+              </div>
+              {/* O termo de referência (30/09): em qual janela do contrato o
+                  empenho cai. Sem escolha, a janela é a da data de emissão —
+                  o mesmo critério do pedido e da nota. Ocupa duas colunas
+                  para fechar a fila com Valor e Quantidade. */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="ee-termo">Termo de referência</Label>
+                <Select value={form.origem_aditivo_id || '__data__'} onValueChange={(v) => setForm({ ...form, origem_aditivo_id: v === '__data__' ? '' : v })}>
+                  <SelectTrigger id="ee-termo"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__data__">Pela data de emissão{termoPelaData ? ` (${termoPelaData})` : ' (contrato original)'}</SelectItem>
+                    {termos.map((t) => <SelectItem key={t.id} value={t.id}>{t.numero_aditivo}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="g-meta text-muted-foreground">O empenho reserva na janela desse termo; a nota consome nela.</p>
               </div>
               <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="ee-obs">Observação</Label><Textarea id="ee-obs" value={form.observacao} onChange={(e) => setForm({ ...form, observacao: e.target.value })} className="min-h-10" /></div>
             </div>
