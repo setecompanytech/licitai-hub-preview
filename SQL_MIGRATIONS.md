@@ -20001,3 +20001,13 @@ RPC `editar_lote_de_pedidos(p_lote_id, p_campos jsonb, p_descricao)`
 nota, datas, situação, empenho, cesta, observações e a descrição (prefixo)
 numa transação. Duas levas paralelas pelo navegador davam "deadlock
 detected". Arquivo: `supabase/migrations/20260930000005_editar_lote_de_pedidos.sql`.
+
+## 20260930000006 — custo do lote + ajustes manuais do custo por contrato (30/09/2026)
+
+RPC `declarar_custo_do_lote(p_lote_id, p_custo_total, p_motivo)`: reparte o
+custo da nota pelo valor de cada parte (última fecha o centavo) e chama
+`declarar_custo_do_pedido` em ordem fixa, numa transação. Tabela
+`contrato_custos_ajustes` (imposto, administrativa, operacional, BDI, outra;
+RLS: membro lê, financeiro/admin escreve) somada no resultado do contrato
+como parcela nomeada "declarada à mão". Arquivo:
+`supabase/migrations/20260930000006_custo_do_lote_e_ajustes_manuais.sql`.

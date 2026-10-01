@@ -19,6 +19,7 @@ import { agruparEmLotes, rotuloDoLote, descricaoSemParte, type Lote, porUnidadeC
 import { parseNFeXML } from '@/lib/parseNFe';
 import { arquivoDanfe, abrirDanfe } from '@/lib/financeiro/danfe-pdf';
 import { precoDoItemEm, type PassoDePreco } from '@/lib/contratos/preco-na-data';
+import { AVISO_LUCRO_BRUTO, lucroDoLote } from '@/lib/contratos/custo-do-lote';
 import type { NotaDoPedido } from '@/hooks/useNotaDoPedido';
 import { FILTRO_ORIGINAL, FILTRO_TODOS, filtrarPorSituacao, situacaoPorItem, termosDoFiltro, type LinhaAplicada, type SituacaoDoItem } from '@/lib/contratos/situacao-do-item';
 import type { PedidoParaCasar } from '@/lib/contratos/casar-pedido';
@@ -448,7 +449,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
    */
   const [trocaDeEmpenho, setTrocaDeEmpenho] = useState<{ rotulo: string; pedidos: string[]; atual: string | null } | null>(null);
   /** Editar o lote (30/09): o que é da NOTA vale para todas as partes — número da nota, data, situação e a cesta. */
-  const [edicaoDoLote, setEdicaoDoLote] = useState<{ id: string; numero: string; partes: string[]; descricao: string; nota_fiscal: string; data_pedido: string; data_entrega: string; status: string; empenho_id: string; unidade_composta: string; unidades_compostas: string; observacoes: string } | null>(null);
+  const [edicaoDoLote, setEdicaoDoLote] = useState<{ id: string; numero: string; partes: string[]; descricao: string; nota_fiscal: string; data_pedido: string; data_entrega: string; status: string; empenho_id: string; unidade_composta: string; unidades_compostas: string; observacoes: string; custo_total: string; custo_atual: number; faturado: number } | null>(null);
   const [salvandoLote, setSalvandoLote] = useState(false);
   const salvarEdicaoDoLote = async () => {
     if (!edicaoDoLote) return;
@@ -471,11 +472,22 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       },
       p_descricao: edicaoDoLote.descricao.trim() || null,
     } as never);
-    setSalvandoLote(false);
     if (error) {
+      setSalvandoLote(false);
       toast.error('Não foi possível salvar o lote', { description: error.message.includes('editar_lote_de_pedidos') ? 'A função editar_lote_de_pedidos ainda não existe no banco: cole a migration 20260930000005.' : error.message });
       return;
     }
+    // O custo da nota inteira (30/09): repartido pelo valor de cada parte e
+    // declarado parte a parte pela porta única, numa transação (migration
+    // 20260930000006). Só o admin e o financeiro declaram custo.
+    if (podeVerCustos) {
+      const custoNovo = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+      if (Math.abs(custoNovo - edicaoDoLote.custo_atual) > 0.005) {
+        const { error: errCusto } = await supabase.rpc('declarar_custo_do_lote' as never, { p_lote_id: edicaoDoLote.id, p_custo_total: custoNovo, p_motivo: null } as never);
+        if (errCusto) toast.error('O lote foi salvo, mas o custo não foi declarado', { description: errCusto.message.includes('declarar_custo_do_lote') ? 'A função declarar_custo_do_lote ainda não existe no banco: cole a migration 20260930000006.' : errCusto.message });
+      }
+    }
+    setSalvandoLote(false);
     toast.success(`Lote ${edicaoDoLote.numero} atualizado nas ${edicaoDoLote.partes.length} partes.`);
     setEdicaoDoLote(null);
     load();
@@ -2853,7 +2865,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     moram na barra da aba; o documento do empenho abre pela Origem. */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" className="g-controle" title="Número da nota, data, situação e cesta — vale para todas as partes"
-                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), descricao: descricaoSemParte(loteAberto.partes[0]?.descricao).split(' · ')[0] ?? '', nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', data_entrega: loteAberto.partes[0]?.data_entrega ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', empenho_id: loteAberto.empenho_id ?? 'nenhum', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '', observacoes: loteAberto.partes[0]?.observacoes ?? '' })}>
+                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), descricao: descricaoSemParte(loteAberto.partes[0]?.descricao).split(' · ')[0] ?? '', nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', data_entrega: loteAberto.partes[0]?.data_entrega ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', empenho_id: loteAberto.empenho_id ?? 'nenhum', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '', observacoes: loteAberto.partes[0]?.observacoes ?? '', custo_total: loteAberto.custo_total != null && loteAberto.custo_total > 0 ? String(loteAberto.custo_total) : '', custo_atual: Number(loteAberto.custo_total) || 0, faturado: loteAberto.valor_total })}>
                     <Pencil aria-hidden="true" /> Editar
                   </Button>
                   {loteAberto.partes[0] && (
@@ -4301,6 +4313,30 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               </div>
               <div className="space-y-1.5"><Label>Unidade composta</Label><Input placeholder="cesta básica" value={edicaoDoLote.unidade_composta} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidade_composta: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Quantas a nota entrega</Label><Input inputMode="decimal" className="tabular-nums" value={edicaoDoLote.unidades_compostas} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidades_compostas: e.target.value })} /></div>
+              {podeVerCustos && (() => {
+                const custo = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+                const cestas = parseFloat(edicaoDoLote.unidades_compostas.replace(',', '.')) || 0;
+                const l = lucroDoLote(edicaoDoLote.faturado, custo, cestas);
+                const nome = edicaoDoLote.unidade_composta.trim() || 'cesta';
+                return (
+                  <div className="space-y-2 sm:col-span-2 rounded-md border border-border bg-secondary/40 p-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Custo de compra do lote (R$)</Label>
+                        <MoneyInput value={custo} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, custo_total: v > 0 ? String(v) : '' })} />
+                        <p className="g-meta text-muted-foreground">Repartido entre as {edicaoDoLote.partes.length} partes na proporção do valor de cada uma.</p>
+                      </div>
+                      <div className="space-y-0.5 text-sm tabular-nums">
+                        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Faturado</span><span>{fmt(l.faturado)}</span></div>
+                        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Custo de compra</span><span>{custo > 0 ? fmt(l.custo) : '—'}</span></div>
+                        <div className="flex justify-between gap-3 border-t border-border pt-1 font-semibold"><span>Lucro bruto</span><span className={custo > 0 && l.lucroBruto < 0 ? 'text-destructive-ink' : ''}>{custo > 0 ? `${fmt(l.lucroBruto)}${l.margemPct != null ? ` (${l.margemPct.toFixed(1)}%)` : ''}` : '—'}</span></div>
+                        {custo > 0 && l.porUnidade && <div className="flex justify-between gap-3 g-meta text-muted-foreground"><span>por {nome}</span><span>{fmt(l.porUnidade.faturado)} − {fmt(l.porUnidade.custo)} = {fmt(l.porUnidade.lucro)}</span></div>}
+                      </div>
+                    </div>
+                    <p className="g-meta text-muted-foreground">{AVISO_LUCRO_BRUTO}</p>
+                  </div>
+                );
+              })()}
               <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea rows={3} value={edicaoDoLote.observacoes} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, observacoes: e.target.value })} /></div>
             </div>
           )}

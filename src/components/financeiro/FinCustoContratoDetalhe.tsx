@@ -9,7 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmpresa } from '@/contexts/EmpresaContext';
 import { estimarImpostoDoContrato, type EstimativaImposto } from '@/lib/financeiro/imposto-do-contrato';
 import { categoriaEntraNoRateio } from '@/lib/financeiro/rateio-de-indiretas';
-import { AlertCircle, ExternalLink, Link2 } from 'lucide-react';
+import { AlertCircle, ExternalLink, Link2, Plus, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MoneyInput } from '@/components/ui/money-input';
+import { toast } from 'sonner';
+import { TIPOS_DE_AJUSTE, type TipoDeAjuste } from '@/lib/contratos/custo-do-lote';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 const pct = (v: number) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
@@ -71,6 +77,36 @@ export default function FinCustoContratoDetalhe({
   const [digitados, setDigitados] = useState<Array<{ nome: string; valor: number }>>([]);
   const [indiretasTop, setIndiretasTop] = useState<Array<{ nome: string; valor: number }>>([]);
   const [imposto, setImposto] = useState<EstimativaImposto | null>(null);
+  // Despesas declaradas À MÃO (30/09): imposto, administrativa, operacional, BDI,
+  // outra — parcela nomeada e com ressalva; nunca substitui o comprovado.
+  type Ajuste = { id: string; tipo: TipoDeAjuste; descricao: string; valor: number; user_email: string | null; created_at: string };
+  const [ajustes, setAjustes] = useState<Ajuste[]>([]);
+  const [novoAjuste, setNovoAjuste] = useState<{ tipo: TipoDeAjuste; descricao: string; valor: number }>({ tipo: 'operacional', descricao: '', valor: 0 });
+  const [salvandoAjuste, setSalvandoAjuste] = useState(false);
+  const carregarAjustes = async (contratoId: string) => {
+    const { data } = await supabase.from('contrato_custos_ajustes' as never).select('id, tipo, descricao, valor, user_email, created_at').eq('contrato_id', contratoId).order('created_at', { ascending: true });
+    setAjustes(((data ?? []) as unknown as Ajuste[]).map((a) => ({ ...a, valor: Number(a.valor) || 0 })));
+  };
+  const adicionarAjuste = async () => {
+    if (!linha || !empresaAtiva?.id) return;
+    if (!novoAjuste.descricao.trim() || !(novoAjuste.valor > 0)) { toast.error('Informe a descrição e o valor da despesa.'); return; }
+    setSalvandoAjuste(true);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from('contrato_custos_ajustes' as never).insert({
+      empresa_id: empresaAtiva.id, contrato_id: linha.contrato_id, tipo: novoAjuste.tipo, descricao: novoAjuste.descricao.trim(), valor: novoAjuste.valor,
+      user_id: u?.user?.id ?? null, user_email: u?.user?.email ?? null,
+    } as never);
+    setSalvandoAjuste(false);
+    if (error) { toast.error('Não foi possível registrar a despesa', { description: error.message.includes('contrato_custos_ajustes') ? 'A tabela contrato_custos_ajustes ainda não existe: cole a migration 20260930000006.' : error.message }); return; }
+    setNovoAjuste({ tipo: 'operacional', descricao: '', valor: 0 });
+    void carregarAjustes(linha.contrato_id);
+  };
+  const removerAjuste = async (id: string) => {
+    if (!linha) return;
+    const { error } = await supabase.from('contrato_custos_ajustes' as never).delete().eq('id', id);
+    if (error) { toast.error('Não foi possível remover', { description: error.message }); return; }
+    void carregarAjustes(linha.contrato_id);
+  };
   const [cobertura, setCobertura] = useState<Cobertura | null>(null);
 
   useEffect(() => {
@@ -161,6 +197,9 @@ export default function FinCustoContratoDetalhe({
         faturadoContrato12m: Math.min(faturado12m, linha.faturamento),
       }));
       setCobertura((cobRes.data as unknown as Cobertura[] | null)?.[0] ?? null);
+      // Os ajustes à mão são lidos aqui mesmo: a rotina de recarga serve ao registrar/remover.
+      const { data: aj } = await supabase.from('contrato_custos_ajustes' as never).select('id, tipo, descricao, valor, user_email, created_at').eq('contrato_id', linha.contrato_id).order('created_at', { ascending: true });
+      setAjustes(((aj ?? []) as unknown as Ajuste[]).map((a) => ({ ...a, valor: Number(a.valor) || 0 })));
       setCarregando(false);
     })();
     return () => { cancelado = true; };
@@ -172,7 +211,9 @@ export default function FinCustoContratoDetalhe({
   const custoDireto = linha.custo_pago + linha.custo_comprometido + linha.custo_digitado + declaradoSemDocumento;
   const lucroBruto = linha.faturamento - custoDireto;
   const impostoValor = imposto?.imposto ?? 0;
-  const resultado = lucroBruto - rateio - impostoValor;
+  const ajustesTotal = ajustes.reduce((s, a) => s + a.valor, 0);
+  const resultado = lucroBruto - rateio - impostoValor - ajustesTotal;
+  const rotuloDoTipo = (t: TipoDeAjuste) => TIPOS_DE_AJUSTE.find((x) => x.valor === t)?.rotulo ?? t;
   const margemDe = (v: number) => (linha.faturamento > 0 ? (v / linha.faturamento) * 100 : 0);
 
   const LinhaDre = ({ rotulo, valor, negativo, forte, sub }: { rotulo: React.ReactNode; valor: number; negativo?: boolean; forte?: boolean; sub?: boolean }) => (
@@ -232,7 +273,40 @@ export default function FinCustoContratoDetalhe({
               />
               {imposto?.componentes.map(c => <LinhaDre key={c.nome} rotulo={c.nome} valor={c.valor} sub />)}
 
+              {/* O declarado à mão entra NOMEADO e com ressalva: o sistema não o comprova. */}
+              <LinhaDre rotulo={<>Despesas declaradas à mão <Badge variant="warning" className="ml-1">sem documento</Badge></>} valor={ajustesTotal} negativo />
+              {ajustes.map(a => <LinhaDre key={a.id} rotulo={`${rotuloDoTipo(a.tipo)} — ${a.descricao}`} valor={a.valor} sub />)}
+
               <LinhaDre rotulo={<>Resultado do contrato <span className="text-muted-foreground font-normal">({pct(margemDe(resultado))})</span></>} valor={resultado} forte />
+            </div>
+
+            <div className="rounded-lg border border-border p-4 text-sm space-y-3">
+              <div>
+                <p className="font-semibold">Despesas declaradas à mão — imposto, administrativa, operacional, BDI</p>
+                <p className="text-muted-foreground">Entram no resultado como parcela nomeada e com ressalva: o sistema não as comprova. O que tem documento vai por Contas a Pagar vinculadas ao contrato; o imposto estimado e o rateio já são automáticos acima.</p>
+              </div>
+              {ajustes.length > 0 && (
+                <div className="divide-y divide-border rounded-md border border-border">
+                  {ajustes.map(a => (
+                    <div key={a.id} className="flex items-center gap-3 px-3 py-2">
+                      <span className="min-w-0 flex-1"><b>{rotuloDoTipo(a.tipo)}</b> — {a.descricao}<span className="block text-xs text-muted-foreground">{a.user_email ?? 'sem autor'} · {new Date(a.created_at).toLocaleDateString('pt-BR')}</span></span>
+                      <span className="tabular-nums whitespace-nowrap">{fmt(a.valor)}</span>
+                      <Button size="icon-sm" variant="ghost-destructive" aria-label="Remover despesa" onClick={() => void removerAjuste(a.id)}><Trash2 aria-hidden="true" /></Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="grid gap-2 sm:grid-cols-[14rem_minmax(0,1fr)_9rem_auto] items-end">
+                <div className="space-y-1"><Label className="text-xs">Tipo</Label>
+                  <Select value={novoAjuste.tipo} onValueChange={(v) => setNovoAjuste({ ...novoAjuste, tipo: v as TipoDeAjuste })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIPOS_DE_AJUSTE.map(t => <SelectItem key={t.valor} value={t.valor}>{t.rotulo}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Descrição</Label><Input value={novoAjuste.descricao} placeholder="Frete Belém → Barcarena, out/2024" onChange={(e) => setNovoAjuste({ ...novoAjuste, descricao: e.target.value })} /></div>
+                <div className="space-y-1"><Label className="text-xs">Valor (R$)</Label><MoneyInput value={novoAjuste.valor} onValueChange={(v) => setNovoAjuste({ ...novoAjuste, valor: v })} /></div>
+                <Button size="sm" onClick={() => void adicionarAjuste()} disabled={salvandoAjuste}><Plus aria-hidden="true" />Registrar</Button>
+              </div>
             </div>
 
             {cobertura && (

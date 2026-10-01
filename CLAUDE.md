@@ -292,6 +292,15 @@ medida que os documentos chegam. Regras que valem no código (migration
   alíquota EFETIVA configurada em Apuração, senão a nominal com a premissa dita.
 - **Aditivo de preço não entra no rateio de valor do saldo do item**
   (migration `20260923000003`, medida antes: um único item divergia).
+- **Custo do LOTE (30/09):** "Editar lote" tem "Custo de compra do lote":
+  `declarar_custo_do_lote` (migration 20260930000006) reparte pelo valor de
+  cada parte e chama `declarar_custo_do_pedido` em ordem fixa — nunca 18
+  RPCs paralelas. A caixa mostra lucro BRUTO (só a compra) com o aviso
+  `AVISO_LUCRO_BRUTO` (impostos, administrativas, operacionais, BDI ficam em
+  Financeiro › Custo por contrato). Lá, `contrato_custos_ajustes` guarda as
+  despesas declaradas À MÃO (imposto/administrativa/operacional/bdi/outra),
+  somadas no resultado como parcela nomeada "sem documento" — o comprovado
+  (contas a pagar), o rateio e o imposto estimado continuam automáticos.
 - **Cada termo é uma COLUNA acumulada de preços (30/09):**
   `tabelaDePrecosPorTermo` / `precosNoTermo` em `lib/contratos/preco-na-data.ts`
   — cada coluna parte do CONTRATO ORIGINAL e acumula todos os termos
