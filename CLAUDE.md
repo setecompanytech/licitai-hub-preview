@@ -17,7 +17,13 @@ App de gestão de licitações. Vite + React 18 + TypeScript + Tailwind + shadcn
 > própria (`block g-meta`), não ao lado do número. Caixa (Dialog) que ganha
 > conteúdo ganha largura (`sm:max-w-4xl`) e rolagem interna
 > (`max-h-[92vh] overflow-y-auto`). A conferência é obrigatória: tsc e build
-> não enxergam coluna cortada.
+> não enxergam coluna cortada. **Portão de toda entrega: `bash
+> scripts/revisar-layout.sh`** — roda os testes `[layout]` (orçamento de
+> texto por célula em tabela com coluna fixa; uma célula por cabeçalho) e
+> lista os arquivos alterados com grade de colunas fixas ou `sticky right-0`
+> para a conferência manual. Em tabela com coluna fixa à direita, texto a
+> mais numa célula esconde a última coluna (Saldo sumiu sob Ações em 30/09):
+> selo curto, linha fina curta, nunca dois rótulos no mesmo selo.
 
 > 🎨 **Mexendo em aparência?** O app segue o **Design System v3** (comando do dono, 19/09/2026):
 > leia `docs/design-system-praefectus.md` **antes** de escolher qualquer cor, raio ou tamanho —
@@ -56,6 +62,7 @@ npm run test        # vitest
 npm run lint        # eslint
 npm run build       # build de produção — NÃO faz checagem de tipos
 npx tsc --noEmit -p tsconfig.app.json   # a checagem de tipos de verdade
+bash scripts/revisar-layout.sh          # layout: testes [layout] + estruturas sensíveis nos arquivos alterados (obrigatório, 30/09)
 npm run preview     # servir o build
 ```
 

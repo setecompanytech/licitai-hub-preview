@@ -156,3 +156,16 @@ describe('contrato sem renovação', () => {
     expect(diaAnterior('2026-03-01')).toBe('2026-02-28');
   });
 });
+
+describe('[layout] rótulos das janelas cabem na coluna Situação', () => {
+  it('origem do preço e da quantidade têm no máximo 12 caracteres nos termos do 772', () => {
+    const v = janelasDoContrato(contrato, termos, linhas, itens, pedidos, empenhos, HOJE);
+    for (const x of v.porItem.values()) {
+      for (const cel of x.porJanela.values()) {
+        expect(cel.origemPreco.length).toBeLessThanOrEqual(12);
+        expect(cel.origemQtd.length).toBeLessThanOrEqual(12);
+      }
+    }
+    for (const j of v.janelas) expect(j.rotuloCurto.length).toBeLessThanOrEqual(12);
+  });
+});

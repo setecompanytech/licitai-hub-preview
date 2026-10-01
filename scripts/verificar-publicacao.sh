@@ -80,7 +80,7 @@ checar "marco de pagamento configurável"     "Ao receber (NF-e quitada)"
 checar "confirmação de exclusão"             "Excluir definitivamente"
 checar "vendedor fora da equipe"             "Vendedor fora da equipe"
 checar "criador da empresa entra com nome"   "nome_completo, username"
-checar "kit de faturamento"                  "Kit de faturamento"
+checar "recibo e certidões (ex-kit)"         "Recibo e certidões"
 checar "kit em PDF único"                    "Baixar PDF único"
 checar "subtela do financeiro no caminho"    "/financeiro/lancamentos"
 # A checagem "rótulos distintos de Voltar" procurava "Todos os contratos" —

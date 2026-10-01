@@ -1013,7 +1013,10 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       ? { prefixo: 'Novo', curto: rotuloCurtoDoTermo(aditivoModificador.numero_aditivo), completo: aditivoModificador.numero_aditivo }
                       : null;
                 // Para visão plana (todos os registros), usa a lógica original
-                const origemLabel = cel ? rotuloDaSituacao(cel) : !consolidado
+                // Numa janela o selo diz só de onde vem o PREÇO; a quantidade vai
+                // na linha fina embaixo. Os dois no selo ("Preço: 1º TA · Qtd:
+                // Original") alargavam a coluna e escondiam o Saldo sob Ações (30/09).
+                const origemLabel = cel ? (cel.origemPreco === 'contratação' ? 'Contratação' : `Preço: ${cel.origemPreco}`) : !consolidado
                   ? getOrigemLabel(item.origem_aditivo_id)
                   : termoDaSituacao
                     ? `${termoDaSituacao.prefixo}: ${termoDaSituacao.curto}`
@@ -1105,6 +1108,9 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       ) : (
                         <SeloSituacao tom={tomSituacao} icone={IconeSituacao} explicacao={explicacaoDaSituacao}>{origemLabel}</SeloSituacao>
                       )}
+                      {cel && (
+                        <div className="g-meta text-muted-foreground" title={rotuloDaSituacao(cel)} data-testid={`qtd-origem-${item.id}`}>qtd: {cel.origemQtd}</div>
+                      )}
                     </TableCell>
                     {meta?.tipo_estrutura === 'lotes' && (
                       <TableCell className="whitespace-nowrap">
@@ -1152,7 +1158,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                         <>
                           {nf(cel.quantidade)}
                           <div className="g-meta text-muted-foreground">
-                            {janelaSel?.abrePeriodo ? (janelaSel.id === 'original' ? 'contratada' : `reposta pelo ${janelaSel.rotuloCurto}`) : `restante do período (${cel.origemQtd})`}
+                            {janelaSel?.abrePeriodo ? (janelaSel.id === 'original' ? 'contratada' : `reposta pelo ${janelaSel.rotuloCurto}`) : 'restante do período'}
                           </div>
                         </>
                       ) : (
@@ -1160,7 +1166,7 @@ export default function ContratoItens({ contratoId }: { contratoId: string }) {
                       {Number(item.quantidade_contratada || 0).toLocaleString('pt-BR')}
                       {vida && visao.periodos.length > 1 ? (
                         <div className="g-meta text-muted-foreground" title="Soma das quantidades de todos os períodos (contratada + repostas por renovação + acréscimos)">
-                          na vida: {vida.contratado.toLocaleString('pt-BR')} · {visao.periodos.length} períodos
+                          na vida: {vida.contratado.toLocaleString('pt-BR')}
                         </div>
                       ) : qtdVigente > (item.quantidade_contratada || 0) + 0.001 && (
                         <div className="g-meta text-muted-foreground" title="Quantidade contratada + reforços de aditivo">
