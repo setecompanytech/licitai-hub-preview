@@ -4279,7 +4279,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
       {/* Editar lote (30/09) */}
       <Dialog open={!!edicaoDoLote} onOpenChange={(v) => { if (!v && !salvandoLote) setEdicaoDoLote(null); }}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar lote {edicaoDoLote?.numero}</DialogTitle>
             <DialogDescription>O que é da nota vale para as {edicaoDoLote?.partes.length} partes. Quantidade e preço de cada item se editam na parte.</DialogDescription>
@@ -4320,18 +4320,24 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                 const nome = edicaoDoLote.unidade_composta.trim() || 'cesta';
                 return (
                   <div className="space-y-2 sm:col-span-2 rounded-md border border-border bg-secondary/40 p-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-[minmax(14rem,1fr)_minmax(0,1.4fr)]">
                       <div className="space-y-1.5">
-                        <Label>Custo de compra do lote (R$)</Label>
+                        <Label className="whitespace-nowrap">Custo de compra do lote (R$)</Label>
                         <MoneyInput value={custo} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, custo_total: v > 0 ? String(v) : '' })} />
                         <p className="g-meta text-muted-foreground">Repartido entre as {edicaoDoLote.partes.length} partes na proporção do valor de cada uma.</p>
                       </div>
-                      <div className="space-y-0.5 text-sm tabular-nums">
-                        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Faturado</span><span>{fmt(l.faturado)}</span></div>
-                        <div className="flex justify-between gap-3"><span className="text-muted-foreground">Custo de compra</span><span>{custo > 0 ? fmt(l.custo) : '—'}</span></div>
-                        <div className="flex justify-between gap-3 border-t border-border pt-1 font-semibold"><span>Lucro bruto</span><span className={custo > 0 && l.lucroBruto < 0 ? 'text-destructive-ink' : ''}>{custo > 0 ? `${fmt(l.lucroBruto)}${l.margemPct != null ? ` (${l.margemPct.toFixed(1)}%)` : ''}` : '—'}</span></div>
-                        {custo > 0 && l.porUnidade && <div className="flex justify-between gap-3 g-meta text-muted-foreground"><span>por {nome}</span><span>{fmt(l.porUnidade.faturado)} − {fmt(l.porUnidade.custo)} = {fmt(l.porUnidade.lucro)}</span></div>}
-                      </div>
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm tabular-nums">
+                        <dt className="whitespace-nowrap text-muted-foreground">Faturado</dt><dd className="text-right">{fmt(l.faturado)}</dd>
+                        <dt className="whitespace-nowrap text-muted-foreground">Custo de compra</dt><dd className="text-right">{custo > 0 ? fmt(l.custo) : '—'}</dd>
+                        <dt className="whitespace-nowrap border-t border-border pt-1 font-semibold">Lucro bruto</dt>
+                        <dd className={`border-t border-border pt-1 text-right font-semibold whitespace-nowrap ${custo > 0 && l.lucroBruto < 0 ? 'text-destructive-ink' : ''}`}>{custo > 0 ? `${fmt(l.lucroBruto)}${l.margemPct != null ? ` (${l.margemPct.toFixed(1)}%)` : ''}` : '—'}</dd>
+                        {custo > 0 && l.porUnidade && (
+                          <>
+                            <dt className="whitespace-nowrap g-meta text-muted-foreground">Por {nome}</dt>
+                            <dd className="g-meta text-right text-muted-foreground whitespace-nowrap">{fmt(l.porUnidade.faturado)} − {fmt(l.porUnidade.custo)} = {fmt(l.porUnidade.lucro)}</dd>
+                          </>
+                        )}
+                      </dl>
                     </div>
                     <p className="g-meta text-muted-foreground">{AVISO_LUCRO_BRUTO}</p>
                   </div>
