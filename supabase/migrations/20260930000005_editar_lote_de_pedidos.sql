@@ -27,8 +27,9 @@ BEGIN
   IF p_lote_id IS NULL THEN RAISE EXCEPTION 'lote obrigatório'; END IF;
 
   -- Trava as partes em ordem fixa: quem chegar depois espera, não trava cruzado.
-  SELECT array_agg(id ORDER BY id), (array_agg(contrato_id))[1] INTO v_ids, v_contrato_id
-    FROM public.contrato_pedidos WHERE lote_id = p_lote_id FOR UPDATE;
+  -- FOR UPDATE não aceita agregação: trava nas linhas da subconsulta.
+  SELECT array_agg(t.id ORDER BY t.id), (array_agg(t.contrato_id))[1] INTO v_ids, v_contrato_id
+    FROM (SELECT id, contrato_id FROM public.contrato_pedidos WHERE lote_id = p_lote_id ORDER BY id FOR UPDATE) t;
   IF v_ids IS NULL THEN RAISE EXCEPTION 'lote não encontrado'; END IF;
 
   SELECT empresa_id INTO v_empresa_id FROM public.contratos WHERE id = v_contrato_id;
