@@ -15,7 +15,7 @@ import VincularLancamentoDialog from './VincularLancamentoDialog';
 import MovimentosDoEmpenho, { type EmpenhoParaMovimentar } from './MovimentosDoEmpenho';
 import EditarEmpenhoDialog, { type EmpenhoParaEditar } from './EditarEmpenhoDialog';
 import { detalheDosEmpenhos, resumoDosEmpenhos } from '@/lib/contratos/empenhos-do-contrato';
-import { agruparEmLotes, rotuloDoLote, descricaoSemParte, type Lote, porUnidadeComposta } from '@/lib/contratos/lotes-de-pedidos';
+import { agruparEmLotes, rotuloDoLote, descricaoSemParte, type Lote } from '@/lib/contratos/lotes-de-pedidos';
 import { parseNFeXML } from '@/lib/parseNFe';
 import { arquivoDanfe, abrirDanfe } from '@/lib/financeiro/danfe-pdf';
 import { precoDoItemEm, type PassoDePreco } from '@/lib/contratos/preco-na-data';
@@ -2806,22 +2806,50 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     { rotulo: 'Data', valor: loteAberto.data_pedido ? new Date(loteAberto.data_pedido + 'T00:00:00').toLocaleDateString('pt-BR') : <ValorIndisponivel razao="Sem data" /> },
                     { rotulo: 'Valor do lote', valor: fmt(loteAberto.valor_total), numerico: true },
                     { rotulo: 'Partes', valor: loteAberto.partes.length, numerico: true },
-                    // A cesta (30/09): o que o órgão compra é a cesta, não o açúcar —
-                    // preço, custo e margem por cesta quando o lote sabe quantas entregou.
-                    ...(() => {
-                      const c = porUnidadeComposta(loteAberto);
-                      if (!c) return [];
-                      const nome = loteAberto.unidade_composta || 'cesta';
-                      return [
-                        { rotulo: `${nome.charAt(0).toUpperCase()}${nome.slice(1)}s entregues`, valor: Number(loteAberto.unidades_compostas).toLocaleString('pt-BR'), numerico: true },
-                        { rotulo: `Faturado por ${nome}`, valor: fmt(c.preco), numerico: true },
-                        { rotulo: `Custo por ${nome}`, valor: c.custo != null ? fmt(c.custo) : <ValorIndisponivel razao="Sem custo nas partes" />, numerico: true },
-                        { rotulo: `Margem por ${nome}`, valor: c.margem != null ? `${fmt(c.margem)} (${c.margemPct?.toFixed(1)}%)` : <ValorIndisponivel razao="Sem custo nas partes" />, numerico: true },
-                      ];
-                    })(),
+                    ...(loteAberto.unidades_compostas ? [{ rotulo: `${(loteAberto.unidade_composta || 'cesta').charAt(0).toUpperCase()}${(loteAberto.unidade_composta || 'cesta').slice(1)}s entregues`, valor: Number(loteAberto.unidades_compostas).toLocaleString('pt-BR'), numerico: true }] : []),
                   ]}
                 />
               </BlocoDoPainel>
+              {/* Custo × venda (30/09): a conta inteira, por cesta e pela nota, com o
+                  que o lucro bruto NÃO inclui dito ali e o caminho do resultado completo. */}
+              {podeVerCustos && (() => {
+                const custo = Number(loteAberto.custo_total) || 0;
+                const cestas = Number(loteAberto.unidades_compostas) || 0;
+                const nome = loteAberto.unidade_composta || 'cesta';
+                const l = lucroDoLote(loteAberto.valor_total, custo, cestas);
+                const comCusto = custo > 0;
+                const Linha = ({ rotulo, un, tot, forte, cor }: { rotulo: React.ReactNode; un: string; tot: string; forte?: boolean; cor?: string }) => (
+                  <tr className={forte ? 'border-t border-border font-semibold' : ''}>
+                    <td className="py-1 pr-3">{rotulo}</td>
+                    {cestas > 0 && <td className={`py-1 pr-3 text-right tabular-nums whitespace-nowrap ${cor ?? ''}`}>{un}</td>}
+                    <td className={`py-1 text-right tabular-nums whitespace-nowrap ${cor ?? ''}`}>{tot}</td>
+                  </tr>
+                );
+                return (
+                  <BlocoDoPainel titulo="Custo × venda — lucro bruto do lote">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-muted-foreground">
+                          <th className="py-1 pr-3 text-left font-medium"></th>
+                          {cestas > 0 && <th className="py-1 pr-3 text-right font-medium whitespace-nowrap">Por {nome}</th>}
+                          <th className="py-1 text-right font-medium whitespace-nowrap">{cestas > 0 ? `Nota (${cestas.toLocaleString('pt-BR')} ${nome}s)` : 'Nota'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <Linha rotulo="Venda (faturado)" un={l.porUnidade ? fmt(l.porUnidade.faturado) : ''} tot={fmt(l.faturado)} />
+                        <Linha rotulo={<>(−) Custo de compra{!comCusto && <span className="ml-1 g-meta text-muted-foreground">não declarado — Editar</span>}</>} un={comCusto && l.porUnidade ? fmt(l.porUnidade.custo) : '—'} tot={comCusto ? fmt(l.custo) : '—'} />
+                        <Linha rotulo={<>Lucro bruto{comCusto && l.margemPct != null && <span className="ml-1 font-normal text-muted-foreground">({l.margemPct.toFixed(1)}% sobre a venda)</span>}</>} un={comCusto && l.porUnidade ? fmt(l.porUnidade.lucro) : '—'} tot={comCusto ? fmt(l.lucroBruto) : '—'} forte cor={comCusto ? (l.lucroBruto < 0 ? 'text-destructive-ink' : 'text-success-ink') : ''} />
+                        {comCusto && <Linha rotulo={<span className="text-muted-foreground">Custo como % da venda</span>} un="" tot={`${((l.custo / l.faturado) * 100).toFixed(1)}%`} />}
+                      </tbody>
+                    </table>
+                    <p className="mt-2 g-meta text-muted-foreground">
+                      Lucro bruto é venda menos o custo de compra declarado. Ainda não entram: impostos, despesas administrativas, operacionais (logística, frete, mão de obra indireta) e BDI.
+                      O resultado completo, com o comprovado por contas a pagar, o rateio e o imposto estimado, está em{' '}
+                      <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => navigate('/financeiro/custos_contratos')}>Financeiro › Custo por contrato</button>.
+                    </p>
+                  </BlocoDoPainel>
+                );
+              })()}
               <BlocoDoPainel titulo={`Itens do lote (${loteAberto.partes.length})`}>
                 <div className="overflow-x-auto rounded-md border border-border">
                   <table className="w-full text-sm">
