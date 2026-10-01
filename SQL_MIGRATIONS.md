@@ -20011,3 +20011,10 @@ custo da nota pelo valor de cada parte (última fecha o centavo) e chama
 RLS: membro lê, financeiro/admin escreve) somada no resultado do contrato
 como parcela nomeada "declarada à mão". Arquivo:
 `supabase/migrations/20260930000006_custo_do_lote_e_ajustes_manuais.sql`.
+
+## 20260930000007 — excluir/editar lote sem min(uuid) (30/09/2026)
+
+`excluir_lote_de_pedidos` e `editar_lote_de_pedidos` usavam `min(contrato_id)`
+(não há `min` para uuid: "function min(uuid) does not exist"). Recriadas com
+`(array_agg(contrato_id))[1]`. As migrations 000003/000005 foram corrigidas na
+origem. Arquivo: `supabase/migrations/20260930000007_lote_sem_min_uuid.sql`.

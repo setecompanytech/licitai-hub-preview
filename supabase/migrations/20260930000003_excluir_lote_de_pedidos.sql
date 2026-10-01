@@ -27,7 +27,7 @@ BEGIN
   IF p_lote_id IS NULL THEN RAISE EXCEPTION 'lote obrigatório'; END IF;
   IF p_motivo IS NULL OR length(trim(p_motivo)) < 3 THEN RAISE EXCEPTION 'motivo obrigatório'; END IF;
 
-  SELECT array_agg(id), min(contrato_id) INTO v_ids, v_contrato_id
+  SELECT array_agg(id), (array_agg(contrato_id))[1] INTO v_ids, v_contrato_id
     FROM public.contrato_pedidos WHERE lote_id = p_lote_id;
   IF v_ids IS NULL THEN RAISE EXCEPTION 'lote não encontrado'; END IF;
 
