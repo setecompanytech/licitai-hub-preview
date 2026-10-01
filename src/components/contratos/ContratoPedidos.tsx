@@ -885,8 +885,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     });
   };
 
-  const load = async () => {
-    setLoading(true);
+  /**
+   * `silencioso` (30/09): recarga disparada pelo realtime depois de uma gravação
+   * em lote (18 partes + 18 custos + trilha = dezenas de eventos) — mantém o
+   * que está na tela e troca os dados ao chegar, em vez de apagar tudo e
+   * mostrar esqueleto a cada evento ("tela tremendo e apagando").
+   */
+  const load = async (opts: { silencioso?: boolean } = {}) => {
+    if (!opts.silencioso) setLoading(true);
     const [pedidosRes, itensRes, nfsRes, preNotasRes, aditivosRes, contratoRes] = await Promise.all([
       supabase.from('contrato_pedidos').select('*').eq('contrato_id', contratoId).order('data_pedido', { ascending: false }),
       supabase.from('contrato_itens').select('id, codigo_item, descricao, unidade, valor_unitario, valor_unitario_original, origem_aditivo_id, produto_id').eq('contrato_id', contratoId),
@@ -962,7 +968,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // Os saldos por empenho vinham um a um, em série (14 empenhos × 2 RPCs =
     // 28 idas ao banco em fila): a faixa dizia "Nenhum empenho registrado"
     // por segundos. Agora todos em paralelo, e a tela sabe que está esperando.
-    setCarregandoEmpenhos(true);
+    if (!opts.silencioso) setCarregandoEmpenhos(true);
     supabase
       .from('contrato_empenhos' as never)
       .select('id, numero, tipo, arquivo_id')
@@ -1042,6 +1048,14 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
 
   // Realtime: reflete em tempo real exclusões/edições feitas no Financeiro
   // (cascata via trigger trg_cleanup_contrato_pedido_on_lancamento_delete) ou em outras abas.
+  // Os eventos chegam em rajada (uma gravação de lote dispara dezenas): uma
+  // recarga só, silenciosa, depois de 700 ms sem evento novo.
+  const recargaPendente = useRef<number | null>(null);
+  const recarregarSilencioso = () => {
+    if (recargaPendente.current) window.clearTimeout(recargaPendente.current);
+    recargaPendente.current = window.setTimeout(() => { recargaPendente.current = null; void load({ silencioso: true }); }, 700);
+  };
+  useEffect(() => () => { if (recargaPendente.current) window.clearTimeout(recargaPendente.current); }, []);
   useEffect(() => {
     if (!contratoId) return;
     const channel = supabase
@@ -1049,12 +1063,12 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contrato_pedidos', filter: `contrato_id=eq.${contratoId}` },
-        () => load(),
+        () => recarregarSilencioso(),
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contrato_itens', filter: `contrato_id=eq.${contratoId}` },
-        () => load(),
+        () => recarregarSilencioso(),
       )
       .on(
         'postgres_changes',
@@ -1062,7 +1076,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
         (payload: any) => {
           // Recarrega se o lançamento removido pertencia a algum pedido deste contrato
           const pedidoId = payload?.old?.contrato_pedido_id;
-          if (pedidoId && pedidos.some((p) => p.id === pedidoId)) load();
+          if (pedidoId && pedidos.some((p) => p.id === pedidoId)) recarregarSilencioso();
         },
       )
       .subscribe();
