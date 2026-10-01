@@ -481,7 +481,8 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
     // declarado parte a parte pela porta única, numa transação (migration
     // 20260930000006). Só o admin e o financeiro declaram custo.
     if (podeVerCustos) {
-      const custoNovo = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+      const digitado = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+      const custoNovo = Number.isFinite(cestas) && cestas > 0 ? Math.round(digitado * cestas * 100) / 100 : digitado;
       if (Math.abs(custoNovo - edicaoDoLote.custo_atual) > 0.005) {
         const { error: errCusto } = await supabase.rpc('declarar_custo_do_lote' as never, { p_lote_id: edicaoDoLote.id, p_custo_total: custoNovo, p_motivo: null } as never);
         if (errCusto) toast.error('O lote foi salvo, mas o custo não foi declarado', { description: errCusto.message.includes('declarar_custo_do_lote') ? 'A função declarar_custo_do_lote ainda não existe no banco: cole a migration 20260930000006.' : errCusto.message });
@@ -2865,7 +2866,7 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
                     moram na barra da aba; o documento do empenho abre pela Origem. */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" className="g-controle" title="Número da nota, data, situação e cesta — vale para todas as partes"
-                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), descricao: descricaoSemParte(loteAberto.partes[0]?.descricao).split(' · ')[0] ?? '', nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', data_entrega: loteAberto.partes[0]?.data_entrega ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', empenho_id: loteAberto.empenho_id ?? 'nenhum', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '', observacoes: loteAberto.partes[0]?.observacoes ?? '', custo_total: loteAberto.custo_total != null && loteAberto.custo_total > 0 ? String(loteAberto.custo_total) : '', custo_atual: Number(loteAberto.custo_total) || 0, faturado: loteAberto.valor_total })}>
+                    onClick={() => setEdicaoDoLote({ id: loteAberto.id, numero: loteAberto.numero, partes: loteAberto.partes.map((p) => p.id), descricao: descricaoSemParte(loteAberto.partes[0]?.descricao).split(' · ')[0] ?? '', nota_fiscal: loteAberto.nota_fiscal ?? '', data_pedido: loteAberto.data_pedido ?? '', data_entrega: loteAberto.partes[0]?.data_entrega ?? '', status: loteAberto.partes[0]?.status ?? 'pendente', empenho_id: loteAberto.empenho_id ?? 'nenhum', unidade_composta: loteAberto.unidade_composta ?? '', unidades_compostas: loteAberto.unidades_compostas != null ? String(loteAberto.unidades_compostas) : '', observacoes: loteAberto.partes[0]?.observacoes ?? '', custo_total: loteAberto.custo_total != null && loteAberto.custo_total > 0 ? String(loteAberto.unidades_compostas && loteAberto.unidades_compostas > 0 ? Math.round((loteAberto.custo_total / loteAberto.unidades_compostas) * 10000) / 10000 : loteAberto.custo_total) : '', custo_atual: Number(loteAberto.custo_total) || 0, faturado: loteAberto.valor_total })}>
                     <Pencil aria-hidden="true" /> Editar
                   </Button>
                   {loteAberto.partes[0] && (
@@ -4314,21 +4315,28 @@ export default function ContratoPedidos({ contratoId }: { contratoId: string }) 
               <div className="space-y-1.5"><Label>Unidade composta</Label><Input placeholder="cesta básica" value={edicaoDoLote.unidade_composta} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidade_composta: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Quantas a nota entrega</Label><Input inputMode="decimal" className="tabular-nums" value={edicaoDoLote.unidades_compostas} onChange={(e) => setEdicaoDoLote({ ...edicaoDoLote, unidades_compostas: e.target.value })} /></div>
               {podeVerCustos && (() => {
-                const custo = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+                // Com cestas, o custo é informado POR CESTA e o lote é custo × cestas (30/09):
+                // "o custo, como a venda, multiplica pela quantidade de cestas".
                 const cestas = parseFloat(edicaoDoLote.unidades_compostas.replace(',', '.')) || 0;
+                const porCesta = cestas > 0;
+                const digitado = parseFloat(edicaoDoLote.custo_total.replace(',', '.')) || 0;
+                const custoUnit = porCesta ? digitado : 0;
+                const custo = porCesta ? Math.round(digitado * cestas * 100) / 100 : digitado;
                 const l = lucroDoLote(edicaoDoLote.faturado, custo, cestas);
                 const nome = edicaoDoLote.unidade_composta.trim() || 'cesta';
                 return (
                   <div className="space-y-2 sm:col-span-2 rounded-md border border-border bg-secondary/40 p-3">
                     <div className="grid gap-4 sm:grid-cols-[minmax(14rem,1fr)_minmax(0,1.4fr)]">
                       <div className="space-y-1.5">
-                        <Label className="whitespace-nowrap">Custo de compra do lote (R$)</Label>
-                        <MoneyInput value={custo} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, custo_total: v > 0 ? String(v) : '' })} />
-                        <p className="g-meta text-muted-foreground">Repartido entre as {edicaoDoLote.partes.length} partes na proporção do valor de cada uma.</p>
+                        <Label className="whitespace-nowrap">{porCesta ? `Custo de compra por ${nome} (R$)` : 'Custo de compra do lote (R$)'}</Label>
+                        <MoneyInput value={digitado} onValueChange={(v) => setEdicaoDoLote({ ...edicaoDoLote, custo_total: v > 0 ? String(v) : '' })} />
+                        <p className="g-meta text-muted-foreground">
+                          {porCesta ? `× ${cestas.toLocaleString('pt-BR')} ${nome}(s) = ${fmt(custo)} no lote. ` : ''}Repartido entre as {edicaoDoLote.partes.length} partes na proporção do valor de cada uma.
+                        </p>
                       </div>
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm tabular-nums">
-                        <dt className="whitespace-nowrap text-muted-foreground">Faturado</dt><dd className="text-right">{fmt(l.faturado)}</dd>
-                        <dt className="whitespace-nowrap text-muted-foreground">Custo de compra</dt><dd className="text-right">{custo > 0 ? fmt(l.custo) : '—'}</dd>
+                        <dt className="whitespace-nowrap text-muted-foreground">Faturado{porCesta && l.porUnidade ? ` (${cestas.toLocaleString('pt-BR')} × ${fmt(l.porUnidade.faturado)})` : ''}</dt><dd className="text-right whitespace-nowrap">{fmt(l.faturado)}</dd>
+                        <dt className="whitespace-nowrap text-muted-foreground">Custo de compra{porCesta && custoUnit > 0 ? ` (${cestas.toLocaleString('pt-BR')} × ${fmt(custoUnit)})` : ''}</dt><dd className="text-right whitespace-nowrap">{custo > 0 ? fmt(l.custo) : '—'}</dd>
                         <dt className="whitespace-nowrap border-t border-border pt-1 font-semibold">Lucro bruto</dt>
                         <dd className={`border-t border-border pt-1 text-right font-semibold whitespace-nowrap ${custo > 0 && l.lucroBruto < 0 ? 'text-destructive-ink' : ''}`}>{custo > 0 ? `${fmt(l.lucroBruto)}${l.margemPct != null ? ` (${l.margemPct.toFixed(1)}%)` : ''}` : '—'}</dd>
                         {custo > 0 && l.porUnidade && (
