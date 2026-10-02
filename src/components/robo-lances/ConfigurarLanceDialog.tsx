@@ -1980,11 +1980,43 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               <h4 className="text-base font-semibold text-foreground">Regras de Decremento Automático</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="disputa-decremento-min">Decremento Mínimo (R$)</Label>
-                  <MoneyInput id="disputa-decremento-min" value={Number(decrementoMin) || 0} onValueChange={(v) => setDecrementoMin(String(v))} placeholder="R$ 50.000,00" className="mt-1" />
+                  <Label htmlFor="disputa-decremento-min" title="Quanto o robô baixa a cada lance. Se o edital exigir um degrau maior, vale o do edital.">
+                    Quanto baixar a cada lance (R$)
+                  </Label>
+                  {/*
+                    O placeholder era "R$ 50.000,00" — um exemplo que sugere
+                    degraus enormes, quando o que se vê no portal é R$ 0,0100 e
+                    R$ 0,1000 (pregões 7/2026 e 37/2026). Exemplo em formulário
+                    é sugestão: um número fora de escala ensina o valor errado.
+                  */}
+                  <MoneyInput id="disputa-decremento-min" value={Number(decrementoMin) || 0} onValueChange={(v) => setDecrementoMin(String(v))} placeholder="vazio = o mínimo do edital" className="mt-1" />
+                  {/*
+                    QUEM MANDA NO DEGRAU É O EDITAL (02/10/2026). O portal
+                    publica "Intervalo mínimo entre lances" na linha de cada
+                    item (R$ 0,0100 no 7/2026; R$ 0,1000 no 37/2026), e lance
+                    com diferença menor é recusado. O robô lê esse número da
+                    tela e, se o configurado aqui for menor, usa o do edital.
+                    Quem preenche precisa saber disso ANTES, senão cadastra um
+                    degrau achando que vale e descobre na disputa que não valia.
+
+                    O número não aparece aqui porque a busca da compra (PNCP) não
+                    o traz: ele só existe na página do portal, com o item
+                    expandido. Mostrá-lo exigiria o robô abrir o portal durante o
+                    cadastro — está anotado como melhoria em docs/robo-de-lances.md.
+                  */}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Na disputa o robô lê o <strong>intervalo mínimo</strong> que o portal publica em
+                    cada item e usa o maior entre ele e este valor — então um número menor aqui não
+                    causa lance recusado. O que este campo garante é outra coisa:{' '}
+                    <strong>se a leitura falhar, é por ele que o robô continua lançando</strong>.
+                    Por isso vale preenchê-lo com o degrau que o edital exige. Vazio, e sem leitura,
+                    o robô não dá lance — e diz por quê.
+                  </p>
                 </div>
                 <div>
-                  <Label htmlFor="disputa-decremento-pct">Decremento Percentual (%)</Label>
+                  <Label htmlFor="disputa-decremento-pct" title="O mesmo, em percentual do melhor lance. Usado quando não há valor em reais.">
+                    Ou em percentual do melhor lance (%)
+                  </Label>
                   <Input id="disputa-decremento-pct" type="number" step="0.1" value={decrementoPercentual} onChange={(e) => setDecrementoPercentual(e.target.value)} placeholder="vazio = intervalo do edital" className="mt-1" />
                 </div>
               </div>
@@ -1993,7 +2025,17 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="disputa-intervalo">Intervalo entre lances (seg)</Label>
+                  {/*
+                    "INTERVALO" TINHA DOIS SENTIDOS NA MESMA TELA (02/10/2026).
+                    O portal escreve, na linha de cada item, "Intervalo mínimo
+                    entre lances: R$ 0,1000" — e isso é VALOR. Aqui o mesmo
+                    nome era usado para TEMPO. Quem opera lê as duas telas lado
+                    a lado todos os dias; a mesma palavra para coisas diferentes
+                    é erro esperando acontecer.
+                  */}
+                  <Label htmlFor="disputa-intervalo" title="Tempo entre uma leitura da sala e a seguinte. Não confundir com o intervalo mínimo em REAIS que o edital exige entre lances.">
+                    Esperar entre um lance e outro (seg)
+                  </Label>
                   <Input id="disputa-intervalo" type="number" min={10} value={intervaloSegundos} onChange={(e) => setIntervaloSegundos(e.target.value)} placeholder="30" title="Mínimo de 10 s: abaixo disso o robô relê o portal a cada 10 s de qualquer jeito" className="mt-1" />
                 </div>
                 <div>
@@ -2347,7 +2389,28 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
                   {/* Valor Inicial – editable R$ */}
                   <div className={`rounded-lg border bg-card p-4 ${inexequibilidadeInicial ? 'border-destructive' : 'border-border'}`}>
-                    <Label htmlFor="disputa-valor-inicial" className="text-sm font-medium leading-5 text-muted-foreground">Valor Inicial (1º lance)</Label>
+                    {/*
+                      "VALOR INICIAL (1º LANCE)" PROMETIA O QUE NÃO ACONTECE
+                      (auditado em 02/10/2026, rastreando o campo de ponta a
+                      ponta até o agente).
+
+                      O robô NUNCA dá lance com este valor. Todo lance sai de
+                      `melhorLance − passo`; este número só é usado como
+                      referência do "nosso valor" enquanto o portal não o
+                      informa, e como guarda ("o melhor lance não é melhor que o
+                      nosso — nada a cobrir"). Com a leitura da sala, o portal
+                      passa a informar quase sempre, e ele vira só o ponto de
+                      partida.
+
+                      E "1º lance" confundia com outra coisa que existe de
+                      verdade e vem ANTES: a proposta já cadastrada no portal,
+                      que a operação envia antes da sessão abrir. São dois
+                      números diferentes em dois momentos diferentes.
+                    */}
+                    <Label htmlFor="disputa-valor-inicial" className="text-sm font-medium leading-5 text-muted-foreground"
+                      title="O valor com que a empresa entrou — normalmente o da proposta já enviada ao portal. O robô não dá lance com ele: serve de referência enquanto o portal não mostra o nosso valor na sala.">
+                      Nosso valor de partida
+                    </Label>
                     <div className="mt-2">
                       <MoneyInput
                         id="disputa-valor-inicial"
@@ -2367,7 +2430,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
 
                   {/* Valor Mínimo – editable R$ */}
                   <div className={`rounded-lg border bg-card p-4 ${inexequibilidadeMinimo ? 'border-destructive' : 'border-destructive-line'}`}>
-                    <Label htmlFor="disputa-valor-minimo" className="text-sm font-medium leading-5 text-muted-foreground">Valor Mínimo (piso)</Label>
+                    {/*
+                      A OPERAÇÃO DESCREVEU ESTE CAMPO COM AS PRÓPRIAS PALAVRAS
+                      (reunião de 01/10/2026): *"colocar lá nele um valor mínimo
+                      que eu possa chegar […] a partir do momento que chegou
+                      naquele valor, ele encerra, ele não dá mais lances, e aí a
+                      gente já aguarda para ser convocado"*.
+
+                      O rótulo dizia só "Valor Mínimo (piso)" e não dizia a
+                      consequência — que é o que a pessoa precisa saber para
+                      escolher o número: chegar nele não é erro nem parada
+                      temporária, é o FIM da atuação do robô naquele item.
+                    */}
+                    <Label htmlFor="disputa-valor-minimo" className="text-sm font-medium leading-5 text-muted-foreground"
+                      title="O robô não desce abaixo deste valor. Ao chegar nele, ele encerra a atuação no item e avisa — a disputa continua sem nós.">
+                      Até onde podemos chegar (piso)
+                    </Label>
                     <div className="mt-2">
                       <MoneyInput
                         id="disputa-valor-minimo"

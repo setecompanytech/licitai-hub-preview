@@ -4600,6 +4600,90 @@ Isto entra como régua para os próximos textos: **o aviso descreve o que é, n�
 gostaríamos que fosse** — e quando houver exceção prevista (como o acesso manual
 sem sessão registrada), ela é nomeada no próprio aviso.
 
+#### 02/10, à tarde — auditoria do formulário de cadastro, contra a disputa real
+
+Pedido do Ian: *"os formulários de cadastrar as sessões fazem sentido de fato como
+o robô funciona? como as disputas e outras questões burocráticas funcionam?"* — e,
+logo depois, a régua: *"tem que fazer sentido com toda a regra de negócios e até do
+que levantamos ontem com a Izabelle"*.
+
+##### O que já batia, e é a maior parte
+
+Piso **por item** (a disputa é item a item, cada um com seu limite e seu
+cronômetro); estratégias cumulativas por item; lance final fechado **só** quando o
+modo da compra é "aberto e fechado", lido da própria compra; lote × item; margem de
+desempate só na estratégia que a usa; sessão passada que não vira disputa.
+
+E um receio que **não** se confirmou: cadastrar um degrau menor que o do edital
+**não** causa lance recusado — a estratégia sobe para o do edital e diz a origem no
+motivo (`"intervalo mínimo do edital, maior que o decremento configurado"`).
+
+##### "Valor Inicial (1º lance)" prometia o que não acontece
+
+Rastreado de ponta a ponta — formulário → banco → webhook → `config.valor_inicial`
+→ `session.valor_atual` → `decidirLance`:
+
+**O robô nunca dá lance com este valor.** Todo lance sai de `melhorLance − passo`.
+Ele serve como referência do "nosso valor" enquanto o portal não o informa, e como
+guarda (*"o melhor lance não é melhor que o nosso — nada a cobrir"*). Com a leitura
+da sala, o portal passa a informar quase sempre.
+
+E **"1º lance" confundia com algo que existe e vem antes**: a proposta já cadastrada
+no portal, enviada antes de a sessão abrir. São dois números, em dois momentos.
+
+Virou **"Nosso valor de partida"**, com a explicação no título.
+
+##### O piso não dizia a consequência
+
+A operação descreveu este campo com as próprias palavras: *"colocar lá nele um valor
+mínimo que eu possa chegar […] a partir do momento que chegou naquele valor, **ele
+encerra, ele não dá mais lances**, e aí a gente já aguarda para ser convocado"*.
+
+O rótulo era só "Valor Mínimo (piso)" — não dizia o que acontece ao chegar nele, que
+é justamente o que a pessoa precisa saber para escolher o número. Chegar no piso não
+é erro nem pausa: é o **fim** da atuação do robô naquele item.
+
+Virou **"Até onde podemos chegar (piso)"**.
+
+##### "Intervalo" tinha dois sentidos na mesma tela
+
+O portal escreve, na linha de cada item: *"Intervalo mínimo entre lances: **R$
+0,1000**"* — e isso é **valor**. O formulário usava o mesmo nome para **tempo**.
+Quem opera lê as duas telas lado a lado todo dia. Virou **"Esperar entre um lance e
+outro (seg)"**.
+
+E o placeholder do degrau era **`R$ 50.000,00`**. O que se vê no portal é
+**R$ 0,0100** e **R$ 0,1000** — três ordens de grandeza de distância. Exemplo em
+formulário é sugestão, e um número fora de escala ensina o valor errado.
+
+##### O intervalo mínimo do edital não vem na busca da compra — e o que isso significa
+
+A busca (PNCP/Compras.gov) traz modalidade, critério, modo de disputa, itens,
+quantidades e valores estimados — **mas não o intervalo mínimo entre lances**. Ele só
+existe na página do portal, com o item expandido.
+
+Medido, com os três cenários:
+
+| Situação | O que o robô faz |
+| --- | --- |
+| lê o intervalo da sala (normal) | usa o do edital; cadastro menor **sobe** para ele |
+| não lê, mas há valor cadastrado | **usa o cadastrado** |
+| não lê e não há cadastro | **não lança**, e diz: *"Nenhum decremento válido configurado […] e o intervalo mínimo do edital não foi lido"* |
+
+Ou seja: **não atrapalha o robô no caso normal**, mas muda o papel do campo. Ele não
+é enfeite nem preferência: **é a rede de segurança para quando a leitura falhar** — e
+isso ficou mais relevante hoje, porque a guarda que impede o robô de sair da sala
+também fecha o caminho alternativo (a página pública) durante a disputa.
+
+Por isso o texto de ajuda deixou de dizer "vazio = o mínimo do edital" e passou a
+dizer o que de fato importa: **vale preenchê-lo com o degrau que o edital exige**,
+porque é por ele que o robô continua lançando se a leitura falhar.
+
+> **Melhoria anotada, com o custo:** exibir o número no próprio formulário exigiria o
+> robô abrir a página da compra durante o cadastro — sessão logada, navegação e ~30 s
+> por consulta. É viável (`lerDetalhesDoItem` já faz a leitura), e fica para quando
+> houver demanda: hoje a orientação no texto resolve o caso que importa.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
