@@ -518,7 +518,17 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
         disputas={participacoes.map((p) => ({
           id: p.sessao?.id ?? p.disputa.id,
           edital: p.disputa.edital ?? null,
-          orgao: p.processo?.orgao ?? null,
+          // O ÓRGÃO SÓ EXISTE NO PROCESSO VINCULADO (02/10/2026). A disputa
+          // guarda o número e a UASG, não o nome do órgão — mesmo quando foi
+          // cadastrada pela busca no Compras.gov, que traz esse dado. Logo,
+          // disputa sem processo vinculado mostrava só "002/2026", e um número
+          // sozinho não diz de quem é a compra: com quatro cartões na tela, é a
+          // diferença entre reconhecer o pregão e ter de abrir cada um.
+          //
+          // A UASG é o que a disputa tem, e é por ela que a operação desambigua
+          // (há três "90007/2024" de órgãos diferentes na lista da Santa Rosa).
+          // Melhor isso do que um cartão anônimo.
+          orgao: p.processo?.orgao ?? (p.disputa.uasg ? `UASG ${p.disputa.uasg}` : null),
           portal: p.disputa.portal ?? null,
           licitacaoId: p.disputa.licitacao_id ?? null,
           estadoSala: (p.sessao as { estado_sala?: never } | null)?.estado_sala ?? null,

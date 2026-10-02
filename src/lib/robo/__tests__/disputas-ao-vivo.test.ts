@@ -161,3 +161,55 @@ describe('disputasAoVivo', () => {
     expect(disputasAoVivo([], AGORA)).toEqual([]);
   });
 });
+
+/**
+ * A barra de andamento mostra PROPORÇÃO. Estes testes guardam a conta — e, com
+ * ela, o limite: num pregão de 182 itens, um item perdendo é uma faixa quase
+ * invisível. É por isso que a barra não substitui a ORDEM dos cartões nem o
+ * cronômetro: ela diz como está o conjunto, não o que é urgente.
+ */
+describe('o andamento, por estado', () => {
+  const comItens = (lista: Array<Record<string, unknown>>) =>
+    resumirDisputa(disputa({
+      estadoSala: { por_item: Object.fromEntries(lista.map((i, n) => [String(n + 1), item({ item: n + 1, ...i })])) },
+    }), AGORA);
+
+  it('separa perdendo, liderando, aguardando e encerrados', () => {
+    const r = comItens([
+      { sou_lider: false },
+      { sou_lider: true },
+      { fase: 'aguardando', segundos_restantes: null },
+      { fase: 'encerrada' },
+    ]);
+    expect(r.perdendo).toBe(1);
+    expect(r.liderando).toBe(1);
+    expect(r.aguardando).toBe(1);
+    expect(r.encerrados).toBe(1);
+    expect(r.totalDeItens).toBe(4);
+  });
+
+  it('item aberto SEM leitura de liderança não conta para nenhum lado', () => {
+    const r = comItens([{ sou_lider: null }]);
+    expect(r.perdendo).toBe(0);
+    expect(r.liderando).toBe(0);
+    // e a soma das faixas pode dar menos que o total — de propósito, porque
+    // inventar um lado seria afirmar o que não se leu
+    expect(r.perdendo + r.liderando + r.aguardando + r.encerrados).toBeLessThan(r.totalDeItens);
+  });
+
+  it('as faixas nunca somam mais que o total', () => {
+    const r = comItens([{ sou_lider: false }, { sou_lider: true }, { fase: 'encerrada' }]);
+    expect(r.perdendo + r.liderando + r.aguardando + r.encerrados).toBeLessThanOrEqual(r.totalDeItens);
+  });
+
+  it('182 itens com um perdendo: a faixa é mínima, e a URGÊNCIA não', () => {
+    const lista = Array.from({ length: 182 }, (_, i) =>
+      i === 0 ? { sou_lider: false, segundos_restantes: 20 } : { sou_lider: true, segundos_restantes: 600 });
+    const r = comItens(lista);
+    expect(r.perdendo).toBe(1);
+    expect(r.liderando).toBe(181);
+    // 1 em 182 é 0,5% da barra — invisível. Mas a urgência do cartão é alta,
+    // e é ela que decide a posição na lista.
+    expect(r.urgencia).toBeGreaterThan(50);
+  });
+});

@@ -46,6 +46,16 @@ export interface ProcessoDaParticipacao {
 export interface DisputaCarregada extends DisputaParaProjecao {
   empresa_id: string;
   edital: string;
+  /**
+   * A unidade compradora (migration 20260911000001). Vinha no `select('*')` e
+   * não estava declarada — então o TypeScript a escondia de quem lia o tipo.
+   *
+   * Importa porque é a única identidade da compra quando não há processo
+   * vinculado: o órgão mora em `licitacoes.orgao`, e a disputa não o guarda.
+   * E é por ela que se desambigua o mesmo número em órgãos diferentes — há
+   * três "90007/2024" na lista da Santa Rosa.
+   */
+  uasg?: string | null;
   tipo_disputa: string | null;
   horario: string | null;
   modo_automatico: boolean | null;

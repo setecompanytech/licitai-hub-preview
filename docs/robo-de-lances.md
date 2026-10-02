@@ -4684,6 +4684,76 @@ porque é por ele que o robô continua lançando se a leitura falhar.
 > por consulta. É viável (`lerDetalhesDoItem` já faz a leitura), e fica para quando
 > houver demanda: hoje a orientação no texto resolve o caso que importa.
 
+#### 02/10, fim da tarde — os cartões das disputas, revistos com a tela no ar
+
+A leva saiu no Lovable e o Ian olhou a tela publicada. Três apontamentos, e os
+três procedem.
+
+##### 1. O título contradizia os próprios cartões
+
+A tela dizia **"2 disputas em curso"** no topo, enquanto cada cartão trazia
+*"Nenhum item com a etapa aberta agora"* e a aba logo abaixo contava **"Em disputa
+(0)"**. A mesma tela, três afirmações, duas delas incompatíveis.
+
+É o mesmo defeito que o dia inteiro vinha corrigindo em outros avisos — e desta vez
+fui eu quem o criou, de manhã.
+
+São **estados diferentes**, e o título passou a distingui-los:
+
+| | |
+| --- | --- |
+| **"N sessões do robô no ar"** | o robô está dentro da compra, esperando a etapa abrir — **pronto** |
+| **"N disputas em curso"** | há item com a etapa aberta, lance podendo acontecer — **trabalhando** |
+
+##### 2. Faltava o andamento de relance
+
+O cartão dizia "2 de 5" em texto. Com quatro pregões na tela, **é de relance que se
+lê** — e texto não se lê de relance. Entrou uma faixa com a proporção dos itens:
+perdendo · liderando · aguardando · encerrados, nessa ordem (a mesma da leitura: o
+que exige ação primeiro).
+
+Três cuidados:
+
+- **nunca só cor.** Cada faixa tem `title`, a barra tem `aria-label` com os números,
+  e eles aparecem em texto embaixo. Quem não distingue vermelho de verde lê igual;
+- **a barra some quando não há item lido.** Barra vazia parece defeito, e a ausência
+  de leitura já está dita na frase do cartão;
+- **nada de arredondar para caber.** A largura é a proporção real.
+
+> **E o limite da barra, que é o que importa não esquecer:** num pregão de 182
+> itens, **um** item perdendo é 0,5% da largura — praticamente invisível. E pode
+> ser justamente o que importa. Por isso a barra **não substitui** a ordem dos
+> cartões nem o cronômetro: ela diz como está o **conjunto**; a urgência continua
+> decidindo a **posição**. Há teste guardando os dois ao mesmo tempo (faixa mínima,
+> urgência alta).
+
+##### 3. O cartão não dizia de quem era a compra
+
+"002/2026" sozinho não identifica nada. O órgão **só existe em
+`licitacoes.orgao`** — ou seja, só quando a disputa tem processo vinculado. A
+disputa em si guarda número e **UASG**, mas não o nome do órgão, mesmo quando foi
+cadastrada pela busca no Compras.gov, que traz esse dado.
+
+Agora o cartão cai na **UASG** quando não há órgão. É o que a disputa tem, e é por
+ela que a operação desambigua — há três "90007/2024" de órgãos diferentes na lista
+da Santa Rosa.
+
+De quebra, um achado: a coluna `uasg` existe desde 11/09 e vinha no `select('*')`,
+mas **não estava declarada no tipo** `DisputaCarregada` — o TypeScript a escondia de
+quem lia o código. Declarada (opcional, porque base antiga pode não tê-la).
+
+> **Melhoria anotada:** guardar o nome do órgão na própria disputa, vindo da busca
+> da compra. Exige coluna nova e uma migration; a UASG resolve o caso de hoje.
+
+##### O que o cartão é, e o que não é
+
+Ele **abre** — leva à página da disputa, onde está a sala ao vivo item a item. O
+cartão é o **relance**; a página é o **detalhe**.
+
+A divisão é proposital: se cada cartão tentasse ser um painel completo, quatro não
+caberiam na tela, e a pessoa teria de ler quatro painéis para decidir onde olhar —
+que é exatamente o problema que o cartão existe para resolver.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir

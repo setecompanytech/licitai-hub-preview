@@ -51,6 +51,10 @@ export interface ResumoDaDisputa {
   perdendo: number;
   /** Itens já encerrados pelo portal. */
   encerrados: number;
+  /** Dos abertos, em quantos lideramos. */
+  liderando: number;
+  /** Nem abertos nem encerrados: a etapa deles ainda não chegou. */
+  aguardando: number;
   totalDeItens: number;
   /** O menor cronômetro entre os itens abertos — o que aperta primeiro. */
   menorTempo: TempoNaTela | null;
@@ -111,7 +115,12 @@ export function resumirDisputa(d: DisputaParaResumir, agora: Date = new Date()):
     esperandoPessoa: d.esperandoPessoa === true,
     emDisputa: abertos.length,
     perdendo,
+    // Liderar não é "o resto dos abertos": o item sem leitura de liderança não
+    // conta para nenhum dos dois lados, e somar os dois pode dar menos que o
+    // total de abertos — de propósito.
+    liderando: abertos.filter(({ estado }) => estado.sou_lider === true).length,
     encerrados,
+    aguardando: Math.max(0, itens.length - abertos.length - encerrados),
     totalDeItens: itens.length,
     menorTempo,
     urgencia,
