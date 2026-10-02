@@ -4754,6 +4754,194 @@ A divisão é proposital: se cada cartão tentasse ser um painel completo, quatr
 caberiam na tela, e a pessoa teria de ler quatro painéis para decidir onde olhar —
 que é exatamente o problema que o cartão existe para resolver.
 
+#### 02/10, noite — vários certificados, uma base por conta
+
+A conversa chegou aqui por uma pergunta de operação do Ian: *"a Izabelle consegue
+disputar com contas diferentes no Compras.gov e ir administrando tudo pelos layouts
+do sistema?"* A resposta tinha um ❌ no meio — **certificado por conta** — e ele foi
+direto ao ponto: *"o agente tem UM certificado instalado por vez, ele poderia
+suportar mais de um?"*, e depois *"tipo: ter slots no Praefectus pra ficar
+registrado, isso é possível?"*
+
+É possível, e **mais da metade do caminho já estava construída** — em dois pedaços
+que nunca se encontraram. O que segue separa, de propósito, o que **está no ar
+agora** do que está **desenhado e não implementado**.
+
+##### Onde estava o gargalo — e não era o arquivo
+
+A suspeita natural é o arquivo: um `.pfx` por vez, um diretório, pronto. Mas
+`getCertConfig(cnpj)`, no `browser.js`, **já procurava `certs/<cnpj>.pfx` desde
+sempre**. A metade do multi-certificado existia e nunca teve a outra.
+
+O gargalo real são duas coisas juntas:
+
+| | |
+| --- | --- |
+| **uma base NSS só** | o Chrome lê os certificados de `$HOME/.pki/nssdb`, e todos os navegadores do agente subiam com o mesmo `HOME` |
+| **a policy com filtro vazio** | `{"pattern":"https://[*.]gov.br","filter":{}}` quer dizer *"escolha qualquer um"* |
+
+Com **um** certificado instalado, filtro vazio funciona — não há o que escolher
+errado. Com **dois**, o Chrome escolhe e **não dá para prever qual**.
+
+> **E isso não é hipótese: aconteceu em 30/09.** O certificado da ETHOS entrou pela
+> tela, tomou o lugar na base única, e o robô passou a poder logar como a empresa
+> errada. O backup `certs/certificado.pfx.ethos-bak-20261001-0856` ainda está na VPS
+> — é a cicatriz do episódio.
+
+E a saída **não** é refinar o filtro da policy. A policy é da **máquina**: dois
+Chromes de contas diferentes rodando ao mesmo tempo leriam a mesma regra. Refinar
+o filtro resolveria um Chrome, não quatro.
+
+##### A saída: uma casa por conta
+
+Se o Chrome lê a base de `$HOME/.pki/nssdb`, basta cada navegador subir com um
+`HOME` próprio. Cada um enxerga **um** certificado — e o filtro vazio deixa de ser
+perigoso, porque não há o que escolher errado.
+
+```
+casas/
+  12345678000190/.pki/nssdb      ← a base da conta A
+  98765432000110/.pki/nssdb      ← a base da conta B
+certs/
+  12345678000190.pfx
+  98765432000110.pfx
+  certificado.pfx                ← o de sempre, sem CNPJ (hoje: Santa Rosa)
+```
+
+No `certificado.js`: `basePara(cnpj)` devolve os caminhos da conta,
+`casaDaConta(cnpj)` devolve a casa quando ela existe, `caminhoDoPfx(cnpj)` aponta
+para `certs/<cnpj>.pfx`, e `instalar(buffer, senha, cnpj)` instala **naquela** base
+— tirando o anterior **dela, e só dela**. No `browser.js`, o `env` do launch recebe
+`HOME: casa`.
+
+**Sem CNPJ, nada muda.** `casaDaConta` devolve `null`, o Chrome sobe com o `HOME` de
+sempre, e o comportamento antigo fica intacto — que é o caso de quem tem um
+certificado só.
+
+> **A restrição que governou a implementação**, dita pelo Ian duas vezes: *"não
+> podemos tocar no certificado que já está registrado hoje porque temos muitos testes
+> em pregões para fazer — o Santa Rosa, que será a cobaia"*, e *"não desconfigure o
+> que já temos configurado do Santa Rosa"*.
+>
+> Conferido byte a byte, antes e depois: `md5 82a21c710d62a6c0e4b0c96c5db38f44`,
+> idêntico; o `/health` segue com `cert carregado: true`, titular `1009992202`; e a
+> pasta `casas/` **ainda não existe** — prova de que o caminho novo não foi acionado.
+> As 135 conferências do agente passaram.
+
+##### E o backup que passou a existir
+
+Trocar o `.pfx` não tinha backup nenhum. Foi exatamente assim que o certificado da
+Santa Rosa sumiu em 30/09. Agora `instalar` copia o anterior para
+`.anterior-<data>` antes de escrever. **Um arquivo de 4 KB não justifica perder o
+acesso de uma empresa.**
+
+##### Os slots no Praefectus — o que já existe, e o que falta
+
+O Ian perguntou se o sistema já não tinha isso: *"analise se o sistema já não tem
+essa configuração de cadastrar mais de um certificado"*. Tem **a tabela**; não tem
+a função.
+
+| | |
+| --- | --- |
+| `cert_upload_tokens` | **o caminho que funciona hoje.** `empresa_id` NOT NULL, `cert_file_path`, `senha_cifrada`, `instalado_no_agente_em`. Mas é um **token de uso único**, não um cadastro: responde "este envio aconteceu", não "quais certificados eu tenho" |
+| `financeiro_certificados` | **a tabela que parece ser o slot, e nunca foi usada.** Tem `nome`, `cnpj`, `tipo` (A1/A3), `emissor`, `numero_serie`, `validade_de/ate`, `ativo`, `uso_padrao`. Criada em 25/04 por uma leva do Lovable; **zero referências** em `src/` e em `supabase/functions/` — existe só na migration e no `types.ts` gerado |
+
+**Então "slot" é um cadastro que falta, não um recurso escondido.** O desenho,
+reaproveitando a tabela que já está lá:
+
+1. a lista de certificados da empresa em **Configurações do Robô**, uma linha por
+   CNPJ: nome, CNPJ, validade, "em uso" — e o aviso de vencimento, que a coluna
+   `validade_ate` já permite;
+2. "Registrar outro certificado" gera o link de envio que **já existe**
+   (`gerar-link-certificado`), agora gravando também a linha do slot;
+3. a sessão de disputa escolhe o slot pelo CNPJ da empresa — e é esse CNPJ que o
+   agente usa para achar a casa.
+
+> ⚠️ **Dois problemas a resolver antes de escrever a tela**, achados ao auditar:
+>
+> **A RLS das duas tabelas é por `user_id`, não por empresa.** `financeiro_certificados`
+> tem coluna `empresa_id` e policies `auth.uid() = user_id`; `cert_upload_tokens`
+> idem no SELECT. Na prática: **o certificado que o Rafael registrar a Izabelle não
+> vê**, mesmo na mesma empresa — e o robô é operado por quem está na operação, não
+> por quem cadastrou. Isso contraria a regra do `CLAUDE.md` ("toda tabela nova:
+> `empresa_id` + policies com `is_empresa_member`") e precisa de migration.
+>
+> **O certificado é compartilhado com o Financeiro.** O mesmo bucket `certificados`
+> e o mesmo fluxo de envio servem ao robô e à busca de XML na SEFAZ. Mexer no
+> cadastro mexe nos dois — e `financeiro_certificados` tem prefixo `financeiro_`
+> justamente porque nasceu do outro lado.
+
+##### A dúvida da SEFAZ, respondida sem o Supabase
+
+O Ian ficou sem conseguir responder: *"o certificado que o robô usa é o mesmo que a
+empresa usa na SEFAZ? não tem nada registrado?"* — e sem acesso ao banco para
+conferir.
+
+**Dá para responder pelo código, e a resposta é sim: é o mesmo arquivo, no mesmo
+cofre.** Os dois lados passam por `gerar-link-certificado` → `/certificado-upload`
+→ `upload-certificado` → bucket privado `certificados`, com a senha cifrada em
+`cert_upload_tokens.senha_cifrada`. O próprio `CLAUDE.md` já registra isso na frente
+do XML por chave: *"o mesmo do robô"*.
+
+O que difere é **o uso**, não o arquivo:
+
+| | |
+| --- | --- |
+| **robô** | instala o `.pfx` na base NSS do Chrome, para o portal pedir o certificado na tela |
+| **SEFAZ** | usa o `.pfx` em mTLS pelo proxy, sem navegador |
+
+Consequência prática, que vale ter dita: **um e-CNPJ A1 por empresa atende aos dois**.
+Não há motivo para registrar dois do mesmo CNPJ — e foi o que o Ian concluiu
+("manter só o e-CNPJ A1 que já está registrado").
+
+#### 02/10, noite — distinção entre portais: pela consequência, nunca pela tecnologia
+
+Junto do pedido dos slots, o Ian levantou outra coisa: *"o robô em breve terá
+também acesso via API para outros portais, mas é outra abordagem de ferramenta; já
+no Praefectus talvez não tenha essa separação visual, lá parece que tudo é a mesma
+coisa. Poderíamos fazer uma distinção visual, né? Dentro do mesmo módulo mesmo. Mas
+pensa primeiro, analise e investigue e me diga se faz sentido ou não."*
+
+**Faz sentido distinguir — e não por "API × robô".** Duas razões, e a segunda é a
+que importa:
+
+**1. O `CLAUDE.md` já proíbe o rótulo técnico**, por decisão de 22/09 na frente das
+certidões: *"Nada de rótulo técnico na tela: 'APIs públicas', 'Firecrawl', 'IA
+(extração)', **'via API'** não aparecem ao usuário."* Escrever "via API" num cartão
+quebraria uma regra que já está firmada.
+
+**2. Saber que o portal usa API não muda o dia de quem opera.** O que muda é outra
+coisa:
+
+| | Compras.gov (navegador) | portal com API |
+| --- | --- | --- |
+| alguém precisa destravar captcha? | **sim, toda manhã** | não |
+| dá para assistir ao vivo? | sim, pela tela remota | não há o que ver |
+| precisa de certificado instalado? | sim, na base NSS | depende |
+| quantos cabem ao mesmo tempo? | **4** (limite de RAM) | muitos |
+
+Nenhuma dessas linhas precisa da palavra "API". Todas descrevem **consequências** —
+e é por consequência que a pessoa se organiza.
+
+##### O desenho, para quando o primeiro portal com API existir
+
+Dentro do mesmo módulo, sem telas separadas:
+
+1. **no cartão da disputa**, um selo discreto *"precisa de um clique quando o portal
+   pedir"* só nos portais que exigem captcha. Nos outros, **nada** — a ausência do
+   selo já é a informação;
+2. **na lista de portais**, uma coluna *"Como o robô entra"*: **"Navegador, com
+   destrave manual"** ou **"Conexão direta"**;
+3. **no limite de disputas simultâneas** — hoje 4, por RAM — portais sem navegador
+   não consomem o limite. Isso aparece sozinho na conta de capacidade.
+
+> **A régua que fica:** a tela não explica a tecnologia, explica **o que a pessoa
+> precisa fazer**. Quem opera não precisa saber o que é uma API — precisa saber se
+> vai ser chamada para clicar.
+
+**Decisão (Ian, 02/10):** desenho registrado, implementação adiada. Hoje seria
+construir para um caso que ainda não existe — nenhum portal com API está integrado.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
