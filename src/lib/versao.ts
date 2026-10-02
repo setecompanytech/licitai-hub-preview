@@ -19,4 +19,4 @@
  * em massa e a sala ao vivo não estavam no ar. Carimbo atrasado é pior que
  * carimbo nenhum — ele transforma "não sei" em "sim" errado.
  */
-export const VERSAO_APP = '2026-10-02.6';
+export const VERSAO_APP = '2026-10-02.7';

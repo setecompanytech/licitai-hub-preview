@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { AvisoDeFalha, ValorIndisponivel } from '@/components/gestao/SeloSituacao';
 import CredenciaisPortalForm from '@/components/robo-lances/CredenciaisPortalForm';
+import CertificadosDaConta from '@/components/robo-lances/CertificadosDaConta';
 import AtivacaoChecklist from '@/components/robo-lances/AtivacaoChecklist';
 import { formatCNPJ } from '@/lib/financeiro/formatters';
 // A mesma peça da faixa de avisos e da prévia do Admin — ver `AvisosDosPortais`.
@@ -96,6 +97,14 @@ export default function FaixaDaEmpresa({ empresa, isAdmin, avisos, erroDosAvisos
                   mudar, peça a um administrador em Equipe → Permissões.
                 </p>
               )}
+              {/*
+                Os certificados de TODAS as empresas da conta, não só da ativa
+                (02/10/2026): quem opera várias disputa por CNPJs diferentes, e
+                saber de quais o robô consegue ser é pergunta de antes do pregão,
+                não de depois. Fica aqui porque este diálogo já promete, no
+                próprio texto, "o certificado digital que o robô usa".
+              */}
+              <CertificadosDaConta somenteLeitura={!isAdmin} />
               <AtivacaoChecklist modo="cliente" somenteLeitura={!isAdmin} />
             </div>
           </DialogContent>
