@@ -4001,8 +4001,8 @@ tela não pode fazer parecer que um número de um minuto atrás é deste segundo
 1. ~~**Piso em massa** na grade de itens~~ — ✅ **feito em 02/10** (18 conferências em `lib/robo/piso-em-massa.ts`).
 2. **Mudar a configuração com a disputa rodando**, ao menos o piso por item:
    endpoint `/sessao/atualizar` no agente + ação na tela.
-3. **Parar um item** sem parar a sessão.
-4. **Pausar/retomar** expostos no front (já existem no agente).
+3. ~~**Parar um item** sem parar a sessão~~ — ✅ **feito em 02/10**.
+4. ~~**Pausar/retomar** expostos no front~~ — ✅ **feito em 02/10** (e a sessão pausada deixou de sumir do painel).
 5. Mostrar `ja_lancaram` e `posicao_lida_em` no quadro.
 6. Ligar a Central de Notificações, depois de decidir onde ela aparece.
 7. Coluna de posição em `sessao_lance_itens`, se houver uso para histórico.
@@ -4144,12 +4144,81 @@ Nada falta aqui. É a parte mais madura do produto.
 1. **Acompanhamento ao vivo de verdade**, no lugar da linha de texto: cronômetro
    por item, valores mudando, colocação, concorrentes, etapa. É o que tira a
    Izabelle do VNC.
-2. **Mudar o piso com a disputa rodando** (endpoint `/sessao/atualizar` + ação na
-   tela).
+2. ~~**Mudar o piso com a disputa rodando**~~ — ✅ **feito em 02/10**.
 3. **Parar um item** sem parar a sessão.
 4. **Pausar/retomar** expostos, ligados ao que o agente já faz.
 5. **Visão de várias disputas ao mesmo tempo**, com prioridade por urgência.
 6. **Central de Notificações** com lugar na tela.
+
+#### 02/10 — a disputa deixa de ser imutável (D-1 a D-4)
+
+A auditoria tinha achado três buracos na fase "durante a disputa", e os três eram
+da mesma natureza: **o que fosse decidido antes da sessão não podia ser revisto
+durante ela.** Se o mercado mudasse no meio, baixar o piso de UM item exigia
+encerrar a disputa inteira e recomeçar — levando junto os outros 181.
+
+Era um caso de *"não previmos porque nunca disputamos"*. Quem disputa muda de ideia
+no meio.
+
+##### `POST /sessao/atualizar` — a peça que faltava no agente
+
+Os endpoints eram iniciar, pausar, encerrar, focar, retomar e responder. **Nenhum
+"atualizar".** Agora há, e ele muda, com a sessão de pé: o piso da disputa e o de
+cada item, o intervalo entre leituras, o teto de lances, o modo automático, as
+estratégias e a margem por item.
+
+**O que ele recusa, de propósito:** edital, UASG, empresa, portal e a lista de
+itens. Trocar a compra no meio da sessão seria outra sessão, e item novo mudaria o
+que foi conferido contra o edital — o agente ignora e **diz que ignorou**, em vez
+de fingir que entendeu.
+
+E devolve **o que de fato mudou, em português** (`piso do item 7: 800 → 650`), não
+um "salvo". Mudar preço sob pressão é decisão que precisa de confirmação visível —
+e a trilha vai para o log e para o chat do processo, com quem mudou e quando.
+
+##### Parar UM item sem derrubar a disputa
+
+Era o buraco mais sentido: **ou o robô seguia em todos os itens, ou parava em
+todos.** Quem quisesse assumir um item na mão — porque conhece o concorrente,
+porque o preço mudou — tinha de encerrar a sessão.
+
+Agora `parado: true` tira o item do robô e o deixa de pé: **ele continua sendo
+lido** (a tela segue mostrando valores, cronômetro e posição) e só deixa de receber
+lance. A decisão aparece no quadro com o motivo, para ninguém achar que o robô
+travou.
+
+Duas travas que o módulo garante:
+
+- **parar por pessoa é reversível**; encerrar pelo piso ou pelo portal, não. Um item
+  que o pregoeiro já julgou não "volta" porque alguém clicou — e o agente responde
+  dizendo **por que** não voltou;
+- item que **não é da sessão** não entra por essa porta.
+
+##### Pausar e retomar, que o agente já fazia e a tela não alcançava
+
+`/sessao/pausar` e `/sessao/retomar` existiam desde sempre. Faltava o caminho até
+a tela — e faltava mais do que isso: **a sessão pausada sumia do painel.**
+`sessoesVivas` filtrava `ativo` e `enviando`, então pausar fazia a disputa
+desaparecer, levando junto o botão de retomar. Pausada também está de pé: o
+navegador segue aberto, a sala carregada, e ela conta na capacidade do agente.
+
+Pausar é diferente de parar: **parar encerra a sessão e fecha o navegador; pausar
+suspende o laço e mantém tudo.** É o que serve quando o pregoeiro suspende a sessão
+por alguns minutos.
+
+##### Na tela: "Ajustar durante a disputa"
+
+Ao lado de "Parar robô nesta disputa", porque com a disputa rodando há **duas**
+ações e só a primeira existia. O diálogo traz a tabela dos itens com piso atual e
+piso novo, um botão **"Assumir na mão"** por item, e **"Pausar o robô"** no rodapé.
+
+Uma regra atravessa os três caminhos, e é o que os testes protegem: **a tela nunca
+diz que mudou quando não mudou.** Sem confirmação do robô, a mensagem é *"o que
+estava valendo continua valendo"* — um "pronto" otimista faria a pessoa seguir
+achando que o piso novo está em vigor enquanto o robô continua no antigo.
+
+**Conferências: 27 no agente** (`testar-atualizar.js`, com sessão simulada) **e 13
+no front** (`atualizar-sessao.test.ts`).
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
