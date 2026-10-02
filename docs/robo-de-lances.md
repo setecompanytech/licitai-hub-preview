@@ -3534,7 +3534,7 @@ frágil dele.
 **8. O captcha durante a disputa** *(08/10)*
 Saber se aparece, quando, e se o aviso chega a tempo de alguém clicar.
 
-**9. Central de Notificações** — ⚠️ **parcial**: o aviso de virada de etapa existe (R-11, 02/10) e falta o deploy do webhook; a central do portal segue sem consumidor
+**9. Central de Notificações** — ⚠️ **parcial**: os avisos de virada de etapa e de item que bateu no piso existem e **já estão no ar** (webhook deployado em 02/10, versão 66+); a central do portal segue lida pelo vigia e **sem consumidor**
 `GET /notificacoes-portal` já existe no agente e não está ligado a nada. É por ele
 que chega o aviso de virada de etapa que a operação pediu com todas as letras.
 
@@ -3701,9 +3701,9 @@ observações podem ser verdadeiras ao mesmo tempo**, e nenhuma está provada.
 
 | # | Medida | Custo | O que resolve |
 | --- | --- | --- | --- |
-| 1 | **Instrumentar a queda**: ao perder a aba, registrar RSS do Chrome, memória livre, URL de origem e destino, e o `Target.crashed` do CDP | baixo, nosso | separa de uma vez "morreu por memória" de "morreu na troca de origem". Hoje o log diz que morreu, não por quê |
-| 2 | **Proteger o agente do OOM** (`oom_score_adj` alto no Chrome, baixo no Node) | baixo, nosso | se faltar memória, morre o Chrome e **não** o agente — que sobrevive para reabrir e avisar |
-| 3 | **Sobreviver à troca de processo**: em vez de guardar a referência da aba, reencontrá-la por `browser.targets()` depois de cada volta do SSO | médio, nosso | ataca o padrão medido (9 em 13), sem depender das flags |
+| 1 | ~~**Instrumentar a queda**~~ — ✅ **feito em 02/10** (`diagnostico-da-queda.js`, `logs/quedas.jsonl`) | — | o retrato do instante: memória, swap em uso, RSS do Chrome, OOM no kernel e a URL de onde a aba vinha |
+| 2 | ~~**Proteger o agente do OOM**~~ — ✅ **feito em 02/10** (agente −500, Chrome +500, conferido em produção) | — | se faltar memória, morre o Chrome e **não** o agente |
+| 3 | ~~**Sobreviver à troca de processo**~~ — ✅ já existia em `adotarAbaViva`; o que faltava era medir se basta, e o C-1 passa a dizer | — | ataca o padrão medido (9 em 13) |
 | 4 | **Limitar a memória do renderizador** (`--js-flags=--max-old-space-size`, `--renderer-process-limit`) | baixo, nosso | teto previsível por aba; só ajuda se (1) apontar memória |
 | 5 | **Não carregar imagem e fonte** por interceptação de requisição | médio | corta RAM e banda; **só depois** de conferir que não quebra o captcha |
 | 6 | **Mais RAM na VPS** | custo mensal, decisão do Rafael | só se (1) apontar memória — e, pela medição desta madrugada, **não aponta** |
@@ -4287,6 +4287,81 @@ item com o seu tempo, e o aviso de leitura velha.
   a participação; o cronômetro corre sozinho, mas valores e posição chegam na
   cadência do robô. Quem quiser ver o lance no segundo em que acontece ainda abre a
   tela remota — e isso é aceitável: é exceção, não rotina.
+
+#### 02/10 — a queda do Chrome deixa de ser mistério (C-1 a C-3)
+
+O plano de seis medidas começava por **medir antes de comprar**. Os três
+primeiros passos estão feitos, e nenhum deles custa dinheiro.
+
+##### C-1 — o retrato do instante
+
+O log dizia **que** a aba morreu e quais alvos havia no navegador. Não dizia o que
+decide a questão: quanta memória havia naquele segundo, quanto cada Chrome ocupava,
+se o swap chegou a ser tocado, e **de onde a aba vinha**.
+
+Agora `src/diagnostico-da-queda.js` tira esse retrato e grava uma linha em
+`logs/quedas.jsonl` — uma por queda, para ler depois sem reconstituir nada. No log
+humano sai uma linha só, legível na hora:
+
+```
+📋 memoria livre: 5513 MB de 7936 | swap em uso: 1 MB | chrome: 3 processos, 1740 MB | carga: 0.4
+   | vinha de: https://sso.acesso.gov.br/...
+```
+
+**O campo que desempata é o swap em uso.** Se o sistema chegou a usar swap, a
+pressão de memória foi real; se não encostou nele — como em todas as medições até
+agora —, a morte veio de outro lugar. E `oom_no_kernel` lê o `dmesg`: se o kernel
+matou alguém, aparece ali, com data.
+
+**E a URL de onde a aba vinha** é o que confirma ou derruba o padrão medido: nove
+das treze quedas foram "na volta do certificado", que é onde a aba troca de origem.
+Até agora isso era leitura de log; passa a ser campo.
+
+> Diagnóstico que derruba o agente seria pior que não ter diagnóstico: todas as
+> coletas são `try/catch`, e falhar não interrompe nada.
+
+##### C-2 — quem morre primeiro, se a memória acabar
+
+Sem ajuste, o Node do agente é candidato tão bom quanto o Chrome para o OOM killer.
+E **matar o agente é muito pior**: ele é quem reabre o navegador, avisa o Praefectus
+e segura as outras disputas. Perder o Chrome custa **uma** sessão; perder o agente
+custa **todas** — e ninguém fica sabendo, porque quem avisaria morreu.
+
+Agora o agente nasce com `oom_score_adj = -500` (quase imune) e os processos do
+Chrome com `+500` (primeiros da fila). Conferido em produção:
+
+```
+node /opt/agente-lances/src/index.js   oom_score_adj=-500   oom_score=337
+```
+
+A marcação do Chrome acontece **duas vezes**: quando o agente sobe e, sobretudo,
+**quando cada navegador é lançado** — os processos nascem naquele instante, e é
+nessa hora que a memória aperta.
+
+##### C-3 — reencontrar a aba depois do SSO
+
+Este já estava em grande parte feito, e vale registrar por quê: `adotarAbaViva` já
+trata "aba morta" como *fechada **ou** com o frame principal descolado*, procura
+outra aba viva que não seja `about:blank` nem o aviso do SICAF, e abre uma nova se
+nenhuma servir — os cookies são do navegador, não da aba, então a sessão do portal
+sobrevive à troca.
+
+O que faltava era **saber se isso está bastando**, e é o que o retrato do C-1
+passa a dizer: toda vez que a aba morre, fica registrado de onde ela vinha e se o
+robô conseguiu seguir.
+
+##### O que fica para depois da próxima disputa
+
+Com `quedas.jsonl` em mãos, as três medidas restantes deixam de ser palpite:
+
+| Medida | Só vale se o retrato mostrar |
+| --- | --- |
+| limitar a memória do renderizador | RSS do Chrome alto e swap sendo usado |
+| não carregar imagem e fonte | o mesmo, e depois de conferir que não quebra o captcha |
+| **mais RAM na VPS** | swap em uso e/ou OOM no kernel — **o que a medição de 02/10 NÃO mostra** |
+
+Ou seja: pela evidência de hoje, **comprar RAM não resolveria**. O retrato é o que
+transforma essa frase de opinião em dado — ou a desmente, que é igualmente útil.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
