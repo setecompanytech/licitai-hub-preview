@@ -2978,6 +2978,76 @@ serve(async (req) => {
 
     // ─── STATUS ───
 
+    // ─── certificados-das-empresas ───
+    //
+    // Os "slots": uma linha por empresa da conta, dizendo se o robô consegue
+    // entrar como ela (02/10/2026).
+    //
+    // Por que passa pelo servidor em vez de o front consultar direto: a RLS de
+    // `cert_upload_tokens` e de `financeiro_certificados` e por `user_id`, nao
+    // por empresa. Lido pelo front, o certificado que o Rafael registrou a
+    // Izabelle nao veria — e o robo e operado por quem esta na operacao, nao
+    // por quem cadastrou. Aqui a leitura e por `empresa_membros`, que e o
+    // criterio certo, sem precisar mexer na RLS de uma tabela do Financeiro.
+    //
+    // NADA SENSIVEL SAI: nem caminho de arquivo, nem senha (cifrada ou nao).
+    // So fatos — enviado quando, instalado quando, a senha existe.
+    if (action === "certificados-das-empresas") {
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+
+      const minhas = await empresasDoUsuario(supabase, user.id);
+      if (!minhas.length) {
+        // Conta de engenharia (admin da plataforma sem empresa) cai aqui, e e o
+        // correto: certificado digital e credencial da empresa, nao operacao.
+        return jsonResponse({ certificados: [] });
+      }
+
+      const { data: empresas, error: erroEmpresas } = await supabase
+        .from("empresas")
+        .select("id, razao_social, cnpj")
+        .in("id", minhas);
+      if (erroEmpresas) {
+        return jsonResponse({ erro: "Não foi possível ler as empresas: " + erroEmpresas.message }, 500);
+      }
+
+      const { data: tokens, error: erroTokens } = await supabase
+        .from("cert_upload_tokens")
+        .select("empresa_id, used_at, cert_file_path, senha_cifrada, instalado_no_agente_em, expires_at, created_at")
+        .in("empresa_id", minhas)
+        .order("created_at", { ascending: false });
+      if (erroTokens) {
+        return jsonResponse({ erro: "Não foi possível ler os certificados: " + erroTokens.message }, 500);
+      }
+
+      const agora = Date.now();
+      const certificados = (empresas || []).map((e: { id: string; razao_social?: string | null; cnpj?: string | null }) => {
+        const daEmpresa = (tokens || []).filter((t: Record<string, unknown>) => t.empresa_id === e.id);
+        // O envio que vale e o mais recente COM ARQUIVO: um link gerado depois
+        // e aberto nao apaga o certificado que ja esta instalado.
+        const comArquivo = daEmpresa.filter((t: Record<string, unknown>) => !!t.cert_file_path);
+        const atual = comArquivo[0] as Record<string, unknown> | undefined;
+        const linkAberto = daEmpresa.some((t: Record<string, unknown>) =>
+          !t.cert_file_path && !t.used_at
+          && (!t.expires_at || new Date(String(t.expires_at)).getTime() > agora));
+        return {
+          empresa_id: e.id,
+          razao_social: e.razao_social ?? null,
+          cnpj: e.cnpj ?? null,
+          // `used_at` e a data do envio. O fallback para `created_at` existe
+          // porque ARQUIVO PRESENTE com `used_at` nulo apareceria como "nada
+          // enviado" — e a tela diria a uma empresa que ela nao pode disputar
+          // quando o certificado esta lá. Na duvida, dizer que existe.
+          enviado_em: (atual?.used_at as string | null) ?? (atual?.created_at as string | null) ?? null,
+          instalado_em: (atual?.instalado_no_agente_em as string | null) ?? null,
+          tem_senha: !!atual?.senha_cifrada,
+          link_aberto: linkAberto,
+        };
+      });
+
+      return jsonResponse({ certificados });
+    }
+
     // ─── instalar-certificado ───
     // Repete a entrega do certificado ao agente. O upload ja tenta sozinho; esta
     // acao existe para quando o agente estava fora do ar naquele momento — sem
