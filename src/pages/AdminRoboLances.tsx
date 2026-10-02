@@ -169,10 +169,38 @@ export default function AdminRoboLances() {
 
         {aba === 'sessoes' && (
           <div className="flex min-w-0 flex-col gap-4">
-            <AvisoDeContexto titulo="A tela remota é compartilhada entre todas as empresas">
-              O navegador remoto roda no mesmo servidor para todos os clientes: quem abre vê qualquer
-              sessão em operação naquele momento. Nunca mostre esta tela, nem o endereço dela, a um
-              cliente.
+            {/*
+              O AVISO DIZIA O QUE O PRÓPRIO PRODUTO NÃO FAZ (corrigido em 02/10/2026).
+
+              A frase era "nunca mostre esta tela, nem o endereço dela, a um
+              cliente" — e ela é anterior à decisão de 19/09, que deixou a tela
+              remota no login da Santa Rosa justamente porque é de lá que o
+              captcha é destravado toda manhã (um segundo login seria atrito
+              diário, e captcha perdido é disputa perdida).
+
+              Ou seja: o produto entrega esta tela a um cliente DE PROPÓSITO, e o
+              aviso mandava nunca fazer isso. Regra que o próprio sistema
+              descumpre não é regra — é ruído, e ensina a ignorar os outros
+              avisos.
+
+              E a primeira versão da correção ainda deixava uma ambiguidade pior
+              (apontada no mesmo dia): falar em "cliente" sem dizer QUEM entra
+              aqui dá a impressão de que qualquer usuário de empresa alcança as
+              configurações do robô. Não alcança — a rota passa por AdminGuard e
+              exige admin DA PLATAFORMA, que hoje são dois logins. O aviso agora
+              começa por isso, porque é a primeira dúvida de quem lê.
+
+              O que fica, depois: o RISCO, que continua verdadeiro — a tela é uma
+              só, e quem a abre vê o que estiver em operação.
+            */}
+            <AvisoDeContexto titulo="Esta tela é do operador da plataforma, e enxerga todas as disputas">
+              <strong>Ela não aparece para as empresas que usam o sistema</strong> — a rota exige
+              acesso de administrador da plataforma. Quem opera o pregão no dia a dia usa o portal
+              direto; aqui ficam o acompanhamento e o destrave do captcha.
+              <br />
+              Ainda assim, cuidado: o navegador remoto roda num servidor só, e quem abre esta tela
+              vê qualquer disputa em operação no momento, <strong>inclusive de outra empresa</strong>.
+              Não grave, não projete em reunião e não repasse o endereço; feche ao terminar.
             </AvisoDeContexto>
             <PedidoDoRobo permitirTelaRemota onAbrirTelaRemota={abrirTelaRemota} />
             <VncWebViewer abrirEm={pedidoDeTelaRemota} />

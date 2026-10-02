@@ -179,7 +179,12 @@ describe('Admin › Robô de Lances, na conta de engenharia', () => {
     expect(pedido).toHaveAttribute('data-tela-remota', 'true');
     expect(screen.getByTestId('acesso-manual')).toBeInTheDocument();
     expect(screen.getByTestId('sessoes-do-robo')).toBeInTheDocument();
-    expect(screen.getByText('A tela remota é compartilhada entre todas as empresas')).toBeInTheDocument();
+    // O aviso mudou em 02/10/2026: dizia "nunca mostre a um cliente", o que o
+    // próprio produto não cumpre (a tela fica no login que destrava o captcha),
+    // e não dizia QUEM entra aqui — dando a impressão de que qualquer usuário de
+    // empresa alcança as configurações do robô. Agora começa pelo acesso.
+    expect(screen.getByText(/Esta tela é do operador da plataforma/i)).toBeInTheDocument();
+    expect(screen.getByText(/não aparece para as empresas que usam o sistema/i)).toBeInTheDocument();
 
     expect(screen.getByTestId('vnc')).toHaveAttribute('data-abrir-em', '0');
     fireEvent.click(pedido);

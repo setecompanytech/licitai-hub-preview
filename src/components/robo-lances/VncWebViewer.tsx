@@ -26,6 +26,22 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
   const [loading, setLoading] = useState(false);
+  /**
+   * O AVISO DE "SEM SESSÃO" SOME SOZINHO E FECHA NA MÃO (02/10/2026).
+   *
+   * Dois defeitos, vistos em uso:
+   *
+   * 1. ele nunca saía — ficava no MEIO da tela, cobrindo justamente onde se
+   *    clica, e só sumia quando uma sessão aparecia;
+   * 2. o texto afirmava mais do que a tela sabe. "O robô não está operando
+   *    agora" é falso quando há uma janela aberta sem sessão REGISTRADA — um
+   *    login manual pela tela remota, por exemplo, que foi exatamente o caso em
+   *    que isto apareceu. Aviso que contradiz o que a pessoa está vendo faz ela
+   *    desconfiar de todos os outros.
+   *
+   * Agora: encostado embaixo, com X, some em 12 s, e volta quando o estado muda.
+   */
+  const [avisoVisivel, setAvisoVisivel] = useState(true);
   const caixaRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -88,6 +104,7 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
       const { data } = await supabase.functions.invoke('robo-lances-webhook/healthcheck', {
         body: {},
       });
+
       const agentes = (data as { agentes?: Array<{ sessoes_ativas?: number | null }> } | null)?.agentes;
       // `null` = não deu para saber. Diferente de zero, e a tela não deve
       // afirmar "nenhuma sessão" quando na verdade não perguntou.
@@ -95,6 +112,16 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
       return agentes.reduce((t, a) => t + (a.sessoes_ativas ?? 0), 0);
     },
   });
+
+  // O aviso de "sem sessão" volta quando a contagem muda — é informação nova —
+  // e some sozinho depois de 12 s. Fora do useQuery de propósito: hook dentro
+  // de queryFn não é hook, e só o eslint pega isso (CLAUDE.md).
+  useEffect(() => {
+    setAvisoVisivel(true);
+    if (sessoesAtivas !== 0) return;
+    const id = window.setTimeout(() => setAvisoVisivel(false), 12000);
+    return () => window.clearTimeout(id);
+  }, [sessoesAtivas]);
 
   /**
    * O robô está parado esperando alguém CLICAR nesta tela?
@@ -512,18 +539,27 @@ export default function VncWebViewer({ abrirEm = 0 }: Props) {
           {/* Tela preta sem explicação passa por defeito. Com sessão ativa este
               aviso some sozinho; `pointer-events-none` garante que ele nunca
               atrapalhe quem precisa clicar no VNC para resolver um captcha. */}
-          {!loading && sessoesAtivas === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="max-w-md space-y-2 rounded-lg bg-navy/90 px-6 py-5 text-center">
+          {!loading && sessoesAtivas === 0 && avisoVisivel && (
+            <div className="absolute inset-x-0 bottom-0 flex justify-center p-3">
+              <div className="pointer-events-auto relative max-w-md space-y-2 rounded-lg bg-navy/95 px-6 py-5 pr-8 text-center shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setAvisoVisivel(false)}
+                  aria-label="Fechar aviso"
+                  className="absolute right-2 top-2 rounded p-1 text-nav-foreground/60 hover:text-nav-foreground"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
                 <Monitor className="mx-auto h-6 w-6 text-nav-foreground/60" aria-hidden="true" />
-                <p className="text-base font-medium text-nav-foreground">Nenhuma sessão ativa</p>
+                <p className="text-base font-medium text-nav-foreground">Nenhuma sessão registrada</p>
                 <p className="text-sm text-nav-foreground/80">
-                  A tela do servidor está vazia porque o robô não está operando agora.
-                  Isso não é falha da conexão.
+                  Tela vazia aqui quer dizer que o robô não está com nenhuma disputa em
+                  andamento — não é falha da conexão. E uma janela aberta <em>sem</em> sessão
+                  registrada também é normal: é o caso de um acesso manual.
                 </p>
                 <p className="text-sm text-nav-foreground/80">
-                  Deixe esta tela aberta e use <strong>Ações › Entrar agora</strong> na página
-                  da disputa — a janela dele aparece aqui em poucos segundos.
+                  Para pôr o robô numa disputa, use <strong>Ações › Entrar agora</strong> na
+                  página dela — a janela aparece aqui em poucos segundos.
                 </p>
               </div>
             </div>

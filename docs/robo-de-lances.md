@@ -4536,6 +4536,70 @@ justamente o caso mais urgente. O conserto foi o outro: **o teste passou a refle
 a dependência nova**. Degradar a funcionalidade para não mexer em teste é escolher
 o teste em vez do produto.
 
+#### 02/10, à tarde — três avisos que a realidade desmentia
+
+Olhando a tela remota em uso, o Ian apontou três textos, um depois do outro. Os
+três tinham o mesmo defeito, e vale registrar o padrão mais do que os casos.
+
+##### 1. "Nenhuma sessão ativa" — permanente, e falso
+
+O card ficava **no meio da tela**, cobrindo justamente onde se clica, e só sumia
+quando uma sessão aparecia. E dizia:
+
+> *"A tela do servidor está vazia porque o robô não está operando agora."*
+
+Enquanto havia **uma janela aberta, trabalhando, na frente de quem lia** — o login
+manual pela tela remota, que foi o que estávamos fazendo. A contagem vem das
+sessões **registradas**, e um acesso manual não cria sessão.
+
+Corrigido: encostado embaixo, com **X**, some em 12 segundos, volta quando o estado
+muda. E o texto passou a dizer *"Nenhuma sessão registrada"*, reconhecendo o caso:
+*"uma janela aberta sem sessão registrada também é normal"*.
+
+##### 2. "Nunca mostre esta tela a um cliente" — o produto faz o contrário
+
+A frase é anterior à decisão de 19/09, que deixou a tela remota **no login da Santa
+Rosa** justamente porque é de lá que o captcha é destravado toda manhã — um segundo
+login seria atrito diário, e captcha perdido é disputa perdida.
+
+Ou seja: **o produto entrega essa tela a um cliente de propósito, e o aviso mandava
+nunca fazer isso.**
+
+##### 3. E a primeira correção deixou uma ambiguidade pior
+
+Reescrito, o aviso falava do risco mas **não dizia quem entra ali** — e, lido por
+alguém de fora, sugeria que qualquer usuário de empresa alcança as configurações do
+robô. Não alcança: a rota passa por `AdminGuard` e exige **admin da plataforma**,
+que hoje são dois logins; a tela do cliente perdeu as abas de Agente, Portais e
+Configurações em 14/09.
+
+O texto final começa por isso, porque é a primeira dúvida de quem lê:
+
+> **Esta tela é do operador da plataforma, e enxerga todas as disputas**
+> *Ela não aparece para as empresas que usam o sistema* — a rota exige acesso de
+> administrador da plataforma. […] Ainda assim, cuidado: o navegador remoto roda num
+> servidor só, e quem abre esta tela vê qualquer disputa em operação no momento,
+> *inclusive de outra empresa*.
+
+Evitou-se nomear pessoas ("só o Rafael e a equipe dele"): isto é SaaS, e a regra que
+vale é a do **papel**, não a do nome. Se outro operador receber o papel, o aviso
+continua verdadeiro.
+
+##### O padrão, que é o que importa
+
+Nos três casos o texto **afirmava algo que a tela desmentia**: que o robô não estava
+operando enquanto havia janela aberta; que mostrar a um cliente é proibido enquanto
+o produto mostra; que qualquer um entra enquanto a rota barra.
+
+> **Aviso que contradiz o que a pessoa está vendo não é só inútil: ele ensina a
+> ignorar os outros avisos.** E o robô depende de avisos — o captcha, a convocação
+> com prazo de 2 horas, o item que bateu no piso. Um sininho em que não se confia é
+> um sininho que não toca.
+
+Isto entra como régua para os próximos textos: **o aviso descreve o que é, não o que
+gostaríamos que fosse** — e quando houver exceção prevista (como o acesso manual
+sem sessão registrada), ela é nomeada no próprio aviso.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
