@@ -3534,7 +3534,7 @@ frágil dele.
 **8. O captcha durante a disputa** *(08/10)*
 Saber se aparece, quando, e se o aviso chega a tempo de alguém clicar.
 
-**9. Central de Notificações** — ⚠️ **parcial**: os avisos de virada de etapa e de item que bateu no piso existem e **já estão no ar** (webhook deployado em 02/10, versão 66+); a central do portal segue lida pelo vigia e **sem consumidor**
+**9. Central de Notificações** — ✅ **feito em 02/10**: os avisos de virada de etapa e de item no piso estão no ar, e a central do portal ganhou consumidor (29 conferências). Falta só decidir **onde** esses avisos moram na tela.
 `GET /notificacoes-portal` já existe no agente e não está ligado a nada. É por ele
 que chega o aviso de virada de etapa que a operação pediu com todas as letras.
 
@@ -4416,6 +4416,64 @@ E o texto diz a **consequência**, não o sintoma:
 
 Um dos testes guarda isso literalmente: a mensagem **não pode conter a palavra
 "heartbeat"**. Quem lê precisa saber o que está deixando de acontecer.
+
+#### 02/10 — a Central de Notificações do portal ganha consumidor (C-4)
+
+O agente lia a central do fornecedor e guardava o que via; `GET
+/notificacoes-portal` servia. **Ninguém buscava** — e, com isso, faltava a única
+fonte que alcança **todas as compras da empresa**, inclusive as que não estão em
+disputa.
+
+O valor disso foi medido em 01/10: a **reabertura do 90029/2026 para o dia 08/10**
+— que é a próxima disputa real — apareceu **só ali**, na mensagem do agente de
+contratação das 10:43. Nenhuma tela do Praefectus a teria mostrado.
+
+Duas coisas mudaram: a leitura foi **ligada no agente**
+(`LER_CENTRAL_NOTIFICACOES=true`) e o consumidor entrou na mesma rotina de cron do
+vigia. A leitura não atrapalha disputa em andamento — o vigia **pula perfis em
+uso** e abre navegador próprio.
+
+##### A regra: narrar não é chamar
+
+A central publica muito, e a maior parte é **registro**, não chamado. Avisar sobre
+tudo treina a pessoa a ignorar o sininho, e aí o aviso que importa passa junto com
+o resto. `_shared/notificacoes-do-portal.ts` decide, com **29 conferências** sobre
+textos reais do portal:
+
+| O que chega | Vira aviso? |
+| --- | --- |
+| *"você foi convocado para enviar anexos para o item 4. Prazo para encerrar o envio: 11:28:00"* | **urgente** |
+| *"reabertura para o dia 08/10 às 9h"* | **importante** — muda o calendário |
+| *"O item 76 está na etapa de julgamento de proposta no período de intenção de recursos"* | **não** — é o portal narrando |
+| já lida no portal | **não** — alguém viu |
+
+**Um falso positivo quase passou**, e vale registrar: o texto do item 76 contém a
+palavra "recurso" e, na primeira versão, virava **alerta urgente**. É o texto mais
+comum da central. A regra que o corrigiu: a central **narra** na terceira pessoa
+("o item está", "foi para") e **chama** na segunda ("você foi convocado",
+"apresente"). O que narra não acorda ninguém.
+
+**E depois o oposto quase passou.** Conferir registro primeiro descartava o texto
+que faz as duas coisas — *"O item 4 está na etapa de aceitação. Você foi convocado
+para enviar anexos, prazo até 11:28."* Isso é pior: **perder uma convocação custa
+desclassificação; um aviso a mais custa um toque no sininho.** Os dois erros não
+são simétricos, e a regra passou a seguir o lado barato — chamado inequívoco vence
+o registro.
+
+##### Para quem vai
+
+Para **quem opera a empresa**, não para a plataforma: convocação e reabertura são
+do negócio dela. (O vigia do agente, ao contrário, vai para quem religa o robô —
+somos nós.)
+
+E o texto do portal vai **inteiro**, com o prazo e o número do item. Resumir aqui
+perderia justamente o que faz a pessoa agir.
+
+##### O que ainda falta
+
+A central não tem **tela**: o aviso chega pelo sininho e leva para `/robo-lances`.
+Onde essas notificações moram — uma aba própria? dentro da compra? — é decisão de
+produto, e entra junto com a visão de várias disputas.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
