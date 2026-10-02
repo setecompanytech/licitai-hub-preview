@@ -44,13 +44,33 @@ export async function instalarCertificadoNoAgente(
    * do certificado de um cliente novo nunca chegaria a agente nenhum.
    */
   agentePadrao?: { url_base?: string | null; api_key_hash?: string | null } | null,
+  /**
+   * De QUAL empresa é o certificado a instalar (02/10/2026).
+   *
+   * Sem ela, o comportamento é o de sempre: o envio mais recente do usuário,
+   * instalado na base padrão do agente. É o caminho do certificado que já está
+   * em uso hoje, e ele não muda.
+   *
+   * Com ela, o certificado vai para a base DAQUELA conta no agente — é o que
+   * permite dois certificados conviverem. O Chrome lê a base de `$HOME/.pki/nssdb`
+   * e a policy de auto-seleção tem filtro vazio ("escolha qualquer um"): com dois
+   * certificados numa base só, não dá para prever qual ele apresenta. Foi assim
+   * que o certificado da ETHOS fez o robô poder logar como a empresa errada, em
+   * 30/09/2026.
+   */
+  empresaId?: string | null,
 ): Promise<ResultadoInstalacao> {
   // 1. O envio mais recente que tem arquivo E senha.
-  const { data: tokens, error: erroToken } = await adminClient
+  //
+  // Com empresa, o envio DELA — senão o certificado de uma empresa iria para a
+  // base de outra, que é exatamente o defeito que a base por conta corrige.
+  let consulta = adminClient
     .from("cert_upload_tokens")
-    .select("id, cert_file_path, senha_cifrada")
+    .select("id, cert_file_path, senha_cifrada, empresa_id")
     .eq("user_id", userId)
-    .not("cert_file_path", "is", null)
+    .not("cert_file_path", "is", null);
+  if (empresaId) consulta = consulta.eq("empresa_id", empresaId);
+  const { data: tokens, error: erroToken } = await consulta
     .order("used_at", { ascending: false, nullsFirst: false })
     .limit(1);
 
@@ -60,7 +80,12 @@ export async function instalarCertificadoNoAgente(
 
   const token = tokens?.[0];
   if (!token?.cert_file_path) {
-    return { instalado: false, motivo: "Nenhum certificado enviado ainda." };
+    return {
+      instalado: false,
+      motivo: empresaId
+        ? "Nenhum certificado enviado ainda para esta empresa."
+        : "Nenhum certificado enviado ainda.",
+    };
   }
 
   if (!token.senha_cifrada) {
@@ -119,7 +144,32 @@ export async function instalarCertificadoNoAgente(
   }
   const base64 = btoa(binario);
 
-  // 5. A entrega.
+  // 5. O CNPJ da conta — a chave da base no agente.
+  //
+  // Só quando a empresa foi dita por quem chamou. Sem ela, nada de CNPJ no
+  // corpo, e o agente instala na base padrão: o comportamento de hoje, intacto.
+  //
+  // Se o CNPJ não puder ser lido, o certificado VAI MESMO ASSIM, para a base
+  // padrão. Recusar a instalação porque falta um cadastro deixaria o robô sem
+  // certificado — pior que instalá-lo no lugar menos específico.
+  let cnpjDaConta: string | null = null;
+  if (empresaId) {
+    const { data: empresa } = await adminClient
+      .from("empresas")
+      .select("cnpj")
+      .eq("id", empresaId)
+      .maybeSingle();
+    const digitos = String(empresa?.cnpj || "").replace(/\D/g, "");
+    cnpjDaConta = digitos.length === 14 ? digitos : null;
+    if (!cnpjDaConta) {
+      console.warn(
+        `[certificado-agente] empresa ${empresaId} sem CNPJ de 14 dígitos; ` +
+        "instalando na base padrão do agente",
+      );
+    }
+  }
+
+  // 6. A entrega.
   const base = agente.url_base.replace(/\/$/, "");
   try {
     const resp = await fetch(`${base}/certificado`, {
@@ -130,7 +180,9 @@ export async function instalarCertificadoNoAgente(
         // estava gravada nas linhas vazou no bundle antigo (ver robo-acao.ts).
         "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
       },
-      body: JSON.stringify({ arquivo_base64: base64, senha }),
+      // `cnpj` é omitido quando não há — o agente trata ausência como "base
+      // padrão", e mandar null explícito seria o mesmo, mas menos legível no log.
+      body: JSON.stringify({ arquivo_base64: base64, senha, ...(cnpjDaConta ? { cnpj: cnpjDaConta } : {}) }),
       // Importar na base NSS envolve processo externo; 10s seria apertado.
       signal: AbortSignal.timeout(60000),
     });
