@@ -2377,6 +2377,197 @@ serve(async (req) => {
       );
     }
 
+    // MUDAR A CONFIGURAÇÃO COM A DISPUTA RODANDO (02/10/2026).
+    //
+    // Até aqui nada decidido antes da sessão podia ser revisto durante ela. Se o
+    // mercado mudasse no meio, baixar o piso de UM item exigia encerrar a
+    // disputa inteira e recomeçar — levando junto os outros 181 itens. Quem
+    // disputa muda de ideia no meio; era um caso de "não previmos porque nunca
+    // disputamos".
+    //
+    // Serve também para PARAR UM ITEM e assumi-lo na mão, sem derrubar o resto:
+    // o agente continua lendo o item (a tela mostra valores e posição) e deixa
+    // de dar lance nele.
+    if (action === "atualizar-sessao") {
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
+
+      const { sessao_id } = body;
+      if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+
+      // Mesma trava do focar/parar: quem não é admin só mexe no que é da
+      // empresa dele. Mudar o piso de uma disputa alheia é mudar o preço de
+      // outra pessoa.
+      if (!ehAdmin && !(await sessoesVisiveis(supabase, user.id, [sessao_id])).has(sessao_id)) {
+        return jsonResponse({ atualizou: false, sessao_id, error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
+      }
+
+      // O processo vinculado, para a trilha ir ao chat da licitação. Lido aqui
+      // porque cada action tem o seu escopo — `sessao` das outras não alcança
+      // esta, e usá-lo quebraria em runtime sem o compilador avisar.
+      const { data: sessaoAtual } = await supabase
+        .from("sessoes_lance_real")
+        .select("licitacao_id")
+        .eq("id", sessao_id)
+        .maybeSingle();
+
+      // Só estes campos atravessam. Edital, UASG, empresa, portal e a lista de
+      // itens ficam de fora de propósito: trocar a compra no meio da sessão
+      // seria outra sessão.
+      const mudanca: Record<string, unknown> = { sessao_id };
+      for (const campo of ["valor_minimo", "intervalo_segundos", "max_lances", "modo_automatico",
+        "decremento_min", "decremento_percentual"]) {
+        if (body[campo] !== undefined) mudanca[campo] = body[campo];
+      }
+      if (Array.isArray(body.itens)) {
+        mudanca.itens = body.itens.map((i: Record<string, unknown>) => ({
+          numero: i.numero,
+          ...(i.valor_minimo !== undefined ? { valor_minimo: i.valor_minimo } : {}),
+          ...(i.estrategias !== undefined ? { estrategias: i.estrategias } : {}),
+          ...(i.margem_desempate !== undefined ? { margem_desempate: i.margem_desempate } : {}),
+          ...(i.parado !== undefined ? { parado: i.parado } : {}),
+        }));
+      }
+
+      const { data: proprios } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
+      if (!agentes.length) {
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.semRobo, {
+            verDetalhe,
+            detalhe: "Nenhum agente próprio e segredo AGENTE_URL_BASE ausente ou inválido.",
+            extra: { atualizou: false, sessao_id },
+          }),
+          400
+        );
+      }
+
+      const tentativas: Array<Record<string, unknown>> = [];
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/atualizar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
+            },
+            body: JSON.stringify(mudanca),
+            signal: AbortSignal.timeout(15000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) {
+            const mudancas: string[] = Array.isArray(corpo?.mudancas) ? corpo.mudancas : [];
+            // A TRILHA É O PONTO. Mudar o piso no meio da disputa é decisão de
+            // dinheiro tomada sob pressão: quem mudou, quando e de quanto para
+            // quanto tem de ficar registrado — e o agente devolve isso pronto,
+            // em português.
+            await registrarNoLog(supabase, user.id, "sessao-atualizada", { sessao_id, mudancas });
+            if (sessaoAtual?.licitacao_id && mudancas.length) {
+              await supabase.from("licitacao_mensagens").insert({
+                licitacao_id: sessaoAtual.licitacao_id,
+                user_id: user.id,
+                tipo: "sistema",
+                conteudo: `⚙️ **Configuração alterada com a disputa rodando**: ${mudancas.join("; ")}`,
+                metadata: { origem: "painel", sessao_id, mudancas },
+              });
+            }
+            return jsonResponse({ atualizou: true, sessao_id, mudancas });
+          }
+          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
+        } catch (e) {
+          tentativas.push({ agente: agente.nome, erro: String((e as Error)?.message ?? e) });
+        }
+      }
+
+      await registrarNoLog(supabase, user.id, "atualizar-sessao-falha", { sessao_id, tentativas });
+      return jsonResponse(
+        corpoDeErro("Não consegui falar com o robô para alterar esta disputa. O que estava valendo continua valendo.", {
+          verDetalhe,
+          detalhe: tentativas,
+          extra: { atualizou: false, sessao_id },
+        }),
+        502
+      );
+    }
+
+    // PAUSAR E RETOMAR, sem encerrar (02/10/2026).
+    //
+    // É diferente de parar: parar encerra a sessão e fecha o navegador; pausar
+    // mantém tudo de pé e só suspende o laço. Serve para o caso que a operação
+    // descreveu — o pregoeiro suspende a sessão por alguns minutos — e para
+    // quando alguém quer olhar a sala sem o robô mexendo.
+    //
+    // O agente já fazia as duas coisas desde sempre (`/sessao/pausar` e
+    // `/sessao/retomar`); o que faltava era a tela alcançá-las.
+    if (action === "pausar-sessao" || action === "retomar-sessao") {
+      const retomando = action === "retomar-sessao";
+      const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
+      if (!user) return naoAutenticado!;
+      const ehAdmin = await ehAdminDaPlataforma(supabase, user.id);
+      const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
+
+      const { sessao_id } = body;
+      if (!sessao_id) return jsonResponse({ error: "sessao_id é obrigatório" }, 400);
+
+      if (!ehAdmin && !(await sessoesVisiveis(supabase, user.id, [sessao_id])).has(sessao_id)) {
+        return jsonResponse({ ok: false, sessao_id, error: FRASES_AO_CLIENTE.sessaoNaoEncontrada }, 404);
+      }
+
+      const { data: proprios } = await supabase
+        .from("agente_externo_config")
+        .select("id, nome, url_base, api_key_hash")
+        .eq("user_id", user.id);
+      const agentes = agentesParaUsuario(proprios, ambiente);
+      if (!agentes.length) {
+        return jsonResponse(
+          corpoDeErro(FRASES_AO_CLIENTE.semRobo, { verDetalhe, extra: { ok: false, sessao_id } }),
+          400
+        );
+      }
+
+      const rota = retomando ? "retomar" : "pausar";
+      const tentativas: Array<Record<string, unknown>> = [];
+      for (const agente of agentes) {
+        const base = agente.url_base.replace(/\/$/, "");
+        try {
+          const resp = await fetch(`${base}/sessao/${rota}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada),
+            },
+            body: JSON.stringify({ sessao_id }),
+            signal: AbortSignal.timeout(15000),
+          });
+          const corpo = await resp.json().catch(() => ({}));
+          if (resp.ok) {
+            await registrarNoLog(supabase, user.id, `sessao-${rota}`, { sessao_id });
+            return jsonResponse({ ok: true, sessao_id, status: corpo?.status ?? (retomando ? "ativo" : "pausado") });
+          }
+          tentativas.push({ agente: agente.nome, status: resp.status, motivo: corpo?.error ?? null });
+        } catch (e) {
+          tentativas.push({ agente: agente.nome, erro: String((e as Error)?.message ?? e) });
+        }
+      }
+
+      await registrarNoLog(supabase, user.id, `sessao-${rota}-falha`, { sessao_id, tentativas });
+      return jsonResponse(
+        corpoDeErro(
+          retomando
+            ? "Não consegui retomar o robô nesta disputa. Ele continua pausado."
+            : "Não consegui pausar o robô nesta disputa. Ele continua trabalhando.",
+          { verDetalhe, detalhe: tentativas, extra: { ok: false, sessao_id } }
+        ),
+        502
+      );
+    }
+
     if (action === "kill-switch") {
       const { user, resposta: naoAutenticado } = await usuarioDaRequisicao(supabase, req);
       if (!user) return naoAutenticado!;
