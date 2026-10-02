@@ -1884,6 +1884,2136 @@ ganho é escrever a leitura **por texto** (procurar "Lance mínimo", "Situação
 o indicador colorido) em vez de por classe de CSS, que é o que se quebra a
 cada atualização do portal.
 
+#### 29/09 — a resposta: a página pública NÃO serve durante a disputa
+
+A pergunta acima ficou respondida, e a resposta é não.
+
+O robô acompanhou o **Pregão 6/2026 (PRODEPA, UASG 925483)** do começo ao fim,
+das 09:41 até depois do encerramento, gravando a cada 10 segundos. Foram **291
+capturas** — e em nenhuma havia um único campo de entrada. Durante a etapa de
+lances a tela pública troca a lista de fornecedores por uma frase:
+
+> O resultado com a identificação dos fornecedores estará disponível após a
+> conclusão desta etapa.
+
+Os valores só apareceram **depois** que a disputa encerrou. A operadora do
+cliente confirmou com as palavras dela: *"as propostas já aparecem com os
+valores, mas o item está marcado como 'Aguardando julgamento' e não aparece
+nenhum cronômetro. Pq já encerrou os lances"*.
+
+A cronologia, reconstruída das gravações: `em período de cadastramento` →
+**10:00:54 "Etapa aberta"** → 10:23:34 "Aguardando Decisão sobre Reinício" →
+10:30:44 "Aguardando julgamento". A disputa durou 23 minutos, por prorrogações.
+
+**Consequência:** a leitura da disputa depende da área logada. Não há caminho
+pela página pública, e o que estava escrito como "vale como conferência"
+continua valendo só para o histórico, depois do fato.
+
+Dessa sessão saiu `lerSala()` em `portals/comprasgov.js` (29/09): lê a fase do
+que o portal **afirma** em texto — `encerrada` (situação do item posterior aos
+lances, pela mesma `faseDeLancesEncerrada` do laço), `suspensa`, `aguardando`
+("a etapa de julgamento de propostas ainda não foi iniciada") — e devolve
+`fase: null` para o resto. O que ela **não** inventa: `aberta` não sai do texto,
+porque o cabeçalho diz *"Contratação aberta para o recebimento de lances"* desde
+antes de o julgamento começar. A `faseAberta()` antiga procurava a palavra
+"aberta" no corpo da página e teria respondido "sim" na tela parada.
+
+#### 01/10 — a sala de disputa, enfim vista (e o muro que ela escondia)
+
+Disputa real do **Pregão 37/2026 (UASG 925449, Fundação Gaspar Vianna)**, com a
+operadora do cliente compartilhando a tela por videochamada e mandando prints.
+É a primeira vez que alguém do nosso lado viu a sala por dentro.
+
+**O caminho, com os nomes exatos:**
+
+```
+comprasnet.gov.br/intro.htm  (Área de Trabalho do Fornecedor)
+  → menu "Compras" → "Licitação e Dispensa (novo)"
+     → "Você está sendo redirecionado ao módulo de Dispensas e Licitações Eletrônicas"
+        → cnetmobile…/comprasnet-web/seguro/fornecedor/compras
+           abas "Minhas participações" | "Todas as compras", filtro "Em andamento"
+             → o card do pregão (Etapa: Disputa)
+                → cnetmobile…/comprasnet-web/seguro/fornecedor/disputa?compra=<idCompra>
+```
+
+O `idCompra` é o mesmo que o robô já monta: UASG + modalidade + número + ano
+(`92544905000372026`).
+
+**O portal recusa link direto.** Ir pela URL da sala, mesmo logado, cai em
+`/comprasnet-web/acesso-nao-autorizado`:
+
+> Acesso não autorizado. Sua sessão pode ter expirado ou suas permissões não
+> permitem o acesso ao recurso solicitado. Para acessar o recurso **tente
+> realizar o acesso a partir do Compras.gov.br**.
+
+Reproduzido três vezes, com a sessão viva. Programar o atalho pela URL — que
+era o caminho natural — quebraria no primeiro pregão real.
+
+**A sala ("Enviar lance"), pelos prints:** três abas — `Aguardando disputa` ·
+`Em disputa (N)` · `Encerrados` —, botão "Retirar encerrados", filtro "Todos os
+Itens", e **todos os itens numa lista só**. Por item:
+
+| O que | Rótulo na tela |
+| --- | --- |
+| fase | `Etapa aberta (prorrogação)` |
+| cronômetro | `Tempo restante` — `mm:ss`, decrescente |
+| melhor lance | `Melhor valor (unitário)` |
+| nosso lance | `Meu valor (unitário)` |
+| campo de lance | `Novo lance (unitário)` |
+| limite do edital | `Intervalo mínimo entre lances` — R$ 0,1000 neste pregão |
+| enviar | `Enviar lance` |
+
+Dois detalhes que quebrariam o robô: os valores vêm com **quatro casas
+decimais** (`R$ 597,9000`) e o extrator atual lê duas; e a fase da reta final
+chama-se **"Etapa aberta (prorrogação)"**, nome que faltava para a estratégia de
+Iminência reconhecer o fim.
+
+**Ganho de arquitetura — com a ressalva medida depois.** A sala lista vários
+itens na mesma tela, então a leitura passa a ser **por página**, não por item.
+Hoje o robô navega item a item: com 55 itens, cada rodada levou ~25 s só trocando
+de página, e a operadora cita pregões de **180 itens** — nesse ritmo o robô
+estaria lendo o item 90 quando o item 1 já tivesse encerrado.
+
+**Mas não é "tudo numa tela".** A captura de 01/10 à tarde mostrou **paginação de
+10 em 10** (`« ‹ 1 2 3 4 5 › »`) num pregão de 105 itens. Com 180 seriam 18
+páginas. Continua muito melhor que 180 navegações, e é o suficiente para caber no
+intervalo de uma rodada — mas a leitura precisa **paginar**, e isso tem que estar
+no desenho desde o começo. A primeira versão desta nota dizia "todos os itens de
+uma vez"; estava errada.
+
+**O muro que apareceu, e que é o bloqueio real:**
+
+**O Chrome do agente morre ao abrir a área logada.** Cinco vezes seguidas, com e
+sem alguém navegando, poucos segundos depois de
+`/comprasnet-web/seguro/fornecedor/compras` carregar. O monitor pegou o
+instante:
+
+```
+14:58:44  aba aberta: .../comprasnet-web/seguro/fornecedor/...
+14:58:52  >>> CHROME CAIU <<<
+```
+
+Descartados: **memória** (5,5 GB disponíveis, swap de 4 GB intacto, nada de OOM
+no `dmesg`), **`/dev/shm`** (3,9 GB livres, `--disable-dev-shm-usage` já ativa),
+**VNC** (a tela preta é a área de trabalho vazia — o painel avisa isso
+corretamente) e **captcha** (não chega a aparecer).
+
+Testado e **inconclusivo**: abrir a mesma URL com e sem
+`--disable-site-isolation-trials` / `--disable-features=IsolateOrigins,site-per-process`.
+As duas sobreviveram, mas **sem login** — caíram em "acesso não autorizado" e
+nunca carregaram a tela de verdade.
+
+> **Isto reordena o que falta.** Escrever a navegação até a sala não é o próximo
+> passo: o próximo passo é o navegador **sobreviver** naquela tela. Nenhuma linha
+> de navegação roda enquanto o Chrome morre em oito segundos. O caminho de
+> investigação é subir o Chrome com `--enable-logging --v=1` e ler o motivo do
+> crash direto dele.
+
+**Perfil e identidade (operacional).** A pasta do perfil persistente é
+`perfis/comprasgov-<hash>`, com `hash = sha256('comprasgov:' + quem)` nos 16
+primeiros caracteres; `quem` vem de `credenciais_portal.cpf` → `.login` →
+`.usuario` → `cnpj_empresa` → `'padrao'` (`pastaDaIdentidade`). Iniciar sessão
+pela API **sem** o CPF abre perfil novo, faz login do zero e chama o captcha.
+
+**O que funcionou de primeira:** a marcação automática de *"não solicitar
+verificação em duas etapas novamente neste navegador"*, escrita em 29/09 à
+noite, rodou em produção às 08:59:36 do dia seguinte — o robô marcou a caixa
+sozinho antes de alguém digitar o código, e o login das 14:46 entrou **sem
+certificado e sem captcha**.
+
+#### 01/10, à tarde — a sala capturada em HTML, e os componentes que a formam
+
+Com o Chrome aberto **sem** as duas flags de isolamento (ver acima), a navegação
+inteira funcionou e deu para capturar as telas por dentro. Arquivos em
+`/opt/agente-lances/logs/`:
+
+| Arquivo | Tela | Tamanho |
+| --- | --- | --- |
+| `AREA-LOGADA-*.html` | `/seguro/fornecedor/compras` — Minhas participações | 746 KB |
+| `QUADRO-INFORMATIVO-*.html` | o modal de avisos/impugnações/esclarecimentos | 771 KB |
+| `CADASTRO-PROPOSTAS-*.html` | `/seguro/fornecedor/cadastro-propostas` | 798 KB |
+| `SALA-DISPUTA-*.html` | **`/seguro/fornecedor/disputa` — "Enviar lance"** | 837 KB |
+
+**O caminho confirmado clicando, não por URL:**
+
+```
+card em "Minhas participações"
+  → botão aria-label="Participar/acompanhar compra"   (ou "Acompanhar compra")
+     → a tela varia conforme a etapa do pregão — e as quatro do stepper
+       correspondem a quatro rotas:
+
+        Propostas               → /seguro/fornecedor/cadastro-propostas
+        Disputa                 → /seguro/fornecedor/disputa            ("Enviar lance")
+        Seleção de fornecedores → /seguro/fornecedor/acompanhamento-compra
+        Remanescentes           → /seguro/fornecedor/remanescentes
+```
+
+**Remanescentes** (`app-remanescentes-fornecedor-itens`,
+`app-card-item-remanescente`) é a etapa que responde à pergunta "se o primeiro
+colocado cair, somos chamados?". O filtro de lá tem duas opções:
+
+```
+Itens homologados com vencedor
+Itens com convocação de remanescentes
+```
+
+Ou seja: o portal tem uma etapa inteira para quando o vencedor desiste ou é
+inabilitado e o próximo colocado é convocado. Os itens aparecem com
+`Qtde solicitada edital` e `Valor estimado edital (unitário)`.
+
+Dentro dela há **rota por item** — `/seguro/fornecedor/remanescentes/item/1?compra=…`,
+alcançada pelo botão `+` (que aqui se chama **`Operar item`**). A tela mostra
+`Valor do vencedor (unitário)` — quanto o concorrente levou — e duas abas:
+`Convocação em andamento` e `Histórico de convocações`
+(`app-listagem-historico-convocacoes-remanescentes`). Sem convocação, o vazio
+diz *"Nenhum processo de convocação de remanescentes em andamento"*.
+
+> **O rótulo do botão `+` muda conforme a etapa:** `Participar/acompanhar compra`
+> na lista de participações, `Acompanhar Item` no acompanhamento, `Operar item`
+> em remanescentes. O robô precisa aceitar as três, ou vai achar que o botão
+> sumiu.
+
+Os botões do card, por `aria-label`: `Participar/acompanhar compra`,
+`Acompanhar compra`, `Quadro Informativo`, `Mostrar detalhes da compra` /
+`Ocultar detalhes da compra`, `Adicionar aos favoritos` / `Remover dos favoritos`.
+
+**Os componentes Angular — é por aqui que o robô acha as coisas.** A sala é
+montada de elementos customizados com nome próprio, que não mudam a cada
+mexida de estilo. São 33; os que interessam:
+
+| Componente | O que é |
+| --- | --- |
+| `app-tempo-restante` | **o cronômetro** |
+| `app-disputa-fornecedor` | a sala |
+| `app-disputa-fornecedor-itens` | a lista de itens |
+| `app-identificacao-e-fase-item` | número do item + fase |
+| `app-identificacao-item` / `app-caracteristicas-item` | descrição e dados |
+| `app-botao-expandir-item` | abre o item |
+| `app-mensagens-da-compra` / `app-botao-mensagens-da-compra` | **o chat do pregoeiro** |
+| `app-filtragem-e-ordenacao-itens-disputa` | o filtro "Todos os Itens" |
+| `app-timeline-compra` | o stepper de etapas |
+| `app-situacao-conexao-sistema` | o indicador de conexão (o ponto verde) |
+| `app-captcha-badge` | o captcha |
+| `app-apelido` | o `< apelido >` de cada item |
+
+> Isto **substitui a estratégia de seletor por rótulo** onde houver componente.
+> Rótulo continua valendo para o que não tem componente próprio (os campos
+> `Melhor valor (unitário)`, `Meu valor (unitário)`, `Novo lance (unitário)`),
+> mas a âncora da linha de item passa a ser `app-disputa-fornecedor-itens` e
+> `app-identificacao-e-fase-item`, não "subir do texto até achar o bloco".
+
+**O stepper como fonte da fase.** `app-timeline-compra` traz as quatro etapas
+com `aria-label` próprio — `Propostas`, `Disputa`, `Seleção de fornecedores`,
+`Remanescentes` — e marca a atual. É leitura mais confiável que procurar frase
+no corpo da página, e serve para o robô saber se a sala vai ter campo de lance
+antes de procurar por ele.
+
+**A tela de cadastro de proposta, de quebra.** `/cadastro-propostas` tem o que
+seria preciso para o robô cadastrar proposta sozinho, se um dia for escopo:
+`Endereço do fornecedor` (+ botão "Sincronizar endereço"), `Termo de Aceitação`
+(caixa marcável), `Declaração para fornecedores ME/EPP e equiparados`, e por
+item `Quantidade ofertada` (com mínimo), `Valor unitário (R$)`, `Marca/Fabricante`,
+`Modelo/Versão` — com o `Valor total` calculado pela própria tela.
+
+**Como o portal diz se estamos ganhando.** O ícone de polegar ao lado do item
+carrega o veredito em `title`: **`Perdendo`**. É leitura direta — melhor do que
+comparar `Melhor valor` com `Meu valor` e torcer para o arredondamento bater. A
+classe traz `fa-thumbs-down` e um nome que o Angular gera
+(`animationAtributoSituacao`), então o que vale como âncora é o `title`.
+
+**O histórico do item, pelo ícone ☰ (`Ocultar propostas/lances do item`).** Abre
+três abas, e elas mostram coisas diferentes:
+
+| Aba | Componente | O que traz | Colunas |
+| --- | --- | --- | --- |
+| Propostas iniciais | `app-propostas-iniciais` | todas as propostas, **anônimas** | Proposta · Quantidade ofertada · Valor unitário |
+| Melhores valores por fornecedor | `app-melhores-valores` | o melhor de **cada** concorrente, anônimo | Data/hora registro · Valor do lance (unitário) · **Origem** |
+| Todos os lances | `app-todos-lances` | **só os nossos** lances | Data/hora registro · Valor do lance (unitário) |
+
+A coluna **Origem** distingue `Proposta` (o valor cadastrado antes) de `Lance`
+(o enviado na disputa) — é o que permite reconstruir a disputa sem adivinhar.
+
+E o rodapé da tabela dá duas regras de leitura, nas palavras do portal:
+
+> - Os registros **tachados** foram excluídos.
+> - As informações presentes nesta listagem refletem apenas o que aconteceu
+>   durante a etapa de disputa.
+> - Consulta realizada em 01/10/2026 às 15:20:44 horas. **(Recarregue a página
+>   para atualizar informações.)**
+
+A terceira importa para o laço: **a tabela não se atualiza sozinha**. Ler sem
+recarregar devolve dado velho — e o robô precisa recarregar (`Recarregar página`
+está entre os `aria-label`) antes de cada decisão que dependa do histórico.
+
+**O filtro de itens muda a estratégia de leitura.** O seletor "Todos os Itens"
+(`app-filtragem-e-ordenacao-itens-disputa`) oferece:
+
+**e as opções mudam conforme a aba:**
+
+| Aba `Em disputa` | Aba `Encerrados` |
+| --- | --- |
+| Todos os Itens | Todos os Itens |
+| Itens em que estou perdendo | Itens em que estou ganhando |
+| **Itens em encerramento aleatório** | Itens em que estou perdendo |
+| | Itens em que estou desclassificado |
+| | Itens em que estou convocado |
+| | Itens anulados/revogados |
+
+> **`Itens em encerramento aleatório` é o atalho da estratégia de Iminência.**
+> É o mesmo nome que já está no nosso vocabulário de fases
+> (`encerramento_aleatorio`, em `src/estrategia.js`) — o portal oferece um
+> filtro só para ele. Em vez de ler o cronômetro de 180 itens para descobrir
+> quais estão na reta final, o robô filtra e age só nesses.
+
+> Com 180 itens, o robô **não precisa ler todos e comparar**: filtra por "Itens
+> em que estou perdendo" e age só neles. Se estamos ganhando em 160, esses 160
+> não custam leitura naquela rodada. Resolve a escala melhor do que paginar, e
+> vem pronto do portal.
+
+"Convocado" é o que a operadora descreve como a hora de anexar documentação — e
+dá ao robô uma forma de avisar sem depender de alguém olhar o chat.
+
+**O detalhamento do item** (setinha `˅`, `Mostrar/Ocultar detalhes do item`)
+traz, dentro da própria sala:
+
+```
+Descrição detalhada · Quantidade mínima · Quantidade solicitada
+Unidade de fornecimento · Critério de julgamento
+Valor estimado (unitário) · Valor estimado (total)
+Intervalo mínimo entre Lances · Tratamento diferenciado
+Aplicabilidade margem de preferência · Exigência de conteúdo nacional
+```
+
+> **O intervalo mínimo é POR ITEM, não do edital.** No pregão 90007/2024 ele é
+> **R$ 0,0100**; no 37/2026 era **R$ 0,10**. O robô precisa lê-lo item a item,
+> na sala — e isso também explica o concorrente que a operadora viu cobrindo por
+> um centavo: num item assim, um centavo é exatamente o mínimo permitido.
+
+**A Central de Notificações — o portal AVISA, não precisa ser vigiado.** O sino
+no cabeçalho ("Notificações (13 não lidas)") reúne, **de todos os pregões num
+lugar só**, as *"comunicações oficiais do Compras.gov.br e notificações
+relacionadas às contratações e itens"*. Na captura de 01/10 ele trazia as
+mensagens do pregoeiro do **37/2026** (09:54, 09:55, 09:56 — a disputa daquela
+manhã) e do **90029/2026** (10:43).
+
+A engrenagem abre **"Configurar notificações"**, com seis tipos. As descrições
+são do próprio portal:
+
+| Tipo | O que o portal diz |
+| --- | --- |
+| **Abertura da sessão pública** | *"…representa, para as compras que possuem etapa de disputa, **o início da abertura dos itens para o envio de lances**. Usuários que favoritaram a compra são notificados."* |
+| **Convocações do julgamento** | *"**Anexo, negociação, subcontratação, assumir cota, diligências e remanescentes.** Somente usuários destinatários das convocações são notificados."* |
+| **Mensagens do agente de contratação** | *"Mensagens do chat enviadas pelo agente de contratação. Usuários que favoritaram o item são notificados. No caso de mensagens destinadas a um destinatário, somente este será notificado."* |
+| **Quadro informativo** | *"Avisos, esclarecimentos e impugnações. Usuários que favoritaram a compra são notificados."* |
+| **Fase recursal** | *"Intenção de recurso, cadastro de recurso e cadastro de contrarrazão de itens com minha participação."* |
+| Comunicados | *"Avisos gerais do compras. Todos os usuários são notificados."* (vinha desligado) |
+
+> **Isto muda como o robô sabe o que está acontecendo.** Até agora ele tentava
+> descobrir a abertura da disputa lendo a tela pública de dez em dez segundos —
+> e foi assim que gastou a manhã de 29/09 em **291 capturas sem um único campo
+> de entrada**. O portal tem um aviso dedicado exatamente para esse evento.
+
+E a nota de rodapé explica o coração ❤️, que até aqui parecia enfeite:
+**favoritar é assinar as notificações do item.**
+
+> (1) A compra e o item são favoritados **automaticamente** para os usuários
+> ativos no cadastro da empresa **no momento do registro da proposta**.
+> (2) Usuários vinculados à empresa **depois** do registro precisam favoritar
+> manualmente para receber Quadro informativo, Abertura da sessão pública e
+> Fase recursal.
+> (3) Para Convocações e Mensagens, **todos** os usuários ativos são
+> notificados, desde que não tenham desfavoritado o item.
+
+A nota (3) termina explicando o porquê: *"Isso é feito para que até os usuários
+vinculados à empresa **após** o registro das propostas recebam as notificações
+mais importantes."* Ou seja, o portal já protege os dois tipos críticos —
+**convocação e mensagem do pregoeiro chegam a todo usuário ativo**, tenha
+favoritado ou não. A dependência de favoritar vale só para `Abertura da sessão
+pública`, `Quadro informativo` e `Fase recursal`.
+
+**E o CPF do certificado recebe.** Confirmado na captura: o sino do login do
+robô (CPF 014.570.832-21, Santa Rosa) trazia as mensagens do **37/2026** das
+09:54, 09:55 e 09:56 — a disputa daquela manhã — e a do **90029/2026** das
+10:43. A preocupação de que o robô pudesse estar fora da lista de notificados
+**não se confirmou**.
+
+O conteúdo mostra o tipo de informação que só chega por ali:
+
+> *"Srs. documentos enviados para área técnica, **reabertura para o dia 08/10 às
+> 9h**."* — 90029/2026, 10:43
+
+> *"ATENÇÃO: Ordem bancária, BANPARÁ. Caso a empresa vencedora não possua conta
+> BANPARÁ, deverá providenciar a abertura junto ao Banco do Estado do Pará no
+> prazo de 5 (cinco) dias úteis a contar da convocação para assinatura de
+> contrato, conforme Decreto Estadual nº 877/2008."* — 37/2026, 09:56
+
+A primeira é operacional e imediata: **o 90029/2026 (UASG 925448) reabre em
+08/10 às 9h**, e a Santa Rosa já participa. É a próxima disputa real disponível
+para o robô entrar e capturar a sala com a etapa aberta.
+
+O agente já tem as portas para isso (`GET /notificacoes-portal`,
+`POST /reconhecer/central-notificacoes`, e o `vigia-sessao.js` com
+`LER_CENTRAL_NOTIFICACOES`). O que faltava era saber que a Central existe e o
+que ela entrega. **Falta ligar uma coisa na outra.**
+
+**Mais dois detalhes colhidos no caminho:**
+
+- **`Orçamento sigiloso: Sim`** aparece no detalhamento do item. Quando é
+  sigiloso não há valor estimado conhecido antes da disputa, e a estratégia que
+  ancora no estimado fica sem apoio.
+- O botão ⟳ tem o rótulo **"Caso perceba que não houve atualização em sua tela
+  clique aqui"** — o próprio portal admite que a tela nem sempre se atualiza
+  sozinha.
+
+**O chat do pregoeiro — e o que ele resolve.** O ícone ✉️
+(`aria-label="Mensagens da compra"`, componente `app-mensagens-da-compra`) abre
+um painel lateral: *"Mensagens — Visualize aqui as mensagens da Sessão Pública"*,
+com filtro por compra, paginação e 40 cartões no pregão capturado. Cada cartão
+traz **`Mensagem do Pregoeiro`**, o **número do item** (clicável, componente
+`app-link-do-item-para-tela-item`), o texto e a data/hora.
+
+E o texto é padronizado, o que torna a leitura confiável:
+
+> Sr. Fornecedor **RNL TRADE AND FACILITIES LTDA, CNPJ 06.043.786/0001-00**, você
+> foi convocado para **enviar anexos** para o **item 76**. **Prazo para encerrar
+> o envio: 10:00:00 do dia 30/09/2024.** Justificativa: …
+
+> Sr. Fornecedor …, você foi convocado para **negociação de valor** do item 76.
+> Justificativa: Preços acima do estimado para a contratação não serão aceitos…
+
+> O item 76 teve a solicitação de negociação de valor **CANCELADA** para o
+> fornecedor … Motivo: Proposta desclassificada.
+
+> O item 71 está na etapa de **habilitação de fornecedores** no período de
+> intenção de recursos, com acréscimo de 10 minutos a partir de agora — até
+> 01/10/2024 15:06:30.
+
+**Isto confirma, pelo próprio portal, três pontos que estavam como "a confirmar"
+na conversa com a operação:** a convocação chega pelo chat; ela traz **prazo
+explícito**; e a **negociação de valor** é um evento nomeado, com justificativa.
+
+Para o robô, o ganho é direto: **cada mensagem cita o CNPJ do destinatário e o
+número do item.** Dá para separar sem ambiguidade o que é para a nossa empresa —
+diferente da tentativa de 29/09, que procurava um acordeão "Chat" dentro da linha
+do fornecedor na página pública (`aplicar-chat.py`, escrito e nunca aplicado).
+**Aquela abordagem está superada por esta.**
+então o cronômetro e o campo de lance não aparecem nela. A estrutura em volta é
+a mesma dos prints da manhã; o que falta ver por dentro é só o trecho que existe
+durante a etapa aberta — e `app-tempo-restante` já está no HTML, montado pela
+própria aplicação, o que indica que o cronômetro aparece nesse componente quando
+há disputa correndo.
+
+#### 01/10, fim da tarde — a leitura da sala, escrita e testada contra o HTML real
+
+Com as telas em disco, deu para escrever código **sem portal, sem login e sem
+disputa acontecendo** — carregando o HTML capturado num Chrome e rodando a
+leitura contra ele. É a primeira vez que uma parte do robô nasce testada.
+
+**`src/portals/comprasgov-sala.js`** (novo, não toca no que já funcionava):
+
+- `extrairItensDaSala()` — lê a sala inteira de uma vez: as três abas com o
+  contador e qual está ativa, a paginação, e por item o número, a descrição,
+  as características, a situação, o melhor valor, o meu valor e o tempo
+  restante;
+- `extrairMensagensDoPregoeiro(cnpj)` — lê o painel ✉️, separa o que é da nossa
+  empresa, marca o que é convocação e extrai o prazo;
+- `ROTULOS_ENTRAR` — os quatro rótulos do botão que leva à sala.
+
+**A ordem das âncoras, e ela importa:**
+
+1. **`data-test="…"`** — atributos que o próprio portal põe para automação:
+   `valor-geral` (melhor valor), `valor-fornec` (o nosso), `btn-expandir`,
+   `btn-prop-lances`, `btn-subitens`. São os mais estáveis que existem.
+2. **componentes Angular** — `app-identificacao-item`, `app-tempo-restante`,
+   `app-caracteristicas-item`, `app-mensagens-da-compra`.
+3. **`aria-label` e texto** — último recurso.
+
+> **Nunca por classe de CSS.** O Angular gera hash por build
+> (`ng-tns-c2064260805-61`); um seletor desses quebraria na próxima publicação
+> do portal, em silêncio.
+
+**Três decisões de leitura que vieram do HTML, não de suposição:**
+
+- **Ganhando/Perdendo sai pronto do portal**, no `title` do polegar. Ler isso é
+  melhor que comparar `melhorValor` com `meuValor`: a tela arredonda na
+  exibição e a comparação erraria no empate. O vermelho do "meu valor"
+  (`cp-valor-item-vermelho`) é o mesmo sinal, e serve de conferência — o teste
+  verifica que os dois concordam.
+- **Valores com quatro casas.** `R$ 7,3800` vira `7.38`, não `7.3`. O extrator
+  antigo lia duas casas.
+- **A tela de "Acesso não autorizado" é reconhecida**, para o robô não lê-la
+  como sala vazia.
+
+- `acharCardDaCompra(numero, uasg, rotulos)` — acha o card certo em "Minhas
+  participações" e marca o botão com `data-robo-entrar="1"`, para quem chamou
+  clicar com o mouse de verdade (`page.click`) e não por `dispatchEvent`: a
+  página roda hCaptcha e observa o gesto.
+
+> **O casamento é por número E UASG, e isso não é zelo excessivo.** Na lista da
+> Santa Rosa há **três pregões "90007/2024"** — Comando do Exército, Adm.
+> Penitenciária e Secretaria de Turismo. Buscar só pelo número levaria o robô ao
+> pregão errado, e ele daria lance numa disputa que não é nossa. A UASG é
+> comparada por número (o portal imprime "60001" onde a sessão guarda "060001").
+
+**As baterias: 26 conferências, todas passando.** As que mais importam:
+
+```
+OK | valores com 4 casas (7.38, nao 7.3)
+OK | situacao lida do polegar
+OK | vermelho confere com o polegar
+OK | reconhece "Acesso nao autorizado"
+OK | nao inventa itens na tela de erro
+OK | separou o que NAO e nosso          ← mensagem endereçada a outro CNPJ
+OK | extraiu prazo de alguma convocacao
+OK | mesmo numero, OUTRA UASG da lista  ← achou o card certo
+OK | mesmo numero, UASG inexistente     ← nao achou, e disse o que viu na tela
+OK | UASG com zero a esquerda
+```
+
+A penúltima é a que prova o valor do chat novo: numa das mensagens o pregoeiro
+fala **da RNL TRADE AND FACILITIES**, não de nós, e a leitura marcou
+`paraNos: false`. É a diferença entre avisar a equipe do que importa e inundá-la
+com assunto de concorrente.
+
+**O que ainda não dá para testar assim:** o cronômetro (`app-tempo-restante`
+existe no HTML mas vem vazio fora da disputa) e o envio do lance. Esses dois
+esperam a sala com a etapa aberta.
+
+#### 01/10 — a conta de capacidade estava errada por 3,4 vezes
+
+Investigando as quedas do Chrome, apareceu um defeito que não tinha a ver com
+elas e é pior: **o agente supunha ~500 MB por sessão e anunciava 6 simultâneas.**
+
+Medido naquele dia, com **uma** sessão só e o Compras.gov aberto: o Chrome ficou
+em **~1730 MB de RSS**, somando os 13 processos. Com os 7,9 GB da VPS cabem
+**quatro**, não seis — e sem folga.
+
+Não é contabilidade: foi assim que o Chrome do agente morreu às 15:58. Subiu um
+segundo Chrome (a bateria de testes da leitura), a memória livre caiu para
+**586 MB** e o navegador da sessão foi junto, **sem nenhum log**. Com seis
+disputas aceitas, o servidor morreria na terceira ou quarta — numa manhã com
+vários pregões, que é exatamente o cenário que a operação pediu.
+
+Corrigido em `getCapacity()` (`session-manager.js`): `MB_POR_SESSAO`, com padrão
+**1800** e variável de ambiente para ajustar sem deploy. O `/health` passou a
+responder `max_sessoes: 4`.
+
+> **E isto reabre a conclusão sobre as flags de isolamento.** A hipótese de que
+> `--disable-site-isolation-trials` derrubava o Chrome na área logada ficou
+> **sem confirmação**: depois de removê-las, uma sessão pausada ainda caiu
+> (15:50), e a seguinte sobreviveu 5 minutos até eu mesmo derrubá-la subindo
+> outro Chrome. O que está medido é que **a memória fica no limite**, e a área
+> logada é a página mais pesada — a que estoura primeiro. As flags saíram de
+> qualquer forma (o robô não depende de iframe cross-origin), mas atribuir a
+> elas a causa seria afirmar mais do que foi medido.
+
+#### 01/10 — a reunião com a operação, transcrita e conferida
+
+Na mesma videochamada em que a sala foi vista pela primeira vez, a operadora do
+cliente — a Izabelle, que disputa pregões todos os dias — descreveu a rotina dela,
+o que espera do robô e, sem que ninguém pedisse, **o comportamento da tela durante
+a disputa**. Nada disso estava nas 13 capturas de HTML daquele dia, porque todas
+foram tiradas fora do horário.
+
+Até o fim do dia esta seção separava o que estava **na transcrição literal** do que
+viera de resumo e **não fora confirmado por ela** — a distinção custou uma correção
+no mesmo dia, quando um resumo automático atribuiu a ela uma frase que não estava
+na gravação. À noite **a gravação inteira foi transcrita** (Whisper, sobre os
+459 MB de `disputa01Reuniao-robo-de-lances-01-10-2026.mp4`, que fica fora do Git
+junto com toda gravação de reunião — ver `.gitignore`). Quase toda a lista "não
+confirmada" passou a ter fala, e uma delas desmente a minha própria objeção. O que
+segue é a versão conferida contra a transcrição, e é longa de propósito: esta
+conversa é a única fonte que existe sobre como o portal se comporta em disputa.
+
+##### Quem fala o quê, e o que o Whisper errou
+
+**O Whisper não separa as vozes**: a transcrição sai num bloco só, sem marcação de
+falante. A régua que as distingue, e que funciona em quase todo o texto:
+
+- **a Izabelle** diz "aqui para mim", "era para aparecer", narra a própria rotina
+  em primeira pessoa e guia o clique do outro ("volta lá, aperta naquela casinha");
+- **o Ian** pergunta, diz "entendi", lê a tela em voz alta e fala do robô na
+  terceira pessoa ("ele tem que mapear todos esses componentes", "eu já deixo isso
+  pré-programado").
+
+**Cinco trechos ficaram ambíguos.** Registrados um a um, porque quem reler o
+arquivo vai tropeçar nos mesmos:
+
+| Trecho | Leitura adotada |
+| --- | --- |
+| "E está tendo esses **burros** que estão acontecendo aqui?" | "bugs"; provavelmente o Ian perguntando — a resposta ("pois é, era para aparecer as minhas participações") é dela. Não muda decisão. |
+| "Provavelmente seja alguma coisa a ver com a **permissão do sistema** […] é como se ele não tivesse tido a permissão" | o Ian levantando a hipótese, ela concordando. **A hipótese estava errada** — ver adiante. |
+| "Aí ele vai dar lá, mas ele não mostra nada […] **eu já tenho outra visão**" | ela, comentando a tela do Ian: a visão de quem participa é outra. |
+| "Você foi convocado para enviar anexos, prazo […] encerra até 11 e 16" | o Ian lendo em voz alta a tela compartilhada dela. |
+| "No caso ele tem que dar lances de um centavo" | **o Ian**, emendando a própria pergunta — confirmado por ele em 01/10. Importa: a hipótese era dele, e a resposta dela a **amplia**. |
+
+**Ruídos de transcrição decifrados pelo contexto** — a lista serve para reler o
+arquivo sem se perder:
+
+| Como o Whisper escreveu | O que é |
+| --- | --- |
+| "estirar um print" | tirar um print |
+| "roubou de lanças" / "robô de lanças" | robô de lances |
+| "Backeplart" / "Bakiplart" | BAQPLAST |
+| "com press gov" | Compras.gov |
+| "barcarina" | Barcarena |
+| "exibição do **mito**" / "alternar de **água**" | exibição do Meet / alternar de aba |
+| "Não queres mudar a **diágua**" | mudar de aba |
+| "é apertar o **Q** que ele já joga para cá" | apertar aqui |
+| "Estou me convocando para alguma coisa" | **estão** me convocando |
+| "que **dessei** um alerta" | que desse um alerta |
+| "enviar anexos **no ovo**" | de novo |
+| "aí **envia a lança**" | envia o lance |
+| "Então me dá só uma **tah**" | me dá só um tempo |
+| "a função dele **marcar** disputa" | dar lance na disputa (o Modo Automático) |
+
+**E quatro trechos que não foi possível decifrar**, deixados aqui para não
+parecerem informação: "Está com sentimento" (duas vezes, provavelmente "está
+compartilhando"), "aperta lá no **mais end**" (algum botão de expandir ou o menu),
+"Aí sempre início", "mandar documento com **fonte**" (talvez comprovante), e
+"Isso aqui não iria estar acontecendo". Nenhum deles carrega requisito.
+
+##### O caminho até a sala, ditado por quem entra nela todo dia
+
+A parte mais útil da chamada foi involuntária: o robô estava preso na tela errada,
+e ela ditou o caminho certo ao vivo, clique por clique. Transcrito:
+
+> "O que a gente foi que clicava? Volta lá, **aperta lá naquela casinha**." — "A
+> casinha aqui, né?" — "Isso. **A tela inicial**."
+
+> "era para aparecer as **minhas participações**, e essa daí é só quando eu vou dar
+> entrada em **um processo novo**. O nosso não é mais processo novo porque ele já
+> está cadastrado."
+
+> "Era para aparecer de início essa parte aqui com as minhas participações. Aí
+> dentro das minhas participações eu escolho, eu entro **no processo que já está
+> aqui em disputa**. Aí ele aparece logo em disputa."
+
+Três coisas saem disso, e as três estão no código:
+
+1. **A porta é "Minhas participações"**, não a tela de cadastrar proposta. Era ali
+   que o robô estava — e é o que explica o "acesso não autorizado" sem haver
+   problema nenhum de credencial.
+2. **O ícone de casa leva à tela inicial** e é por ele que se recomeça quando a
+   navegação se perde. Vale como caminho de recuperação do robô.
+3. **O rótulo do botão de entrada aparece como "Enviar lances" quando a disputa já
+   começou**: *"ele já está [em disputa], tinha que aparecer aí, **enviar lances**,
+   igual aparece aqui para mim"*. Confere com a rota `/seguro/fornecedor/disputa`,
+   cujo botão o módulo já conhece.
+
+**E dá para entrar com a disputa já em andamento.** Perguntado se ainda era
+possível entrar depois de começada:
+
+> "Já está em disputa o processo." — "Mas, nesse caso, a gente consegue entrar
+> ainda?" — "**Consegue**, olha, apareceu aqui para mim."
+
+Isso é importante para o desenho: **o robô que acorda atrasado não perdeu a
+disputa**. Entrar tarde é degradação, não falha — e justifica o robô tentar a sala
+mesmo quando o horário de abertura já passou, em vez de desistir.
+
+##### Vitrine × sala: as duas telas se parecem, e isso é risco de código
+
+O Ian estava vendo a página pública de acompanhamento; ela, a sala de verdade.
+Quando as duas foram comparadas na chamada:
+
+> "Pô, mas é **bem parecido** com essa que eu estava vendo, né?" — "Sim, só que
+> nessa daí você **não está participando**. Só está acompanhando por fora."
+
+E o que a pública mostra, descrito por ela ao olhar a tela dele:
+
+> "ele **não mostra os lances** que foram ofertados, ele não mostra nada; ele só
+> diz lá embaixo: olha, **disputa encerrada**. Já foi para análise de proposta esse
+> primeiro item, e o outro ainda está na disputa."
+
+> "eu entendi que isso aqui seria como se fosse uma **vitrine**. Eu não estou
+> dentro da sala, é como se estivesse vendo o resultado **por fora**."
+
+Leitura para o código: a página pública dá **a situação por item** ("em disputa",
+"análise de proposta", "disputa encerrada") e **nada de lances**. Como as duas
+telas se parecem, **o robô precisa de um discriminador explícito** — não basta
+"carregou uma tabela de itens". Hoje quem resolve isso é a rota em que ele está e a
+presença do botão de enviar lance; é uma verificação que não pode ser afrouxada em
+nome de tolerância a mudança de layout, porque o custo do erro é um robô que diz
+estar disputando enquanto olha a vitrine. Isto reforça, pela voz da operação, o que
+ficou escrito em 29/09: **a página pública não serve durante a disputa.**
+
+##### A sala, descrita por quem a opera — seis coisas que mudam código
+
+**1. Existe um aviso "Vá para a sala de disputa", e ele nasce na hora do início.**
+
+> "Quando ele vai começar, olha, ele aparece **o cronômetro bem aqui**. Aí fica:
+> faltam um minuto para começar. Quando ele começa, **nove horas certinho, ponto**,
+> ele vai aparecer uma permissão: **vá para a sala de disputa**. [É] apertar aqui
+> que ele já joga para cá."
+
+E, antes disso, onde o cronômetro mora e o que aparece junto:
+
+> "normalmente, quando a gente entra, já vai aparecer aqui, **bem em cima, logo
+> embaixo dessas informações**, a contagem do prazo para iniciar a disputa, que vai
+> ser 10 horas […] e depois, aparecendo **a nossa proposta**."
+
+Três efeitos. O cronômetro (`app-tempo-restante`) fica **no topo, logo abaixo das
+informações da compra**, e conta para trás **antes** de a disputa abrir — relógio
+confiável sem depender da hora do servidor. A **proposta própria** aparece logo
+abaixo dele, o que dá ao robô uma confirmação de que está na compra certa, com a
+empresa certa. E "Vá para a sala de disputa" é **um rótulo de entrada que não
+existia em `ROTULOS_ENTRAR`** — entrou no módulo em 01/10, à noite (ver a subseção
+do código, adiante).
+
+**2. A tela não se atualiza sozinha — ela é recarregada à mão.** As duas falas
+estão a três frases de distância, e a segunda manda:
+
+> "Aí ele vai tremendo, **a cada lance novo ele dá uma tremida** e muda lá o valor
+> lá em cima, no meu melhor valor."
+
+> "Aí a gente **fica atualizando** aqui para ver os valores. Vai baixando, ó.
+> Pessoal lá está disputando e aqui a gente só vai carregando. Já baixou de novo.
+> […] Deu um valor aqui, mudou, **atualizou aqui a página**, ele já aparece novo."
+
+Leitura: o melhor valor do topo pisca sozinho; a lista de lances, não. **O robô tem
+de reler, não esperar push.** Um laço que confiasse na atualização automática leria
+uma tela velha a disputa inteira — e é o defeito que não aparece em teste, porque o
+valor exibido continua plausível.
+
+**3. A nossa colocação não está na tela principal.** Ela precisa expandir:
+
+> "para a gente saber **onde está a nossa posição**, a gente aperta aqui. […] Aí
+> ele vai mostrar **quantas empresas se cadastraram** — no caso aqui, **oito
+> empresas** se cadastraram e estão participando. Aí **os melhores valores
+> ofertados**. Aí eu vou saber onde é que está o meu valor: meu 1030, meu está bem
+> aqui. **Eu estou em sexto lugar**. […] E aqui, **todos os lances**."
+
+Ou seja, `app-melhores-valores` e `app-todos-lances` não são enfeite — são a
+**única** fonte de colocação e de número de concorrentes. A estratégia "desempatar
+no 1º lugar" depende de abrir esse painel, não da linha do item.
+
+**4. Onde cada valor mora, na mesma fala:**
+
+> "eu dou lance aqui, **eu colo o valor**, baixo aqui o valor, por exemplo [R$]
+> 30,10, aí envia o lance. Envio e vai ficando registrado **bem aqui embaixo**,
+> nesse último. Aí o valor do outro concorrente, ele fica **aqui em cima**. Eles já
+> ofertaram **426 reais**, que foi o menor valor."
+
+Lance próprio embaixo (o último da lista); melhor do mercado em cima. E ela **cola**
+o valor — não digita —, o que diz que o campo aceita colagem, detalhe que importa
+para quem automatiza digitação.
+
+**5. O piso tem comportamento dito por ela, e é o que já está no produto** — ver o
+trecho inteiro na subseção seguinte, que é o coração do requisito.
+
+**6. Enviar proposta e anexo é manual por decisão da operação** — não por limitação
+nossa:
+
+> "essa parte não precisa ser automatizada, isso aí já tem que ser manual." —
+> "Não, isso daqui é manual. A parte que o sistema já vai deixar lá pronta, a
+> proposta, a precificação, tudo, a gente só vai enviar **para anexar aqui**. Aí eu
+> vou **aceitar**, eu ponho a minha pastinha aqui já com ele todo pronto e vou
+> enviar."
+
+O robô avisa a virada; quem anexa é ela, com o material que o Praefectus preparou.
+Note o "aceitar" antes de anexar: há um passo de aceite na tela de convocação. E
+isto **não** fecha a porta de cadastrar proposta antes da sessão (seção 6) — é
+sobre a fase de aceitação, depois dos lances.
+
+##### O lance ideal, nas palavras dela — o trecho que define o produto
+
+Este é o trecho mais importante da reunião inteira. A pergunta do Ian embute uma
+hipótese ("um centavo"); a resposta dela **amplia** e dá a regra:
+
+> **Ian:** "E o que seria ideal do robô pra você? No caso ele tem que dar lances de
+> um centavo. Qual comportamento ideal, assim, que você acha que ia te ajudar
+> bastante no teu trabalho?"
+>
+> **Izabelle:** "Seria programar ele **de acordo com as regras do edital**. Por
+> exemplo, se fosse de um centavo, de vinte centavos, de um real, de cinco reais, a
+> gente conseguiria programar — essa é a ideia, programar o robô, colocar lá nele
+> **um valor mínimo** que eu possa chegar no meu valor estimado. Meu valor estimado
+> é tal, eu só posso chegar até ele e cadastrar. **A partir do momento que chegou
+> naquele valor, ele encerra, ele não dá mais lances**, e aí a gente já aguarda
+> para ser convocado, ver nossa colocação e ver se a gente vai ser chamado."
+
+Três leituras, e nenhuma é "ganhar o pregão":
+
+1. **O incremento é do edital, não do robô.** "Um centavo" é um caso, não a regra:
+   pode ser R$ 0,20, R$ 1,00, R$ 5,00. O robô já lê `Intervalo mínimo entre lances`
+   da tela — no 90007/2024 era R$ 0,0100, no 37/2026 R$ 0,10 —, e é essa leitura,
+   não uma constante, que tem de mandar.
+2. **O piso é limite duro e parada normal.** Chegar no valor estimado **encerra** a
+   atuação do robô naquele item; não é erro, é o fim previsto. Confere com a trava
+   de lance da seção 2, e é o que protege de uma guerra de centavos contra outro
+   robô.
+3. **Depois do piso, a pessoa assume.** "A gente já aguarda para ser convocado, ver
+   nossa colocação" — ou seja, o robô entrega a posição e sai; não tenta decidir se
+   vale insistir.
+
+E o requisito de escala, que vem na sequência e é o que ela realmente quer:
+
+> "Aí ele fica a manhã toda só na parte de disputa. Aí eu tenho que ficar só nesse
+> processo dando os lances, **item por item**."
+
+> "O robô de lances já me ajudaria a dar esses lances **disparados para todos os
+> itens de uma vez**. Eu não precisaria ter que dar um por um. Aí eu conseguiria
+> participar de **180 itens só de uma vez**, sem perder nenhum prazo, sem perder
+> nada. E, consequentemente, **participar de outro processo**."
+
+> "Que desse um alerta: *'olha, já acabou aqui a disputa de lance, agora tá na
+> parte de seleção de fornecedores, fique atento'*."
+
+Disso saem três requisitos:
+
+1. **Disparar em lote.** O valor está em cobrir todos os itens de uma vez, não em
+   vencer. O gargalo dela é braço, não estratégia.
+2. **Liberar o dia.** Hoje um pregão de 180 itens consome a manhã inteira e ela
+   participa de **um a três processos por dia**. O ganho que ela nomeia é
+   participar de outro processo.
+3. **Avisar na virada.** Quando a etapa de lances acaba, alguém precisa saber que
+   começou a seleção de fornecedores — com essas palavras.
+
+E a multidisputa, que fica para depois, foi ela quem validou:
+
+> "se ele pudesse participar de **vários processos ao mesmo tempo**, é bem viável,
+> né?" — "**Isso.**"
+
+##### Depois dos lances: encerrados, chat e seleção de fornecedores
+
+> "Depois que acabou aqui a disputa, ele vai para o meu **encerrados**. Aí eu fico
+> acompanhando aqui **na caixinha de mensagem**, se o pregoeiro fala alguma coisa.
+> Depois que acaba isso, vai para a **seleção de fornecedores**, que aí a gente já
+> vai enviar a nossa proposta, a nossa planilha lá de preço."
+
+As três abas que o módulo já lê — Aguardando disputa, Em disputa, Encerrados — são,
+nas palavras dela, o fluxo inteiro da etapa. E a tela seguinte:
+
+> "já aparece assim, ó: **acompanhamento de seleção de fornecedores**. Aí aqui eu
+> vou ter ainda **o registro da parte de disputa**, e aqui na seleção de
+> fornecedores, onde a gente vai ser convocado para apresentar proposta. Aí aqui tem
+> **todas as mensagens com o pregoeiro**. Acho que ele até me convocou para
+> apresentar proposta para algum item aqui."
+
+Duas confirmações de código: a tela de seleção guarda **o histórico da disputa**
+(logo, o robô não perde os lances ao virar a etapa) e **o chat do pregoeiro vive
+ali também**. E o texto da convocação, lido em voz alta da tela dela, confirma o
+padrão que `extrairMensagensDoPregoeiro` já procura:
+
+> "**Você foi convocado** para enviar anexos, prazo […] **encerra até 11 e 16**."
+
+É exatamente o par `você foi convocado` + `Prazo para encerrar o envio` que o
+módulo extrai — escrito antes de alguém ler esta frase, e agora conferido contra
+ela.
+
+##### A rotina dela, que é o calendário do robô
+
+- **Todo dia.** "e aí você faz isso todos os dias?" — "**Todo dia**."
+- **Pregão novo só de manhã.** *"para iniciar um processo novo é só pela manhã. Os
+  horários dele sempre são **oito, nove horas, dez horas** da manhã."*
+- **A sessão pode durar o dia.** *"Para que ele continue rolando ele pode ir até
+  **seis horas da tarde**. Aí eu tenho que ficar fazendo esse acompanhamento o dia
+  inteiro."*
+- **À tarde é raro, e tem de ser caçado.** *"se tiver é só processo de fora. Mas é
+  muito difícil a gente estar ciente […] naquele dia lá eu tive que fazer uma
+  pesquisa para achar. E geralmente eles começam três horas da tarde, mas só é pela
+  manhã."* Isto define a janela de teste do robô: **de manhã, ou não há o que
+  testar.**
+- **Processo volta, e isso é rotina.** *"Quando um processo **retorna**, por
+  exemplo esse aí: ele já é antigo, já tem uns dois, três meses que ele está
+  acontecendo."* É exatamente o caso do 90029/2026, que reabre em 08/10 — reabertura
+  não é exceção, é o normal.
+- **Processo grande dura meses, item a item.** *"Ele é grande, olha, são **182
+  itens**. Ele vai convocando **um por um**, até enviar a proposta, até a proposta
+  ser analisada. Isso daí demora um tempão. Ele já está indo para o seu **quarto
+  mês**."*
+- **E não há onde estudar isso.** *"a gente não encontra muito essas informações na
+  internet"* — *"não, é só quando tu tá participando; **eu aprendi só
+  participando**. Nem para estudar, nem nada assim; é muito superficial."* É a
+  razão de ser deste documento.
+
+##### O que a transcrição confirmou (e saiu da lista de "não confirmado")
+
+- **Prazo de duas horas, e desclassificação — não multa.** *"nesse envio de
+  proposta ele me dá um **prazo de duas horas** para enviar a documentação. Se eu
+  não enviar num prazo de duas horas, minha empresa será **desclassificada**"*; e
+  *"não acontece nada demais depois disso, a gente só é desclassificado do
+  processo"*. Ela diz que é comum: *"muitas empresas fazem isso"*, e dá os motivos
+  — *"às vezes a gente é desclassificada por perder o prazo, por não conseguir
+  olhar a mensagem a tempo"*.
+- **Prazo existe em toda etapa, e é ferramenta do pregoeiro.** *"Para todas essas
+  etapas a gente tem prazos para cumprir, para justamente poder desclassificar uma
+  empresa que não está acompanhando o processo."*
+- **A multa é ameaça de alguns órgãos, não a regra.** *"é só alguns processinhos
+  que são chatos, por exemplo, **o processo de Barcarena**. Você não apresenta a
+  proposta, ela diz que **pode multar**."* Barcarena é o 772/2024 do `CLAUDE.md` —
+  o contrato de cesta básica com 18 itens.
+- **Horários**, acima.
+- **Processo longo, julgado item a item ao longo de meses**, acima.
+- **O robô concorrente que dava um centavo.** Está na gravação, com detalhe:
+
+  > "Eu já participei de um processo que eu ia dando um lance e o cara já ia
+  > baixando só de um centavo. Só um centavo, era **automaticamente**. Eu registrava
+  > o lance e automaticamente já registrava o lance deles **de um centavo abaixo do
+  > meu**. Aí eu baixava 20 reais, ele registrava sempre um centavo abaixo do meu
+  > valor. Eu até falei para o Rafael: olha, acho que eles estão usando o robô de
+  > lances aqui nesse processo. Porque era muito automático, muito rápido. Não dava
+  > nem tempo dele digitar o número."
+
+  **Registro a minha própria correção:** em 29/09 eu afirmei que a menção ao
+  centavo não estava no trecho de vídeo enviado e levantei a hipótese de ser
+  invenção de um resumo automático; o Ian insistiu que a Izabelle havia dito, e a
+  **transcrição completa lhe dá razão**. Ela nunca operou um robô — perguntada, diz
+  *"não […] mas eu sei como ele funciona em si"*, e sobre quem já usou, *"aí só o
+  Rafael"* —, mas **disputou contra um**, e é dessa experiência que vem a descrição.
+- **O comportamento é o esperado, com uma ressalva.** *"Nem que eu baixe 20, 30
+  reais, ele sempre vai dar um valor de um centavo abaixo"* — e o Ian: *"dependendo
+  das regras aqui do edital, né?"* — *"é."* O incremento é do edital; o
+  comportamento, de robô.
+
+##### O risco de teste, agora com fala
+
+Juntando o prazo de duas horas com a convocação automática, o combinado que já
+estava desenhado fica confirmado pela própria operação:
+
+> "é porque a gente não pode — eu acredito, não sei se o Rafael concorda comigo —
+> mas a gente tem que fazer testes, e **esses testes têm que ser bem precisos**.
+> Porque a gente não pode participar, por exemplo, de 10, de 20 processos **só como
+> teste**. Porque **eles vão me convocar**. Eu estou sujeita a pegar a multa por não
+> apresentar proposta e nem dar lances, nem nada disso. Isso daí é o nosso risco."
+
+Então: **poucos pregões, escolhidos por ela, e com retaguarda para responder** se o
+robô classificar. Não é cautela nossa — é limite dito por quem leva a consequência.
+E o pior caso real, pela fala dela, é desclassificação no item, com multa só nos
+órgãos que a prometem. **Se o robô classificar num pregão de ensaio e ninguém
+enviar a documentação, a empresa é desclassificada** — ou se testa onde dá para
+responder, ou com valores que não cheguem a classificar.
+
+Do lado do Ian, a contrapartida foi dita na mesma chamada:
+
+> "essa questão do robô vai ser um pouquinho chato, porque vou ter que ficar
+> fazendo teste direto, entendeu? Ficar entrando, tentando **até ele conseguir
+> acertar a tela certa**."
+
+E a razão de o Modo Automático estar desligado desde o começo, dita por ele:
+
+> "eu desabilitei a função dele [dar lance na] disputa, justamente com esse **medo
+> dele acabar dando lance errado**; eu precisava ver de fato toda a tela para ver
+> como é que funciona."
+
+Ela respondeu que lance em si não assusta — o que cria obrigação é o que vem depois:
+
+> "se ele der lances, a gente pode dar os lances e tudo mais. A única coisa que vai
+> acontecer é chegar a minha vez de apresentar uma proposta: se eu tiver em segundo,
+> terceiro, quarto lugar, **o pregoeiro vai me convocar** […] vai abrir a parte de
+> anexo."
+
+##### Por que a BAQPLAST saiu do teste — o motivo, agora dito
+
+Até aqui a troca da BAQPLAST pela Santa Rosa estava registrada como preferência
+dela. A razão é operacional e vale para qualquer teste futuro, em qualquer empresa:
+
+> "por isso que eu tirei a BAQPLAST de lado: porque a BAQPLAST são os processos que
+> eu já estou mexendo e atuando. E esses processos **não somem da nossa tela inicial
+> enquanto ele não encerrar**. Se eles não se encerrarem em 4 ou 5 meses, eles não
+> vão sumir da minha tela. Ele vai continuar aparecendo aqui, **nas minhas
+> participações**. Eu não participo de todos, mas eles estão aqui."
+
+> "se ficar, por exemplo, exibindo aqui 20 processos para mim, eu já não consigo ter
+> um controle tão preciso se eu estiver participando só de 10, por exemplo."
+
+A aba "Minhas participações" **é a lista de trabalho dela** — não um histórico.
+Cadastrar pregão de ensaio ali atrapalha o controle de meses, e o Ian resumiu na
+hora: *"ele meio que pode bagunçar o histórico de vocês"* — *"sim"*.
+
+##### Certificado, e o login que carrega várias empresas
+
+> "O certificado, sim, a gente **loga sempre que entra** […] acessa lá pelo gov,
+> certificado digital, aí coloca já o certificado, entra normalmente, **não muda
+> nada**. […] Geralmente, se mudar, **a gente avisa** para alterar alguma coisa."
+
+Isto sustenta o desenho do perfil persistente e a senha fixa no `.env` — mas não
+dispensa conferir `certificado.carregado` no `/health` antes de cada disputa, pelo
+que aconteceu em 30/09 e 01/10 (o certificado foi trocado por fora, e o agente
+passou a logar como outra empresa).
+
+**O login dela carrega mais de uma empresa.** Ao aparecer a BAQPLAST na tela
+compartilhada:
+
+> "O BAQPLAST é outra empresa, não é?" — "É outra empresa. **Essa daqui é as
+> empresas que eu estou participando**."
+
+É a confirmação, pela operação, do que o SICAF já dizia: um CPF, vários vínculos.
+Não existe "login do CNPJ" — ver a nota de 29/09.
+
+##### A percepção da operação sobre robô no Compras.gov
+
+Ficou dito, pelos dois lados, e é melhor registrar do que deixar implícito:
+
+> **Ian:** "eu estava vendo que a plataforma não tem uma ferramenta que facilite
+> esse tipo de acesso de robô — [não] tem uma API, uma integração que ajuda." —
+> **Izabelle:** "eu acho que não, até porque **não era para ocorrer isso**, né?"
+
+> **Ian:** "eu vi na documentação do Compras, do governo, que tem algo que eles não
+> permitem; como se fosse, **eles acham injusto**." — "Sim, [não é para] ter o robô
+> de lances." — "Pois é, **não é uma disputa justa**, no caso."
+
+Não há aqui nenhuma regra citada com artigo, de nenhum dos dois lados: é percepção.
+O que o portal efetivamente faz contra automação está medido na seção 5 (captcha,
+ausência de API) e é com isso que o robô lida. Fica registrado porque é a leitura
+de quem opera, e porque qualquer conversa futura sobre "por que não usar API"
+começa por aqui.
+
+##### A hipótese que caiu
+
+Durante a chamada, a explicação levantada para o robô não chegar à sala foi
+permissão:
+
+> "Provavelmente seja alguma coisa a ver com **a permissão do sistema**, de alguma
+> forma; é como se ele não tivesse tido a permissão para entrar." — "Pois é, porque
+> deveria aparecer já essa parte que aparece quando a gente entra no Compras.gov
+> normal, **diretamente no navegador**, sem ser pelo sistema."
+
+**Estava errada, e vale deixar escrito** — porque, se tivesse ficado de pé, mandaria
+caçar vínculo no SICAF e perfil no gov.br, onde não havia nada a corrigir. O que
+havia era **rota**: o robô estava em `/cadastro-propostas`, a tela de quem ainda vai
+cadastrar, e **o portal recusa link direto** para a sala (`/acesso-nao-autorizado`).
+O caminho é o que ela própria ditou na chamada — tela inicial → **Minhas
+participações** → o botão da compra. A fala que aponta isso passou, na hora, como
+queixa: *"essa daí é só quando eu vou dar entrada em um processo novo; o nosso não é
+mais processo novo porque ele já está cadastrado."*
+
+##### Combinados que saíram da chamada
+
+- **Ela avisa quando houver processo novo para teste.** *"é só me avisar […] só
+  mandar mensagem, dizer: olha, a gente quer fazer um teste. Ver se tem algum
+  processo para essa semana."* Não cabe a nós escolher pregão (ver "Pregão é
+  escolhido pelo cliente").
+- **Na próxima tentativa, o Ian vai ao escritório.** *"na próxima tentativa eu vou
+  ter que ir aí no escritório com vocês, se não for incômodo"* — *"pode vir, sim.
+  Só me avisa, que é para a gente ver um processo para entrar."*
+- **Teste em dia sem pregão novo é mais tranquilo para ela:** *"hoje eu só estou
+  acompanhando os processos que eu já estou participando; a gente fica mais
+  tranquilo."*
+- **Avisar na virada de etapa** (acima) virou requisito de produto, não cortesia.
+
+##### O que já existe e atende ao pedido dela
+
+Convém registrar para não virar "evolução futura" numa conversa futura: o agente
+roda **4 disputas simultâneas** (limite de RAM, medido em 01/10 — ver a seção da
+capacidade) e disputas da mesma empresa **dividem o mesmo Chrome em abas**;
+disputar **vários itens de uma vez** já rodou — a sessão de 29/09 entrou com **55
+itens**; e o piso por item, o intervalo mínimo lido da tela e o aviso por sininho
+já existem. **O que falta não é capacidade, é o robô chegar à sala.**
+
+> Dois números que parecem brigar e não brigam: ela viu **oito** empresas no pregão
+> que mostrou na chamada; no pregão de 29/09, que o robô acompanhou, havia **sete**.
+> São compras diferentes.
+
+##### O que a transcrição NÃO resolve
+
+A sala foi capturada **fora do horário de disputa**. A estrutura geral — os
+componentes, as três abas — é a mesma com a disputa aberta, e nesse sentido o
+layout não muda tanto. Mas estrutura não é comportamento, e o que faltava ver era
+comportamento:
+
+| O que falta | Por que a captura de 01/10 à tarde não serve |
+| --- | --- |
+| O aviso "Vá para a sala de disputa" | nasce no segundo da abertura; às 15h não existe na página |
+| O cronômetro correndo | `app-tempo-restante` capturado vazio |
+| O campo "Novo lance (unitário)" habilitado | fora da disputa a linha do item nem traz o campo |
+| A resposta do portal a `Enviar lance` | nunca foi exercitada |
+| Os painéis de melhores valores e todos os lances **com conteúdo** | capturados vazios: sem lances, não há colocação para ler |
+| O "treme" a cada lance | é comportamento de runtime, invisível em HTML salvo |
+
+E a frase "o layout não muda tanto" merece um reparo, medido no HTML: a captura da
+tarde caiu na aba **Encerrados**, e a linha de um item encerrado **não tem** `Novo
+lance`, `Intervalo mínimo entre lances`, `Etapa aberta` nem `Sem benefícios ME/EPP`
+— palavras que não aparecem uma única vez no arquivo salvo. A moldura é a mesma; a
+linha do item, não.
+
+> **Isto foi em grande parte respondido na mesma noite**, por duas fontes que
+> apareceram depois: os cinco prints que a Izabelle mandou às 9h11 e a gravação da
+> reunião. A seção seguinte ("os prints e o vídeo") traz a sala **em disputa**, lida
+> campo a campo. O que sobrou para o **08/10, 9h, pregão 90029/2026 (UASG 925448)**
+> é menor e de outra natureza: **seletores e o envio do lance**, não o desenho da
+> tela. E, pelo que ela disse sobre processo que retorna, essa reabertura é rotina,
+> não caso especial.
+
+#### 01/10, à noite — os prints e o vídeo: a sala EM disputa, enfim
+
+Horas depois de a transcrição ser lida, apareceu o que faltava o dia inteiro: **a
+sala de disputa com a etapa aberta**, não em HTML, mas em imagem — e em imagem de
+qualidade suficiente para ler cada rótulo, cada valor e cada URL. Duas fontes, as
+duas de 01/10/2026, as duas fora do Git:
+
+| Fonte | Onde | O que é |
+| --- | --- | --- |
+| **5 prints da Izabelle** | `~/Downloads/sete-features/Ethos/robo/reunioes-disputas/prints-izabelle/` | WhatsApp, 09:11:42 a 09:13:54 — a sala do **37/2026 em disputa**, pelo login da Santa Rosa |
+| **Gravação da reunião** | `.../reunioes-disputas/` (`.webm`, 459 MB, ~33 min) e `reinao-dividida/` (11 cortes de 3 min) | o compartilhamento de tela **dela**, com os painéis abertos |
+| Transcrição | `.../disputa01Reuniao-robo-de-lances-01-10-2026.txt` | o áudio, já conferido acima |
+
+Os quadros foram extraídos com `ffmpeg` (folhas de contato de 12 quadros por corte
+para localizar, depois quadros isolados em resolução cheia). O comando, para quem
+repetir:
+
+```sh
+ffmpeg -v error -i corte_004.webm -vf "fps=1/15,scale=420:-1,tile=4x3" -frames:v 1 contato.jpg
+ffmpeg -v error -ss 110 -i corte_004.webm -frames:v 1 -q:v 2 quadro.jpg
+```
+
+> **Isto não substitui o HTML.** Imagem dá rótulo, posição e valor; não dá seletor,
+> `data-test` nem classe. O que vem abaixo é, portanto, **o que o robô precisa
+> encontrar**, não **como** encontrar — e por isso o 08/10 continua de pé. Mas a
+> diferença em relação a esta manhã é enorme: deixamos de desenhar no escuro.
+
+##### A URL da sala é construível — e o parâmetro foi decifrado
+
+Os prints trazem a barra de endereços inteira. A sala do pregão em disputa:
+
+```
+https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/seguro/fornecedor/disputa?compra=92544905000372026
+```
+
+E a tela da fase seguinte, num **segundo** pregão, vista no vídeo:
+
+```
+https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/seguro/fornecedor/acompanhamento-compra?compra=98042505000092026
+```
+
+Os dois casam com o mesmo molde — **UASG (6) + modalidade (2) + número (5, com
+zeros à esquerda) + ano (4)**, 17 dígitos:
+
+| `compra` | UASG | Mod. | Número | Ano | Confere com |
+| --- | --- | --- | --- | --- | --- |
+| `92544905000372026` | 925449 | 05 | 00037 | 2026 | Pregão **37/2026**, UASG 925449 (H. Clínicas Gaspar Vianna) |
+| `98042505000092026` | 980425 | 05 | 00009 | 2026 | Pregão **9/2026**, UASG 980425 (Pref. de Barcarena/PA) |
+
+É o número de controle do Compras.gov de sempre, concatenado. Para o **90029/2026,
+UASG 925448**, o molde prevê `92544805900292026`.
+
+**O que isso muda, e o que não muda.** Não muda a conclusão de 01/10 de manhã: o
+portal devolveu `/comprasnet-web/acesso-nao-autorizado` quando tentamos entrar por
+link. Mas naquela tentativa a URL **não tinha este parâmetro** — era a rota nua.
+Então a frase correta passa a ser: *"link direto sem o `compra` certo é recusado"*,
+e **está em aberto** se a rota com o parâmetro correto, dentro de uma sessão já
+logada, entra. É a primeira coisa a tentar em 08/10, porque, se entrar, o robô
+pula a navegação por cliques inteira — e a navegação é a parte mais frágil dele.
+
+> Hipótese, não conclusão. Há motivo para desconfiar: o Angular pode exigir estado
+> de navegação que a rota sozinha não cria, e o portal já mostrou que recusa o que
+> não veio de clique. **Tentar custa um segundo; concluir sem tentar custa a
+> disputa.** O desenho que fica: tenta o link; se cair em `acesso-nao-autorizado`,
+> cai no caminho por cliques, que continua sendo o oficial.
+
+##### "Enviar lance" — a sala com a etapa aberta, lida print a print
+
+O título da página é **`Enviar lance`**, e o cabeçalho traz, confirmando quem está
+logado: `RAFAEL WILLIAM CASTRO DA SILVA | 014.570.832-21` e `SANTA ROSA COMERCIO,
+DISTRIBUIDORA E REPRESENTACOES LTDA | 24.687.187/0001-01`, com o sino marcando
+**8** avisos. O CPF bate com o do perfil persistente (`comprasgov-46353b4f41d806ff`
+= `01457083221`): **a identidade do robô está certa**, e isso agora está provado por
+imagem, não por inferência.
+
+Abaixo, o identificador da compra:
+
+```
+Pregão Eletrônico N° 37/2026  (Lei 14.133/2021)
+UASG 925449 - FUND.PUBL.EST.HOSP.DE CLÍNICAS GASPAR VIANNA  (?)
+Critério julgamento: Menor Preço / Maior Desconto     Modo disputa: Aberto
+Sessão pública aberta em: 01/10/2026 09:00:06 (Horário de Brasília)
+```
+
+Depois as **três abas** que já conhecíamos, agora com a ativa sendo outra:
+`Aguardando disputa` · **`Em disputa (2)`** · `Encerrados`. E a barra da listagem:
+`Exibindo 2 de 2 registro(s)`, o botão **`Retirar encerrados`** (com um ✕) e o
+seletor **`Todos os Itens`**.
+
+**A linha de um item EM disputa** — e é aqui que está tudo o que o HTML capturado à
+tarde não tinha:
+
+```
+1  ESTERILIZANTE QUÍMICO                 👎        Melhor valor (unitário)   R$ 597,9000   🗑
+   < apelido >                                     Meu valor (unitário)      R$ 638,8400
+   Sem benefícios ME/EPP              Tempo restante
+   Etapa aberta (prorrogação)          🕐 01:56     Novo lance (unitário)
+                                                   [                    ]
+                                                   Intervalo mínimo entre lances: R$ 0,1000
+                                                                          Enviar lance        ☰ ⌄
+```
+
+Elemento por elemento, e o que cada um significa para o robô:
+
+| O que aparece | Leitura |
+| --- | --- |
+| `1  ESTERILIZANTE QUÍMICO` | número e descrição do item |
+| `< apelido >` | o `app-apelido`, editável, vazio |
+| `Sem benefícios ME/EPP` | em laranja; o outro valor possível é `Exclusividade ME/EPP` (visto em Barcarena) |
+| **`Etapa aberta (prorrogação)`** | a situação do item **durante** a disputa — não existia no HTML da tarde |
+| 👎 vermelho | `title="Perdendo"`; é o que o módulo já lê |
+| **`Tempo restante` 🕐 `01:56`** | **por item**, não da sessão — ver abaixo |
+| `Melhor valor (unitário)` / `Meu valor (unitário)` | os dois valores, com **quatro casas** |
+| **`Novo lance (unitário)`** + campo vazio | onde o lance é digitado (ou colado) |
+| **`Intervalo mínimo entre lances: R$ 0,1000`** | lido da tela, por item |
+| **`Enviar lance`** | **é um link em azul, não um `<button>`** — importa para quem procura por `button` |
+| 🗑 | lixeira ao lado dos valores; função não confirmada (cancelar lance?) |
+| `☰` e `⌄` | os dois ícones à direita: `btn-prop-lances` (abre as três abas) e `btn-expandir` |
+| `Demais compras que estou participando  +` | painel recolhido no rodapé — **a sala mostra as outras compras** |
+
+**O cronômetro é por item, e eles não andam juntos.** O último print mostra os dois
+itens da compra lado a lado:
+
+| Item | Melhor valor | Meu valor | Tempo restante |
+| --- | --- | --- | --- |
+| 1 — ESTERILIZANTE QUÍMICO | R$ 593,9600 | R$ 638,8400 | **01:39** |
+| 2 — DETERGENTE ENZIMÁTICO | R$ 493,9000 | R$ 1.034,1800 | **01:57** |
+
+Os dois com `Etapa aberta (prorrogação)` e intervalo mínimo de R$ 0,1000. **Cada
+item tem o seu relógio**, porque cada um prorroga por conta própria a cada lance —
+o robô não pode ter "um" cronômetro da sessão, e a estratégia de iminência tem de
+ser avaliada item a item.
+
+**E a disputa foi capturada em movimento.** Entre dois prints separados por ~2
+minutos, no mesmo item 1: melhor valor **R$ 597,9000 → R$ 593,9600**, tempo
+**01:56 → 01:50 → 01:39**. É a confirmação visual do que ela descreveu: os valores
+mudam, e o relógio corre.
+
+##### "Minhas participações" — a porta, finalmente vista
+
+Rota: **`/comprasnet-web/seguro/fornecedor/compras`** — e não `cadastro-propostas`.
+Título `Compras eletrônicas`, com o caminho `🏠 > Compras eletrônicas`.
+
+- **Duas abas:** **`Minhas participações`** (ativa) e `Todas as compras`.
+- Um seletor de situação à direita, em **`Em andamento`**.
+- `Exibindo 10 registro(s)`.
+- Cada card traz, em três linhas: `PREGÃO ELETRÔNICO N° 90007/2024`, depois
+  `160161 - COMANDO DO EXERCITO` (**UASG e órgão na mesma linha**), depois
+  `Menor Preço / Maior Desconto` em laranja. À direita, `Etapa: Seleção de
+  fornecedores`.
+- **Os três "90007/2024" estão lá, um embaixo do outro**: Comando do Exército
+  (160161), EPA-Secretaria de Adm. Penitenciária (925852) e EPA-Secretaria de
+  Turismo (926216). É exatamente o caso que a bateria testa — e a prova de que
+  casar só pelo número do pregão escolheria o card errado.
+- Compra sem etapa mostra o **estado em azul** no lugar: `COMPRA REVOGADA`,
+  `COMPRA SUSPENSA`, `COMPRA ANULADA`.
+- O pregão do dia aparece como `PREGÃO ELETRÔNICO N° 37/2026 / 925449 -
+  FUND.PUBL.EST.HOSP.DE CLÍNICAS GASPAR VIANNA / **Etapa: Disputa**`.
+
+**E aqui está a correção mais importante para o código:** nos cards **não há botão
+com texto**. Há **quatro ícones** à direita — 💙 (favorito), 📋 (prancheta), **➕
+azul** e **⌄** (expandir) —, e o card do 37/2026 não tem a prancheta que os outros
+têm. Ou seja, o `aria-label="Participar/acompanhar compra"` que o módulo procura
+**é de um ícone**, não de um botão rotulado; e o rótulo "Vá para a sala de disputa",
+que a Izabelle descreveu, não aparece nesta lista — deve nascer **dentro** da
+compra, no instante da abertura.
+
+> Consequência prática: a busca por `button[aria-label=…]` que o módulo fazia até
+> hoje de manhã estava certa em espírito e frágil na forma. A mudança desta noite —
+> aceitar `a[href]`, `[role="button"]` e casar o rótulo sem acento e sem caixa —
+> era necessária, e ainda assim **o seletor real só se confirma com o HTML do dia**.
+
+##### O painel do item: três abas, e o que cada uma entrega
+
+Clicando no ícone `☰` (`btn-prop-lances`), a área dos itens dá lugar a um painel
+com **três abas internas** — e é aqui que mora tudo o que a sala esconde:
+
+**1. `Propostas iniciais`** — duas colunas, `Proposta` e `Valor unitário`:
+
+```
+Proposta 1    R$ 1.034,0000        Proposta 5    R$ 1.034,1900
+Proposta 2    R$ 1.034,0000        Proposta 6    R$ 1.034,1900
+Proposta 3    R$ 1.034,1800        Proposta 7    R$ 1.034,1900
+Proposta 4    R$ 1.034,1900        Proposta 8    R$ 3.000,0000
+Observações: - Relação das propostas iniciais enviadas por fornecedor
+```
+
+**Oito propostas = as oito empresas** que ela citou. E os concorrentes são
+**anônimos**: "Proposta 1", "Proposta 2"… Nenhum nome, nenhum CNPJ.
+
+**2. `Melhores valores por fornecedor`** — três colunas, **um registro por
+concorrente**, ordenado do melhor para o pior:
+
+```
+Data/hora registro     Valor do lance (unitário)   Origem
+01/10/2026 09:22:53    R$ 425,4000                 Lance
+01/10/2026 09:22:52    R$ 425,5000                 Lance
+01/10/2026 09:11:30    R$ 500,0000                 Lance
+01/10/2026 09:12:25    R$ 780,0000                 Lance
+01/10/2026 09:06:46    R$ 1.000,0000               Lance
+01/10/2026 09:22:22    R$ 1.030,1000               Lance     ← o dela
+01/10/2026 09:00:06    R$ 1.034,1900               Proposta
+01/10/2026 09:00:06    R$ 3.000,0000               Proposta
+Observações: - Relação dos melhores valores enviados por fornecedor
+             - As informações presentes nesta listagem refletem apenas o que
+               aconteceu durante a etapa de disputa.
+```
+
+**A colocação é posicional.** Não há coluna "posição" nem nome de empresa: a sexta
+linha é o sexto lugar, e foi assim que ela se achou — *"meu 1030, meu está bem
+aqui, eu estou em sexto lugar"*. R$ 1.030,1000 é, de fato, a sexta linha.
+
+> **Como o robô lê a própria posição**, então: pega `Meu valor (unitário)` da linha
+> do item e procura o índice dele nesta lista. É a única via — e tem uma armadilha:
+> **valores empatados** (há três R$ 1.034,1900 nas propostas iniciais). Com empate,
+> o índice não é único, e a resposta honesta é uma faixa ("entre 4º e 6º"), não um
+> número inventado. Fica registrado como requisito da implementação.
+
+A coluna **`Origem`** separa `Lance` de `Proposta` — ou seja, dá para saber quem
+ainda não lançou nada e está só com a proposta inicial.
+
+**3. `Todos os lances`** — duas colunas, `Data/hora registro` e `Valor do lance
+(unitário)`, sem origem e sem fornecedor. É o histórico cronológico da disputa.
+
+##### A prova do robô concorrente, em dados
+
+Esta é a descoberta que a reunião inteira perseguia sem saber. A aba `Todos os
+lances` do item 2, às 09:23 de 01/10/2026, no pregão 37/2026:
+
+| Hora | Valor | Δ do anterior | Δt |
+| --- | --- | --- | --- |
+| 09:22:43 | R$ 425,9000 | — | — |
+| 09:22:52 | R$ 425,5000 | −R$ 0,40 | 9 s |
+| **09:22:53** | **R$ 425,4000** | **−R$ 0,1000** | **1 s** |
+| 09:22:57 | R$ 424,0000 | −R$ 1,40 | 4 s |
+| **09:22:59** | **R$ 423,9000** | **−R$ 0,1000** | **2 s** |
+| 09:23:07 | R$ 423,0000 | −R$ 0,90 | 8 s |
+| **09:23:10** | **R$ 422,9000** | **−R$ 0,1000** | **3 s** |
+
+O padrão se repete três vezes em 27 segundos: **alguém baixa um degrau qualquer, e
+em 1 a 3 segundos vem uma cobertura de exatamente R$ 0,1000** — o intervalo mínimo
+do edital, ao centavo. É a descrição da Izabelle, literalmente: *"nem que eu baixe
+20, 30 reais, ele sempre vai dar um valor de um centavo abaixo […] não dava nem
+tempo dele digitar o número"*.
+
+**Há robô disputando este pregão.** Não é suposição de ninguém: está na tabela do
+portal, com carimbo de hora. E isso fecha, com evidência, a dúvida levantada em
+29/09 — a que eu havia atribuído a um resumo automático.
+
+O que decorre disso para o nosso desenho, e que já estava escrito por outro motivo:
+
+1. **Intervalo em segundos entre lances é defesa, não cortesia.** Contra um robô que
+   cobre em 1 segundo, lançar na mesma velocidade é descer ao piso em minutos. Quem
+   decide até onde se vai é o **piso por item**, e ele é inegociável.
+2. **O incremento é do edital.** Aqui foi R$ 0,10 porque o edital diz R$ 0,1000.
+   Nunca uma constante no código.
+3. **Ganhar a corrida de velocidade não é a meta.** Pela régua da própria operação,
+   a meta é cobrir 182 itens sem perder prazo — e isso o concorrente rápido não
+   ameaça.
+
+##### A fase seguinte, e a mensagem do pregoeiro palavra por palavra
+
+No vídeo, ela abre o **outro** processo — o de Barcarena —, e a tela é
+`Acompanhamento seleção de fornecedores`:
+
+```
+Pregão Eletrônico N° 9/2026 (SRP)  (Lei 14.133/2021)
+UASG 980425 - PREFEITURA MUNICIPAL DE BARCARENA - PA
+Critério julgamento: Menor Preço / Maior Desconto    Modo disputa: Aberto
+[ timeline: … ← Disputa ──●── Seleção … ]
+Exibindo 2 de 182 registro(s)
+181  LEGUME IN NATURA   Exclusividade ME/EPP   Homologado   Qtde solicitada 29 …
+182  VINAGRE            Exclusividade ME/EPP   Homologado   Qtde solicitada 979 …
+```
+
+Confirma de uma vez: **os 182 itens**, a timeline de fases (`app-timeline-compra`),
+e que o item nesta fase mostra `Qtde solicitada`, `Qtde aceita` e `Valor estimado
+(unitário)` — não mais lance.
+
+E, aberto por cima, o painel **`Mensagens`** — *"Visualize aqui as mensagens da
+Sessão Pública"* —, com um **filtro por compra** (funil) e os cartões:
+
+> **Mensagem do Participante · Item 21**
+> "De 61.336.456/0001-11 - ciente Sr pregoeiro"
+
+> **Mensagem do Pregoeiro · Item 4**
+> "Sr Fornecedor MAOV COMERCIO LTDA, CNPJ 62.983.096/0001-02, **você foi convocado
+> para enviar anexos para o item 4. Prazo para encerrar o envio: 11:28:00 do dia
+> 01/10/2026.** Justificativa: Documentos descritos no chat."
+
+> **Mensagem do Pregoeiro · Item 4**
+> "Para 62.983.096/0001-02 - A proposta deverá ser encaminhada em arquivo único e
+> anexada no item 4 do sistema comprasgov e informo que **o prazo de envio é de 02h
+> (duas horas)** a contar de…"
+
+**Três conferências de uma vez**, e todas passam:
+
+1. O regex de convocação do módulo — `você foi convocado` e `Prazo para encerrar o
+   envio: <hora> do dia <data>` — **casa com o texto real, ao caractere**. Foi
+   escrito ontem à tarde contra outro pregão, e aqui está validado contra um
+   terceiro.
+2. A regra `paraNos`: a mensagem **cita o CNPJ do destinatário**
+   (62.983.096/0001-02, a MAOV — não a empresa logada). Mensagem com CNPJ de
+   terceiro não é nossa, e é assim que o módulo decide.
+3. **O prazo de duas horas está escrito pelo próprio pregoeiro** — *"o prazo de
+   envio é de 02h (duas horas)"*. Deixa de ser lembrança da operação e passa a ser
+   texto do portal.
+
+E há **`Mensagem do Participante`** além de `Mensagem do Pregoeiro`: o chat tem os
+dois lados, e o módulo precisa distinguir — convocação só vem do pregoeiro.
+
+##### Um achado lateral: há um segundo login em jogo
+
+A tela de Barcarena está logada como **`NATANIEL OLIMPIO…` / `BAQPLAST COMERCIO E
+REPRESENTA…`** — outro CPF, outra empresa. Não é o Rafael, nem o certificado da
+Santa Rosa.
+
+Vale registrar porque mexe com duas coisas: o robô guarda **um perfil por pessoa**
+(`comprasgov-<hash do CPF>`), e disputar pela BAQPLAST exigiria **outro
+certificado e outro perfil** — não é trocar de empresa dentro do mesmo login. E
+reforça o que já estava escrito: **a empresa vem do vínculo da pessoa no SICAF**.
+Quem opera a BAQPLAST hoje, pelo que a tela mostra, não é o CPF que o robô usa.
+
+##### O que isto fecha, e o que continua aberto
+
+**Fechado por evidência** (não precisa mais do 08/10):
+
+- a estrutura da sala com a etapa aberta, campo a campo;
+- o cronômetro **por item**, e que eles correm separados;
+- as três abas internas do painel do item e as colunas de cada uma;
+- que a colocação é **posicional** e os concorrentes, **anônimos**;
+- o formato do parâmetro `compra` da URL;
+- o texto da convocação e o prazo de duas horas;
+- que há robô concorrente, com o padrão medido;
+- que o login do robô (CPF 014.570.832-21, Santa Rosa) é o certo.
+
+**Aberto, e só o dia resolve:**
+
+- **os seletores** — `data-test`, classes, se `Enviar lance` é `<a>` ou `<button>`
+  no DOM, qual o `aria-label` do ícone ➕ da lista;
+- **o aviso "Vá para a sala de disputa"**, que ninguém fotografou;
+- **o que o portal responde ao enviar** — mensagem de sucesso, erro de valor fora
+  do intervalo, recusa por lance maior que o próprio;
+- **se a URL direta com o `compra` certo entra**, ou cai em `acesso-nao-autorizado`;
+- **o comportamento do captcha** durante a disputa.
+
+É pouco, e é tudo de uma natureza só: comportamento, não layout. O 08/10 deixou de
+ser "descobrir a sala" e passou a ser **conferir seletores e exercitar o envio** —
+que é um dia de trabalho muito mais barato, e muito menos arriscado.
+
+#### 01/10, à noite — o que a reunião mudou no código
+
+Duas mudanças em `src/portals/comprasgov-sala.js`, as duas saídas da transcrição
+(backup `comprasgov-sala.js.bak-rotulos-20261001-*`):
+
+**1. O rótulo novo.** `ROTULOS_ENTRAR` ganhou `'Vá para a sala de disputa'`, mais
+duas variantes prováveis (`'Ir para a sala de disputa'`, `'Sala de disputa'`). O
+comentário no código diz de onde veio — fala, não HTML —, porque isso muda o grau
+de confiança: os outros quatro rótulos foram lidos de página real; este foi ouvido.
+
+**2. O casamento do rótulo deixou de ser igualdade exata de `aria-label`.** Era
+`button[aria-label="<rótulo>"]`, o que serve para rótulo lido de HTML e não serve
+para rótulo ouvido: não se sabe se o portal escreve o aviso como `aria-label`, como
+texto do botão, com acento diferente ou como link. Agora a comparação é **sem
+acento, sem caixa, no `aria-label` e no texto visível**, sobre
+`button, a[href], a[role="button"], [role="button"]`. E os prints, vistos depois,
+mostraram que essa frouxidão era **necessária, não defensiva**: na lista "Minhas
+participações" o acionador de cada card é um **ícone**, não um botão com texto.
+
+> **Afrouxar o rótulo não afrouxa a decisão.** A trava de verdade continua sendo
+> **número do pregão + UASG** dentro do card, e a exigência de **um só** botão de
+> entrada no bloco. É o que impede o robô de entrar na compra errada quando há três
+> "90007/2024" de órgãos diferentes na mesma lista — caso real da Santa Rosa,
+> fotografado no print das 09:13, e um dos testes da bateria.
+
+A resposta de `acharCardDaCompra` ganhou **`ondeCasou`** (`aria-label` ou `texto`):
+no dia 08/10 isso diz, sem precisar de print, se o botão novo existe e como o
+portal o escreve.
+
+**3. A bateria ganhou quatro conferências, e uma delas pegou um defeito meu na
+primeira execução.** São estas:
+
+| Conferência | O que protege |
+| --- | --- |
+| `fallback interno cobre todos os rotulos` | a lista está **duplicada** dentro de `acharCardDaCompra`, porque a função é serializada para dentro da página (`page.evaluate`) e não enxerga `ROTULOS_ENTRAR`. O teste lê o próprio fonte da função (`.toString()`) e exige que toda entrada apareça lá, comparando sem acento |
+| `casa rotulo sem acento e em caixa alta` | página sintética com `<button>VA PARA A SALA DE DISPUTA</button>` |
+| `diz onde o rotulo casou` | `ondeCasou === 'texto'` quando não há `aria-label` |
+| `rotulo curto nao casa dentro de frase` | um link "Leia o aviso sobre **a sala de disputa** antes de participar" **não** pode virar botão de entrada |
+
+A última **falhou de primeira**. O limiar que eu havia escrito era "rótulo com 15
+caracteres ou mais casa por trecho", e `sala de disputa` tem **exatamente 15** — o
+link de aviso virava porta de entrada. Corrigido para 20, que preserva os rótulos
+que precisam do casamento por trecho (`va para a sala de disputa` tem 25) e exclui
+o curto, que passa a só casar exato. **Duas cópias divergentes e um limiar escolhido
+no olho** são o tipo de defeito que nunca aparece em produção até o dia em que
+aparece — e este dia teria sido 08/10, às 9h.
+
+Bateria: **24 conferências, todas passando**, rodadas contra o HTML real capturado
+e contra páginas sintéticas, sem portal e sem login.
+
+#### 01/10, à noite — a especificação do robô na sala, escrita do que foi visto
+
+Tudo o que foi levantado em 01/10 — a transcrição, os cinco prints e os quadros do
+vídeo — converge para uma especificação de comportamento. Ela está escrita aqui
+porque **é a régua pela qual o código vai ser conferido em 08/10**, e porque metade
+dela já virou função testada no mesmo dia.
+
+##### O ciclo de uma disputa, passo a passo
+
+```
+ 1. entrar na compra        → lista "Minhas participações" (ou URL direta)
+ 2. provar que é a sala     → ehSalaDeDisputa()        ← senão, PARA
+ 3. ler a sala              → extrairItensDaSala()
+ 4. por item, decidir       → proximoLance()
+ 5. lançar                  → acharCampoDeLance() + digitar + clicar
+ 6. conferir                → verificarResultado()
+ 7. ler o chat              → extrairMensagensDoPregoeiro()
+ 8. voltar ao passo 3       → RECARREGANDO a página
+```
+
+**O passo 2 não é formalidade.** A vitrine pública e a sala se parecem — foi dito na
+reunião: *"é bem parecido com essa que eu estava vendo"* / *"só que nessa daí você
+não está participando"*. Um robô que confunde as duas diz estar disputando enquanto
+olha de fora, e perde o pregão **em silêncio**. Por isso `ehSalaDeDisputa` exige
+**dois sinais independentes** entre: título `Enviar lance`, rota
+`/fornecedor/disputa`, campo de lance visível, e o texto `Intervalo mínimo entre
+lances`. Um sinal solto não basta, e "não sei" nunca vira "sim".
+
+**O passo 8 é recarregar, não esperar.** A operação foi explícita: *"a gente fica
+atualizando aqui para ver os valores […] atualizou aqui a página, ele já aparece
+novo"*. Só o melhor valor do topo pisca sozinho; a lista de lances, não. Um laço que
+confie na atualização automática lê a tela velha a disputa inteira — e o valor que
+ele lê continua **plausível**, que é o que torna esse defeito invisível em teste.
+
+##### A regra do lance, em uma função só
+
+`proximoLance()` decide, e **devolve sempre um motivo** — inclusive quando decide
+não lançar. Silêncio não é resposta: o laço registra o motivo, e é por ele que se
+explica, depois, por que o robô ficou parado.
+
+| Situação | Decisão | Por quê |
+| --- | --- | --- |
+| estamos **ganhando** | não lança | cobrir o próprio lance queima margem contra ninguém |
+| **intervalo mínimo** não foi lido | não lança | o portal publica esse número **por item**; chutar o passo é lance recusado no meio da disputa |
+| **melhor valor** não foi lido | não lança | sem referência não há alvo |
+| alvo ficaria **abaixo do piso** | não lança **e encerra o item** | o piso é onde a operação decidiu parar: *"a partir do momento que chegou naquele valor, ele encerra, ele não dá mais lances"* |
+| alvo **não melhora** o nosso | não lança | acontece com leitura velha ou arredondamento; lançar pioraria a nossa posição |
+| alvo ≤ 0 | não lança | guarda contra leitura corrompida |
+| caso normal | lança **melhor − intervalo mínimo** | o degrau é o do edital, nunca uma constante |
+
+Três decisões merecem nome, porque poderiam ter sido outras:
+
+1. **O alvo é sempre `melhor − intervalo mínimo`, nunca mais que isso.** Baixar um
+   degrau maior é decisão humana — e, pelo que se mediu no 37/2026, quem baixa um
+   degrau grande é coberto por R$ 0,10 em 1 a 3 segundos. O robô não entra nessa
+   corrida: quem decide o limite é o piso.
+2. **O piso é limite duro, e chegar nele é parada normal**, não erro. O item sai do
+   robô e fica com a pessoa — *"a gente já aguarda para ser convocado, ver nossa
+   colocação"*.
+3. **A aritmética é em décimos de milésimo** (`Math.round(v * 10000)`), porque o
+   portal publica quatro casas (R$ 597,9000) e porque `0,1 + 0,2` em ponto flutuante
+   erraria a comparação com o piso — exatamente na hora em que ela mais importa.
+
+##### Como o robô sabe em que lugar está
+
+A sala **não diz a colocação**. O painel `Melhores valores por fornecedor` traz uma
+linha por concorrente, ordenada do melhor para o pior, **sem nome e sem número de
+posição**. A colocação é posicional — a sexta linha é o sexto lugar, e foi assim que
+a operação se achou na chamada.
+
+`posicaoNaLista(meuValor, valores)` faz essa conta, e tem uma regra que vale
+registrar: **com empate, ela não inventa um número**. Há valores repetidos de
+verdade (três propostas de R$ 1.034,1900 no item 2). Nesse caso devolve a **faixa**
+(`de`, `ate`) e quantos empataram, e quem exibe diz "entre 4º e 6º". Um robô que
+afirma "4º lugar" quando são três empatados está mentindo com precisão falsa.
+
+##### O cronômetro é por item
+
+Os dois itens do 37/2026 marcavam **01:39 e 01:57 ao mesmo tempo**. Cada item
+prorroga por conta própria a cada lance recebido. Consequências:
+
+- não existe "o cronômetro da sessão", e qualquer estratégia de iminência é
+  avaliada **item a item**;
+- o item encerra sozinho enquanto outros seguem abertos — a aba `Em disputa (N)`
+  muda de contagem durante a sessão;
+- `app-tempo-restante` vazio **não** quer dizer disputa fechada: quer dizer que
+  aquele item não está com a etapa aberta.
+
+##### O que o robô NÃO faz, por decisão da operação
+
+- **Não envia proposta nem anexo.** *"isso daqui é manual"*. Depois dos lances, a
+  convocação chega pelo chat, há um aceite e a pessoa anexa o arquivo que o
+  Praefectus preparou. O papel do robô ali é **avisar**, com o prazo que leu da
+  mensagem.
+- **Não escolhe o piso nem o pregão.** Os dois são decisão do cliente.
+- **Não decide se vale insistir** depois do piso: entrega a posição e sai.
+
+##### Os freios, e por que cada um existe
+
+| Freio | Contra o quê |
+| --- | --- |
+| piso por item | guerra de centavos contra robô concorrente — medida, não suposta |
+| intervalo em segundos entre lances | descer ao piso em minutos por reflexo |
+| `ehSalaDeDisputa` com dois sinais | disputar a vitrine |
+| número do pregão **+ UASG** no card | entrar na compra errada (há três "90007/2024" na lista da Santa Rosa) |
+| um só campo de lance por item | lançar no item do vizinho |
+| `verificarResultado` só com frase conclusiva | contar como enviado um lance que o portal recusou |
+| modo automático desligado por padrão | *"com esse medo dele acabar dando lance errado"* |
+
+##### O que o robô ganhou hoje, e o que isso corrigiu
+
+Seis peças novas em `src/portals/comprasgov-sala.js`, todas nascidas dos prints e
+**todas testadas sem portal** (`testar-lance.js`, 43 conferências; com as 24 de
+`testar-sala.js`, **67 ao todo**):
+
+| Função | O que faz | Nasceu de |
+| --- | --- | --- |
+| `montarParametroCompra` | monta o `?compra=` da URL (UASG + 05 + nº + ano) | as duas URLs fotografadas |
+| `ehSalaDeDisputa` | separa a sala da vitrine | a comparação feita na chamada |
+| `acharCampoDeLance` | acha campo e acionador do item, e lê o intervalo mínimo | a linha do item em disputa |
+| `posicaoNaLista` | a colocação, com faixa no empate | o painel de melhores valores |
+| `proximoLance` | a regra inteira do lance | a fala sobre edital e piso |
+| (na leitura da sala) | `Etapa aberta`, tempo por item, 4 casas | os prints |
+
+**E `acharCampoDeLance` corrigiu dois defeitos que teriam quebrado a disputa de
+08/10**, os dois invisíveis sem os prints:
+
+1. **O acionador era procurado só em `<button>`.** O portal usa um **link**. O robô
+   teria falhado com *"nenhum botão de enviar lance junto do campo do item 1"* —
+   com o campo preenchido, na frente do cronômetro correndo.
+2. **Exigia a palavra "item" no bloco.** A linha da sala é `1  ESTERILIZANTE
+   QUÍMICO`: número e descrição, sem a palavra "item". Com dois itens em disputa —
+   o caso fotografado — o robô teria recusado lançar nos dois.
+
+> Vale o registro de método: **os dois defeitos estavam no código havia semanas e
+> passavam em todo teste**, porque todo teste rodava contra HTML de sala fechada. O
+> que os revelou não foi uma revisão, foi **olhar a tela certa**.
+
+Ao ligar `enviarLance` ao módulo, 55 linhas de `page.evaluate` inline saíram do
+`comprasgov.js`. O ganho não é tamanho: é que aquele trecho **não dava para testar
+sem portal**, e agora dá.
+
+#### O plano até a disputa de 08/10
+
+O que falta, em ordem, com o que cada passo depende. Os passos 1 a 4 não dependem de
+ninguém; os de 5 em diante precisam do dia.
+
+**Já feito em 01/10** — para não se repetir:
+
+- ✅ leitura da sala, do chat e do card da compra (`comprasgov-sala.js`, 24 testes);
+- ✅ as seis peças do lance acima (43 testes);
+- ✅ `enviarLance` ligado ao módulo, com os dois defeitos corrigidos;
+- ✅ certificado da Santa Rosa reinstalado e `certificado.js` corrigido;
+- ✅ capacidade corrigida (1800 MB/sessão, 4 disputas simultâneas);
+- ✅ flags de isolamento removidas do Chrome.
+
+**1. Ligar a leitura nova ao laço** — ✅ **feito em 01/10, madrugada**
+O `comprasgov.js` ainda lê a sala pelos métodos antigos (`lerSituacoesDosItens`,
+`lerMelhorLance`, `resumoDaClassificacao`), que trabalham por item e por texto. O
+laço precisa passar a usar `extrairItensDaSala` — uma leitura por página, não por
+item — e `proximoLance` para decidir. É o que transforma as peças em
+comportamento.
+
+**2. A navegação até a sala** — ✅ **escrita em 01/10, madrugada**; falta exercitar ao vivo (precisa de um login com clique humano)
+`irParaSalaDeDisputa(numero, uasg)`: tenta a **URL direta** com
+`montarParametroCompra`; se cair em `acesso-nao-autorizado`, volta ao caminho por
+cliques — menu → "Licitação e Dispensa (novo)" → aba **Minhas participações** →
+`acharCardDaCompra` → clicar o ícone. Nasce escrita, só se exercita no dia.
+
+**3. Ler os três painéis do item** — ✅ **feito em 02/10** (28 conferências)
+`abrirPainelDoItem(numero)` + leitura das abas `Propostas iniciais`, `Melhores
+valores por fornecedor` e `Todos os lances`. É daí que sai a colocação (via
+`posicaoNaLista`) e o número de concorrentes. Hoje o robô não sabe em que lugar
+está.
+
+**4. Corrigir `situacoesDosItensNoTexto`** — ✅ **feito em 02/10** (13 conferências), junto com a guarda que impede o robô de sair da sala
+Está registrado como defeituoso desde 29/09. Agora conhecemos os textos reais:
+`Etapa aberta (prorrogação)`, `Homologado`, além dos da aba Encerrados. Melhor
+ainda: a situação já vem de `extrairItensDaSala.caracteristicas`, e o método antigo
+pode simplesmente sair.
+
+**5. Conferir os seletores** *(08/10, na sala)*
+`data-test`, classes, se `Enviar lance` é `<a>` ou `<button>` no DOM, o `aria-label`
+do ícone que entra na compra, e se o aviso **"Vá para a sala de disputa"** existe —
+e com que texto. Guardar o HTML da sala **com a etapa aberta**, que é a captura que
+falta na coleção.
+
+**6. Exercitar o envio** *(08/10, com o modo automático DESLIGADO)*
+Lance manual pela tela, com o robô observando, para aprender **o que o portal
+responde**: a frase de sucesso, a de valor fora do intervalo, a de lance pior que o
+próprio. `verificarResultado` hoje adivinha essas frases.
+
+**7. Testar a URL direta** *(08/10, primeira coisa)*
+Um segundo de teste. Se entrar, o robô pula a navegação por cliques — a parte mais
+frágil dele.
+
+**8. O captcha durante a disputa** *(08/10)*
+Saber se aparece, quando, e se o aviso chega a tempo de alguém clicar.
+
+**9. Central de Notificações** — ⚠️ **parcial**: o aviso de virada de etapa existe (R-11, 02/10) e falta o deploy do webhook; a central do portal segue sem consumidor
+`GET /notificacoes-portal` já existe no agente e não está ligado a nada. É por ele
+que chega o aviso de virada de etapa que a operação pediu com todas as letras.
+
+**10. Auditoria de usabilidade do front do robô** — ✅ **feita em 02/10**; o
+relatório está na seção "auditoria de usabilidade do robô", logo acima. Pedido do
+Ian em 01/10, à noite. As perguntas eram:
+Depois dos passos 1 a 4, olhar a tela do cliente e a do admin com três perguntas:
+**(a)** a forma como o front está montado condiz com o jeito como o robô é
+realmente usado — uma pessoa que disputa todo dia, de manhã, com vários itens ao
+mesmo tempo? **(b)** o usuário tem controle de fato: dá para ligar, desligar,
+mudar piso e parar um item no meio da disputa, sem depender de nós? **(c)** o robô
+avisa tudo o que precisa avisar, e em particular **o que a operação pediu com todas
+as letras** — *"que desse um alerta: olha, já acabou aqui a disputa de lance, agora
+tá na parte de seleção de fornecedores, fique atento"*. Conferir também os avisos
+de captcha, de lance recusado, de item que bateu no piso e de disputa que encerrou,
+contra o que existe hoje em `robo_historico`, no sininho e na tela remota.
+**(c-bis)** os campos que o agente passou a mandar em 02/10 e **o front ainda não
+usa**: `posicao_de`, `posicao_ate`, `empatados`, `ja_lancaram`, `total_de_lances` e
+`posicao_lida_em` (da leitura dos painéis), e o evento `etapa-mudou`. Decidir
+**como mostrar "entre 4º e 7º" sem parecer defeito** — a faixa é a resposta honesta
+quando há empate, mas uma tela que mostra faixa sem explicar parece quebrada.
+**(d)** e, atravessando as três, o inventário: **front e back já têm todas as
+funções e todos os formulários** para configurar e controlar o robô, ou há campo
+que só existe no banco e não tem onde ser preenchido — e campo na tela que o agente
+ignora? O levantamento vai coluna a coluna (`robo_configuracoes`,
+`robo_itens`/piso, estratégias, intervalo em segundos, teto de lances, modo
+automático) e termina numa tabela **campo × tela × quem lê**, dizendo o que falta
+dos dois lados.
+
+**11. As quedas do Chrome** *(sem causa confirmada)*
+Mediu-se que a memória fica no limite (1,7 GB por Chrome, 7,9 GB na VPS). A hipótese
+das flags **ficou sem confirmação** — elas saíram, e o Chrome ainda caiu. Antes de
+pôr o robô para valer numa manhã com três ou quatro disputas, vale avaliar aumentar
+a RAM; é decisão que passa pelo Rafael, dono da conta.
+
+#### 01/10, madrugada — o robô passa a ir para a área logada
+
+Três mudanças grandes, nesta ordem, e uma descoberta que explica meses de
+confusão.
+
+##### A descoberta: o robô nunca esteve na sala
+
+`navegarParaDisputa`, o método que o laço chama para entrar na disputa, ia para
+`this.publicUrl` — `/comprasnet-web/public/compras`, **a página pública**. O robô
+pesquisava a compra na vitrine e ficava ali a disputa inteira.
+
+Isso fecha o círculo de 29/09 e 01/10. Não era permissão, não era SICAF, não era
+certificado: **o robô estava na tela errada desde sempre**, e a tela errada é
+convincente — mostra a compra, os itens, a situação de cada um. Só não tem campo de
+lance, e é o que a operação disse na chamada sem saber que estava diagnosticando um
+defeito nosso: *"você não está participando, só está acompanhando por fora"*.
+
+##### `irParaSalaDeDisputa` — dois caminhos, nesta ordem
+
+As rotas da área logada entraram no construtor, lidas da barra de endereços dos
+prints:
+
+```
+/seguro/fornecedor/compras                 → "Minhas participações"   ← a porta
+/seguro/fornecedor/disputa?compra=<id>     → a sala ("Enviar lance")
+/seguro/fornecedor/acompanhamento-compra   → seleção de fornecedores
+/seguro/fornecedor/cadastro-propostas      → cadastrar proposta
+```
+
+1. **URL direta**, montada por `montarParametroCompra`. Se entrar, o robô pula a
+   navegação por cliques — a parte mais frágil dele.
+2. **Por cliques**, o caminho que a operação ditou ao vivo: Minhas participações →
+   `acharCardDaCompra` (número **+ UASG**) → clique de mouse de verdade, porque a
+   página roda hCaptcha e observa o gesto.
+
+Depois de cada tentativa, `ehSalaDeDisputa` confere **onde se chegou**. E o método
+**não levanta exceção quando não chega**: devolve `{ ok: false, motivo }`, porque
+antes de a sessão abrir a sala não existe, e isso não é erro — é cedo. O laço segue
+para a vitrine, que serve para acompanhar, e tenta a sala de novo a cada rodada.
+
+##### A leitura da sala passou a ser UMA por rodada
+
+Cada item custava **cinco idas à página** (`lerMelhorLance`, `souLider`, `lerSala`,
+`nossoLance`, `resumoDaClassificacao`). Num pregão de 182 itens — o tamanho que a
+operação disputa de verdade — são **910 leituras por rodada**: o robô passaria a
+rodada inteira lendo, sem tempo de lançar.
+
+Agora `lerSalaInteira()` lê tudo de uma vez e o laço distribui aos itens. Quando a
+leitura falha, ou o portal é outro, cada item cai nos métodos antigos, intactos.
+
+E com ela veio o conserto de um defeito silencioso: **`faseAberta()` respondia
+`false` sempre.** `lerSala` só sabia dizer `encerrada`, `suspensa` e `aguardando` —
+nunca `aberta` —, e `faseAberta` testava justamente `fase === 'aberta'`. Faltava
+saber **qual é o texto da etapa aberta**, e os prints deram: `Etapa aberta
+(prorrogação)`. Agora `faseDoItem()` responde, e `segundosDoRelogio()` converte
+`01:39` em 99 segundos — o relógio **de cada item**, que é o que alimenta a
+estratégia de iminência.
+
+O intervalo mínimo também passou a vir da tela, por item: **o que o portal publica
+manda sobre o que foi cadastrado**, porque cadastro velho vira lance recusado.
+
+##### O teste ao vivo, e onde ele parou
+
+Rodado em 01/10 à meia-noite e cinquenta, sem dar lance e sem mudar nada no portal:
+
+| Passo | Resultado |
+| --- | --- |
+| abrir o Chrome com o perfil persistente | ✅ `comprasgov-46353b4f41d806ff` |
+| abrir `/seguro/fornecedor/compras` | ❌ caiu em `/acesso-nao-autorizado` |
+| motivo | *"Sua sessão pode ter expirado"* — o último login foi às 9h, ~16 h antes |
+| login pelo certificado | ❌ parou no clique de **"Seu certificado digital"** |
+
+A mensagem do próprio agente diz o que falta, e é a mesma de sempre: *"o que falta é
+o clique em 'Seu certificado digital', que a página só aceita de uma pessoa por
+causa do hCaptcha"*.
+
+> **Conclusão honesta:** a navegação até a sala está **escrita e carregando**, mas
+> **não foi exercitada ao vivo** — faltou sessão. Para exercitá-la basta um login
+> com clique humano na tela remota, em qualquer horário; não precisa esperar o
+> 08/10, porque "Minhas participações" existe o dia inteiro.
+
+Dois achados laterais do mesmo teste:
+
+- **A sessão do perfil persistente não dura a noite.** Entre 9h e 0h50 ela caiu.
+  Para a disputa das 9h isso é indiferente (o login é feito na hora), mas derruba
+  a ideia de "deixar logado na véspera".
+- **O portal acha que o Chrome é a versão 127.** O instalado é o 153, e não há
+  user-agent forjado no módulo do Compras.gov. O aviso *"Your web browser (Chrome
+  127) has a serious security vulnerability"* vem do próprio portal. Sem efeito
+  conhecido, mas registrado: navegador tido como desatualizado é candidato natural
+  a tratamento diferente.
+
+#### 01/10, madrugada — as quedas do Chrome: o que a medição derrubou
+
+A hipótese que estava de pé era memória. **Ela não se sustenta**, e o diagnóstico
+desta madrugada mostra por quê:
+
+| Medida | Resultado |
+| --- | --- |
+| RAM total | 7.936 MB, com **5.543 MB disponíveis** |
+| **Swap** | **4 GB, com 1 MB em uso** |
+| OOM killer no `dmesg` | **nenhum registro** |
+| OOM no `syslog`/`kern.log` | **nenhum registro** |
+
+Um Chrome morto por falta de memória deixa rastro no kernel (`Out of memory: Killed
+process …`). Não há nenhum, e há 4 GB de swap intocado. **Se fosse memória, o swap
+teria sido usado antes de qualquer morte.**
+
+O que os logs mostram, contando onde a aba morreu nas 13 ocorrências registradas:
+
+```
+   8 × A aba em uso morreu (na volta do certificado (clique humano))
+   4 × A aba em uso morreu (antes do screenshot lance-leitura-falha)
+   1 × A aba em uso morreu (na volta do certificado)
+```
+
+**Nove das treze são na volta do certificado** — 17/09 (3), 25/09 (2), 29/09 (3) e
+uma sem o "clique humano". O padrão não é carga: é **momento**. A aba morre quando o
+navegador volta do fluxo do gov.br, que é justamente onde o processo da aba troca de
+origem (`sso.acesso.gov.br` → `comprasnet.gov.br` → `cnetmobile…`).
+
+Isto reabre, por outro lado, a história das flags. Em 10/09 elas foram postas
+**exatamente para isso**: *"na volta do gov.br para o comprasnet o Chrome trocava o
+processo da aba (site isolation) e o Puppeteer perdia o frame"*. Em 01/10 elas
+saíram, porque se suspeitava que derrubavam o Chrome na área logada. **As duas
+observações podem ser verdadeiras ao mesmo tempo**, e nenhuma está provada.
+
+##### O que fazer, em ordem de custo
+
+| # | Medida | Custo | O que resolve |
+| --- | --- | --- | --- |
+| 1 | **Instrumentar a queda**: ao perder a aba, registrar RSS do Chrome, memória livre, URL de origem e destino, e o `Target.crashed` do CDP | baixo, nosso | separa de uma vez "morreu por memória" de "morreu na troca de origem". Hoje o log diz que morreu, não por quê |
+| 2 | **Proteger o agente do OOM** (`oom_score_adj` alto no Chrome, baixo no Node) | baixo, nosso | se faltar memória, morre o Chrome e **não** o agente — que sobrevive para reabrir e avisar |
+| 3 | **Sobreviver à troca de processo**: em vez de guardar a referência da aba, reencontrá-la por `browser.targets()` depois de cada volta do SSO | médio, nosso | ataca o padrão medido (9 em 13), sem depender das flags |
+| 4 | **Limitar a memória do renderizador** (`--js-flags=--max-old-space-size`, `--renderer-process-limit`) | baixo, nosso | teto previsível por aba; só ajuda se (1) apontar memória |
+| 5 | **Não carregar imagem e fonte** por interceptação de requisição | médio | corta RAM e banda; **só depois** de conferir que não quebra o captcha |
+| 6 | **Mais RAM na VPS** | custo mensal, decisão do Rafael | só se (1) apontar memória — e, pela medição desta madrugada, **não aponta** |
+
+> A ordem importa: **medir antes de comprar**. A conta de 1,7 GB por Chrome segue
+> correta e continua limitando a 4 disputas simultâneas; o que não se sustenta é
+> atribuir **as quedas** à memória.
+
+#### 02/10 — o robô passa a saber em que lugar está (R-09)
+
+Até aqui o robô disputava **sem saber a própria colocação**. A linha do item diz o
+melhor valor e o nosso, e o polegar diz ganhando ou perdendo — nada mais. "Estamos
+em sexto" não existia para ele.
+
+Quem diz é o painel que o ícone de lista (`btn-prop-lances`) abre na linha do item,
+filmado em 01/10. Três abas:
+
+| Aba | Colunas | O que entrega |
+| --- | --- | --- |
+| `Propostas iniciais` | Proposta · Valor unitário | quantos concorrentes há, com os valores de partida |
+| `Melhores valores por fornecedor` | Data/hora registro · Valor do lance (unitário) · **Origem** | **a colocação**, e quem já lançou × quem está só com a proposta |
+| `Todos os lances` | Data/hora registro · Valor do lance (unitário) | o histórico cronológico da disputa |
+
+##### A colocação é posicional, e os concorrentes são anônimos
+
+Não há coluna de posição nem nome de empresa. **A sexta linha é o sexto lugar** — e
+é literalmente assim que a operação se acha: *"meu 1030 está bem aqui, eu estou em
+sexto lugar"*. O robô faz a mesma conta: pega `Meu valor (unitário)` da linha do
+item e procura o índice dele na lista ordenada.
+
+**Com empate, não se inventa número.** Há valores repetidos de verdade — quatro
+propostas de R$ 1.034,1900 no item 2 do 37/2026. Nesses casos `posicaoNaLista`
+devolve a **faixa** (`de`, `ate`) e quantos empataram, e a tela diz "entre 4º e 7º".
+Precisão falsa numa disputa é pior do que dizer "não sei", porque leva a decidir
+como se soubesse.
+
+##### O que foi escrito
+
+| Onde | O quê |
+| --- | --- |
+| `comprasgov-sala.js` | `acharBotaoDoPainelDoItem` (prefere `data-test`, cai no rótulo), `acharAbaDoPainel` (sem acento e sem caixa), `extrairPainelDoItem` (lê a tabela da aba ativa, com as células cruas junto) |
+| `comprasgov.js` | `lerPaineisDoItem(numero, meuValor)` — abre o painel, percorre as três abas, fecha, e devolve posição, concorrentes, quantos já lançaram e o total de lances |
+| `session-manager.js` | a posição entra na decisão e vai à tela, **com parcimônia** (abaixo) |
+
+**A bateria: 28 conferências, todas passando** (`testar-paineis.js`). O HTML é
+sintético, mas **os dados são reais** — foram lidos quadro a quadro da gravação, e é
+por isso que o teste reproduz o sexto lugar com os mesmos números que a operação
+disse em voz alta.
+
+##### Ler a posição custa navegação — e por isso tem regra
+
+Abrir o painel **troca a tela** do item, e voltar custa outra. Num pregão de 182
+itens, abrir o painel de todos a cada rodada consumiria a disputa inteira. A regra,
+nesta ordem:
+
+1. **só item com a etapa aberta** — nos outros a posição não muda mais;
+2. **no máximo uma vez por minuto por item** (`MS_ENTRE_LEITURAS_DE_POSICAO`);
+3. **mas sempre que o melhor valor mudou** desde a última leitura, porque aí a nossa
+   posição mudou de verdade.
+
+Entre leituras, a última posição conhecida continua valendo e vai à tela **com a
+hora em que foi lida** (`posicao_lida_em`): a tela não pode fazer parecer que um
+número de um minuto atrás é deste segundo.
+
+##### A guarda que importa
+
+Ler o painel não pode deixar o robô **fora da sala**. Se o lance vier logo depois e
+a tela ainda estiver no painel, o campo não existe e o lance se perde — com o
+cronômetro correndo. Por isso, ao fechar, `lerPaineisDoItem` **confere com
+`ehSalaDeDisputa` se voltou** e, se não voltou, recarrega a sala pela URL direta.
+
+Conferir custa um `evaluate`; não conferir custa a disputa.
+
+##### O que a tela do Praefectus passa a receber
+
+Além de `posicao`, agora chegam `posicao_de`, `posicao_ate`, `empatados`,
+`ja_lancaram`, `total_de_lances` e `posicao_lida_em`. **O front ainda não usa esses
+campos** — entra na auditoria de usabilidade (passo 10 do plano), junto com a
+pergunta de como mostrar "entre 4º e 7º" sem parecer defeito.
+
+#### 02/10 — o robô para de sair da sala (R-10)
+
+Este foi o **terceiro defeito da mesma família**, e o mais caro, porque acontecia
+**depois de tudo ter dado certo**.
+
+`lerSituacoesDosItens` — que o laço chamava a cada três minutos para saber se a fase
+de lances de algum item tinha acabado — fazia isto:
+
+```js
+const url = this.publicUrl + '/acompanhamento-compra?compra=' + this.compraId;
+await this.page.goto(url, …);
+```
+
+Ou seja: **navegava para a página pública**. Enquanto o robô nunca chegava à sala,
+isso era inofensivo — a vitrine era a única tela que ele conhecia. A partir do
+momento em que ele entra na sala, essa leitura **o arranca de lá no meio da
+disputa**, e a sala não volta sozinha: a tela que sobra não tem campo de lance.
+
+> **"Mas por que ir à página pública?"** — a pergunta do Ian, e a resposta é: não
+> há por quê. Durante a disputa a vitrine mostra **menos**: não tem lance, não tem
+> campo de lance, e a situação de cada item — a única coisa que se ia buscar lá — a
+> própria sala publica na linha do item. A única informação que **só** existe na
+> vitrine é o **CNPJ dos concorrentes**, que na sala são anônimos. E saber o CNPJ
+> não vale perder a disputa.
+
+##### A guarda, e por que ela é geral
+
+Não bastava consertar um método: **três** navegavam para a vitrine
+(`lerPropostasDoItem`, `lerSituacoesDosItens`, `lerDetalhesDoItem`), e qualquer um
+deles basta para tirar o robô da sala. Entraram duas peças em `comprasgov.js`:
+
+- **`naSalaDeDisputa()`** — responde com cache de 3 s, porque a pergunta aparece em
+  todo método que navega;
+- **`naoSairDaSala(oQue)`** — recusa a navegação e **diz no log o que foi recusado**.
+  Silêncio aqui seria pior: o robô pareceria estar lendo quando não leu.
+
+Estando na sala, cada um resolve pelo que a sala já tem: a situação sai de
+`caracteristicas`, o intervalo mínimo sai da linha do item, e quem lidera sai do
+polegar. **Fora da disputa nada muda** — sem sala, a navegação acontece como sempre.
+
+##### E o parser estava errado desde 29/09
+
+`situacoesDosItensNoTexto` esperava o tratamento ME/EPP **na linha seguinte** ao
+cabeçalho do item. Funciona na vitrine. Na sala, não — porque entra o apelido no
+meio:
+
+```
+1  ESTERILIZANTE QUÍMICO        ← cabeçalho
+< apelido >                     ← só existe na área logada
+Sem benefícios ME/EPP           ← tratamento
+Etapa aberta (prorrogação)      ← situação
+```
+
+Era isto que estava registrado desde 29/09 como *"não lê a tela de propostas"*, sem
+que se soubesse a causa. Agora aceita até duas linhas no meio — e continua recusando
+a armadilha que motivou a regra original: uma descrição que começa por número
+("2 unidades de 500g cada") **não** vira o item 2.
+
+**13 conferências** (`testar-situacoes.js`), com os textos reais das duas telas.
+
+#### 02/10 — o aviso que a operação pediu (R-11)
+
+Dos onze tipos de evento que o agente mandava ao Praefectus, **nenhum** era a virada
+de etapa. E era o pedido mais direto que a reunião produziu, dito com todas as
+letras:
+
+> *"que desse um alerta: olha, já acabou aqui a disputa de lance, agora tá na parte
+> de seleção de fornecedores, fique atento, não sei o quê e tudo mais."*
+
+Agora existe o evento **`etapa-mudou`**, em dois momentos:
+
+1. **por item**, quando a situação dele muda — e com destaque quando a mudança
+   encerra os lances;
+2. **pela compra inteira**, uma vez, quando todos os itens encerraram.
+
+**Por que não bastava `sessao-encerrada`:** o robô encerra a sessão *dele*, que é
+outra coisa. A disputa de um item acaba enquanto os outros seguem abertos — cada
+item tem o seu cronômetro — e é o fim da disputa **do item** que abre o prazo de
+duas horas para apresentar proposta. Quem perde esse prazo é desclassificado.
+
+**O texto vai pronto, na língua de quem opera.** Não "situação alterada para
+Aguardando julgamento", e sim:
+
+> *"Acabou a disputa de lances do item 1. Agora é a seleção de fornecedores: fique
+> atento ao chat do pregoeiro — a convocação para enviar a proposta e os anexos tem
+> prazo de 2 horas, e perder o prazo desclassifica."*
+
+Quem lê precisa saber **o que fazer**, não o que o portal escreveu.
+
+**E sai uma vez por mudança**, nunca a cada rodada. Aviso repetido vira ruído, e
+ruído se ignora justamente no dia em que importa.
+
+##### Do outro lado: o webhook rejeitava o evento
+
+O `robo-lances-webhook` responde **400 "Tipo de callback desconhecido"** a qualquer
+evento fora da lista — o aviso simplesmente não chegaria. Entrou o
+`case "etapa-mudou"`, que grava no chat do processo (`licitacao_mensagens`, tipo
+`alerta` quando os lances acabaram, que é o que o chat sonoriza) e, só nesse caso,
+cria a notificação no sininho com link para o processo.
+
+> ⚠️ **Isto exige deploy da edge function** — `npx supabase functions deploy
+> robo-lances-webhook --project-ref uwtyuwktxalnpgrcbbgk`. **Não foi feito**:
+> publicar é ação externa e passa pelo Ian. Enquanto não sair, o agente manda o
+> evento e o webhook recusa com 400; nada quebra, mas o aviso não chega.
+
+##### O que a Central de Notificações ainda não faz
+
+`GET /notificacoes-portal` existe, o vigia lê a central do portal a cada rodada e
+guarda por perfil — **e ninguém busca**. É uma fonte diferente do chat da compra:
+alcança **todas** as compras da empresa, inclusive as que não estão em disputa (foi
+dela que saiu a reabertura de 08/10). Para ligar, falta o Praefectus consumir o
+endpoint, ou o agente empurrar as novidades — e as duas opções passam pela auditoria
+de usabilidade, porque é decisão de produto onde esse aviso aparece.
+
+> **Confirmação de graça:** `notificacaoResumida`, escrita em 17/09 a partir da API
+> da central, monta o `id_compra` como **UASG + modalidade + número + ano** — o
+> mesmo formato que `montarParametroCompra` deduziu dos prints em 01/10, por um
+> caminho totalmente independente. As duas leituras batem.
+
+#### 02/10 — auditoria de usabilidade do robô (pedido do Ian)
+
+Quatro perguntas, feitas contra as 25.741 linhas do front do robô, o agente e o
+webhook. A régua não é "o que falta construir": é **o que uma pessoa que disputa
+todo dia, de manhã, com 182 itens, consegue fazer sozinha.**
+
+##### (a) A forma condiz com o jeito como o robô é usado?
+
+**Em grande parte, sim** — e melhor do que eu esperava. A grade de itens já tem
+piso por item, estratégias cumulativas, margem de desempate e lance final fechado;
+os itens entram em massa, importados do processo; há tutorial, checklist de
+ativação e um quadro de status que dispensa abrir a tela remota.
+
+**Mas há um desencontro que vale o relatório inteiro.** O robô existe para a pessoa
+não fazer 182 vezes a mesma coisa — e **configurá-lo exige fazer 182 vezes a mesma
+coisa**. Os itens chegam em massa; o **piso**, não: é um campo por linha, digitado
+um a um. Não há "aplicar a todos", nem piso por percentual sobre o preço de venda,
+nem importação de planilha.
+
+> Dito pela operação: *"são 182 itens […] aí eu tenho que ficar só nesse processo,
+> dando os lances, item por item"*. Se o cadastro reproduz esse "item por item", a
+> manhã continua perdida — só muda de tela.
+
+**O que resolve**, em ordem de esforço: um botão "aplicar este piso aos itens
+selecionados"; piso por **percentual do preço de venda** (que é o número que a
+empresa já tem); e colar uma coluna de planilha. O primeiro é pequeno e sozinho já
+muda o dia.
+
+##### (b) O usuário tem controle de fato?
+
+| O que a pessoa pode querer | Existe? |
+| --- | --- |
+| ligar e desligar o robô | ✅ `LigarDesligarRobo`, por empresa |
+| parar a disputa inteira | ✅ "Parar robô nesta disputa" + freio geral (`KillSwitchButton`) |
+| ver o que ele está fazendo, sem a tela remota | ✅ quadro da sala, por item |
+| assistir ao vivo | ✅ tela remota (VNC) |
+| **parar UM item e assumir na mão** | ❌ **não existe**, nem no front nem no agente |
+| **mudar o piso com a disputa rodando** | ❌ **não existe**: os endpoints são iniciar, pausar, encerrar, focar, retomar e responder — **não há "atualizar"** |
+| pausar e retomar pela tela | ⚠️ existe no agente (`/sessao/pausar`, `/sessao/retomar`) e **não está exposto no front** |
+
+Os dois ❌ são da mesma natureza, e doem no mesmo momento: **durante a disputa, a
+configuração é imutável.** Se o preço de mercado desabar no meio da sessão e a
+empresa quiser baixar o piso de um item, o único caminho hoje é **parar a sessão
+inteira e começar de novo** — e a sessão perdida leva junto os outros 181 itens.
+
+É um caso típico de "não previmos porque nunca disputamos". Quem disputa muda de
+ideia no meio.
+
+##### (c) O robô avisa tudo o que precisa avisar?
+
+O que **já existia** — e é bastante: lance recusado, robô na sala, robô esperando
+uma pessoa, aguardando verificação em duas etapas, o pregoeiro chamou (com som, por
+`PEDE_ACAO`), robô parou, itens não conferem, portal fora do ar, certidão vencendo.
+
+O que **entrou hoje**, e faltava:
+
+1. **`etapa-mudou`** — *"acabou a disputa do item N; agora é a seleção de
+   fornecedores, o prazo é de 2 horas"*. Era o pedido literal da operação, e é
+   também o aviso de **fim da disputa da compra inteira**.
+2. **`robo-saiu-do-item`** — o item bateu no piso e o robô parou de lançar nele.
+   **Acontecia em silêncio**: de fora, a tela seguia mostrando "aguardando", e
+   parecia que o robô estava trabalhando. É justamente o momento de decidir — a
+   operação disse que depois do piso *"a gente já aguarda para ser convocado, ver
+   nossa colocação"* —, e quem não é avisado não decide: descobre depois.
+
+O que **continua faltando**:
+
+- **a Central de Notificações do portal não tem consumidor.** O agente lê a cada
+  rodada e guarda; `GET /notificacoes-portal` serve; ninguém busca. É a fonte que
+  alcança **todas** as compras da empresa, inclusive as que não estão em disputa —
+  foi dela que saiu a reabertura de 08/10. Ligar é decisão de produto: onde esse
+  aviso aparece.
+
+##### (d) Inventário: campo × tela × quem lê
+
+**Nenhum campo órfão no sentido clássico** — tudo o que a tela coleta, o agente usa:
+piso, decremento mínimo e percentual, intervalo em segundos, teto de lances, modo
+automático, estratégias, margem de desempate, lance final fechado, preço de venda.
+
+Mas o inventário achou **três desencontros**, dois já corrigidos hoje:
+
+| Achado | Situação |
+| --- | --- |
+| `ROTULO_DA_FASE` no front traz `aberta: 'Etapa aberta'` — **o front esperava uma fase que o robô nunca mandava**, porque `lerSala` só sabia dizer encerrada/suspensa/aguardando | ✅ corrigido (R-07): `faseDoItem` passa a produzir `aberta` |
+| a posição com **empate** sumia da tela: `posicaoNoQuadro` só sabia mostrar número exato | ✅ corrigido: mostra *"Entre 4º e 7º (4 empatados)"*, com 17 testes |
+| `sessao_lance_itens` **não tem coluna de posição** — a posição viaja só dentro do JSON `estado_sala` | ⚠️ funciona para a tela da disputa; não dá para consultar depois por SQL nem montar histórico de colocação |
+
+E dois campos novos que o front **ainda não usa**: `ja_lancaram` (quantos
+concorrentes já lançaram — oito cadastradas com duas lançando é outra disputa;
+`concorrentesNoQuadro` já existe e está pronto para ser chamado) e
+`posicao_lida_em`, que importa porque **a posição não é relida a cada rodada**: a
+tela não pode fazer parecer que um número de um minuto atrás é deste segundo.
+
+##### O que fazer, em ordem
+
+1. **Piso em massa** na grade de itens — é o que devolve a manhã dela.
+2. **Mudar a configuração com a disputa rodando**, ao menos o piso por item:
+   endpoint `/sessao/atualizar` no agente + ação na tela.
+3. **Parar um item** sem parar a sessão.
+4. **Pausar/retomar** expostos no front (já existem no agente).
+5. Mostrar `ja_lancaram` e `posicao_lida_em` no quadro.
+6. Ligar a Central de Notificações, depois de decidir onde ela aparece.
+7. Coluna de posição em `sessao_lance_itens`, se houver uso para histórico.
+
+> ⚠️ **Os dois eventos novos exigem deploy da edge function**
+> (`npx supabase functions deploy robo-lances-webhook --project-ref
+> uwtyuwktxalnpgrcbbgk`). O webhook recusa com 400 qualquer tipo fora da lista, e
+> `etapa-mudou` e `robo-saiu-do-item` são novos. **Deploy de edge function não sai
+> pelo Lovable** — o Publish leva só o front. Enquanto não for feito, o agente
+> manda e o webhook recusa: nada quebra, e nenhum dos dois avisos chega.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
@@ -2057,6 +4187,11 @@ publicada do Portal de Compras Públicas é de **consulta**, somente leitura.
 ---
 
 ## 6. O que falta, por ordem de custo
+
+> ⚠️ **Para o Compras.gov, esta lista foi superada em 01/10/2026.** O que vale para
+> ele é **"O plano até a disputa de 08/10"**, no fim da §4.2: dez passos, com o que
+> já está feito, o que não depende de ninguém e o que só o dia da disputa resolve.
+> A lista abaixo segue valendo para os demais portais e para a infraestrutura.
 
 > **Antes de tudo, desde 15/09** — dois itens que não estavam na lista e passam
 > na frente dela (ver §1, "14–15/09 — a reestruturação do front pelo XFIN"):
