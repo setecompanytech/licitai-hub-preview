@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ParticipacaoCarregada, EstadoDasParticipacoes } from '@/hooks/useParticipacoesDoRobo';
 import type { Participacao } from '@/lib/robo/situacao-da-participacao';
 
@@ -106,14 +107,22 @@ function LocalAtual() {
 }
 
 function montar(url = '/robo-lances', props: Partial<Parameters<typeof PainelDeParticipacoes>[0]> = {}) {
+  // O painel passou a mostrar as disputas em curso (02/10/2026), e para saber
+  // quem está esperando um clique humano ele lê o healthcheck do agente por
+  // react-query. Sem o provider, o componente nem monta.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchInterval: false, gcTime: 0 } },
+  });
   return render(
+    <QueryClientProvider client={queryClient}>
     <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route path="/robo-lances" element={<PainelDeParticipacoes empresaId="empresa-1" {...props} />} />
         <Route path="/robo-lances/disputa/:id" element={<LocalAtual />} />
         <Route path="/processo/:id" element={<LocalAtual />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

@@ -45,6 +45,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAbaNaUrl } from '@/lib/navegacao/aba-na-url';
 import { useParticipacoesDoRobo, type ParticipacaoCarregada } from '@/hooks/useParticipacoesDoRobo';
+import DisputasAoVivo from '@/components/robo-lances/painel/DisputasAoVivo';
+import { usePedidosDoRobo } from '@/components/robo-lances/usePedidosDoRobo';
 import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO, type AbaDoPainel } from '@/lib/robo/situacao-da-participacao';
 import { cn } from '@/lib/utils';
 import { agendamentoDaDisputa } from '@/lib/robo/agendamento';
@@ -101,6 +103,9 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
   const noCelular = useIsMobile();
   const idBase = useId();
 
+  // Quem está esperando um clique humano (captcha, certificado) — é o estado
+  // mais urgente que existe, e vem do agente, não do banco.
+  const { data: estadoDoAgente } = usePedidosDoRobo();
   const { participacoes, carregando, erro, semEmpresa, lidoEm, capacidade, recarregar } = useParticipacoesDoRobo({
     empresaId,
     licitacaoId,
@@ -501,6 +506,30 @@ export default function PainelDeParticipacoes({ empresaId, licitacaoId = null, s
   return (
     <section aria-label="Participações do robô" data-painel="participacoes" className="flex min-w-0 flex-col gap-3">
       {cabecalho}
+
+      {/*
+        AS DISPUTAS EM CURSO, LADO A LADO (02/10/2026). O agente aguenta quatro
+        simultâneas, e a operação descreve manhãs com mais de um pregão como
+        rotina. Quatro abas para alternar seria o desenho errado: a pessoa
+        precisaria adivinhar em qual olhar. Aqui ficam juntas, em ordem de quem
+        precisa de atenção agora — e o cartão diz POR QUE está naquela posição.
+      */}
+      <DisputasAoVivo
+        disputas={participacoes.map((p) => ({
+          id: p.sessao?.id ?? p.disputa.id,
+          edital: p.disputa.edital ?? null,
+          orgao: p.processo?.orgao ?? null,
+          portal: p.disputa.portal ?? null,
+          licitacaoId: p.disputa.licitacao_id ?? null,
+          estadoSala: (p.sessao as { estado_sala?: never } | null)?.estado_sala ?? null,
+          estadoSalaEm: (p.sessao as { estado_sala_em?: string | null } | null)?.estado_sala_em ?? null,
+          status: p.sessao?.status ?? null,
+          esperandoPessoa: !!p.sessao
+            && (estadoDoAgente?.pedidos ?? []).some(
+              (ped) => (ped as { sessao_id?: string }).sessao_id === p.sessao?.id,
+            ),
+        }))}
+      />
 
       {semEnvio && (
         <AvisoDeContexto titulo="Envio de lances indisponível — os portais estão em modo de monitoramento">
