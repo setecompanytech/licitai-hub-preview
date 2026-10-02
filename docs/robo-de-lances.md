@@ -4035,6 +4035,18 @@ próprio Compras.gov; em todos eles o desenho será o mesmo — **o robô opera,
 remota destrava, e o Praefectus mostra**. A tela remota deve ser o lugar onde se
 entra por exceção, por poucos segundos, quando alguém é chamado.
 
+> **De onde a tela remota veio, e a ressalva que fica de pé.** Quem levantou o tema
+> foi o Rafael, em 18/09, mandando prints e dizendo que *"todos os usuários
+> visualizam configurações que só quem desenvolve o sistema deveria ter"* — e é
+> dele o login que clica o captcha toda manhã. Mas vale manter a precisão que o
+> `CLAUDE.md` registra: **os prints eram da aba Agente e infraestrutura, não da
+> tela remota**, e a decisão de deixar o VNC no login da Santa Rosa foi **nossa**,
+> perguntada a ele em 23/09 e **sem resposta até hoje**. A diferença importa aqui
+> porque, se a tela remota migrar para a conta de engenharia, no dia do pregão
+> alguém teria de entrar com um segundo login só para clicar o captcha — e
+> captcha perdido é disputa perdida. A diretriz desta seção **reduz** o peso dessa
+> pergunta: quanto menos a operação depender do VNC, menos custa onde ele mora.
+
 ##### O Praefectus precisa refletir as etapas do pregão, em tempo real
 
 Não imitar o portal: **refletir o que importa para decidir**, enquanto acontece.
