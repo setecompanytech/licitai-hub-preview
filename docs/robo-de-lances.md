@@ -3998,7 +3998,7 @@ tela não pode fazer parecer que um número de um minuto atrás é deste segundo
 
 ##### O que fazer, em ordem
 
-1. **Piso em massa** na grade de itens — é o que devolve a manhã dela.
+1. ~~**Piso em massa** na grade de itens~~ — ✅ **feito em 02/10** (18 conferências em `lib/robo/piso-em-massa.ts`).
 2. **Mudar a configuração com a disputa rodando**, ao menos o piso por item:
    endpoint `/sessao/atualizar` no agente + ação na tela.
 3. **Parar um item** sem parar a sessão.
@@ -4013,6 +4013,131 @@ tela não pode fazer parecer que um número de um minuto atrás é deste segundo
 > `etapa-mudou` e `robo-saiu-do-item` são novos. **Deploy de edge function não sai
 > pelo Lovable** — o Publish leva só o front. Enquanto não for feito, o agente
 > manda e o webhook recusa: nada quebra, e nenhum dos dois avisos chega.
+
+#### 02/10 — a diretriz de UX do robô (decisão do Ian)
+
+Registrada porque muda o alvo do front, e porque vale para **qualquer portal que o
+robô venha a operar**, não só o Compras.gov.
+
+##### A tela remota é ferramenta de desbloqueio, não lugar de trabalho
+
+O VNC existe por um motivo só: **passar pelo bloqueio da plataforma** — o captcha
+do gov.br, o clique no certificado, e o que vier a aparecer em outros portais. Ele
+é a resposta a uma limitação de quem está do outro lado, não a interface de
+operação do produto.
+
+> **Consequência direta:** a Izabelle **não pode precisar ficar conectada à tela
+> remota o tempo todo.** Se para acompanhar a disputa ela tiver de olhar o VNC,
+> o robô não resolveu o problema dela — mudou a tela em que ela passa a manhã.
+
+E isto generaliza. Há portais que não oferecem API para lance automatizado, como o
+próprio Compras.gov; em todos eles o desenho será o mesmo — **o robô opera, a tela
+remota destrava, e o Praefectus mostra**. A tela remota deve ser o lugar onde se
+entra por exceção, por poucos segundos, quando alguém é chamado.
+
+##### O Praefectus precisa refletir as etapas do pregão, em tempo real
+
+Não imitar o portal: **refletir o que importa para decidir**, enquanto acontece.
+O que a reunião de 01/10 mostrou que a pessoa acompanha, e que hoje só existe
+dentro do portal:
+
+| O que ela olha no portal | O que o Praefectus precisa mostrar |
+| --- | --- |
+| o cronômetro de cada item correndo | tempo restante **por item**, atualizando |
+| o melhor valor mudando ("ele dá uma tremida") | melhor valor e o nosso, por item, ao vivo |
+| em que lugar estamos | a colocação — e a faixa, quando há empate |
+| quantos entraram e quantos já lançaram | concorrentes e quantos de fato disputam |
+| a etapa em que a compra está | aguardando → em disputa → encerrado → seleção |
+| o chat do pregoeiro | as mensagens, com o prazo destacado |
+
+A matéria-prima **já chega**: o agente manda `estado-da-sala` a cada rodada, com
+valores, fase, cronômetro e agora a colocação. O que falta é a tela viver disso —
+hoje ela mostra o essencial numa linha de texto, e o resto só aparece no VNC.
+
+##### E quando forem vários pregões ao mesmo tempo
+
+É evolução declarada (o agente já suporta 4 disputas simultâneas), e muda a
+pergunta de desenho: deixa de ser "como mostrar uma disputa" e passa a ser **"como
+mostrar quatro sem que a pessoa perca a que importa"**.
+
+O que isso implica, e que vale pensar antes de desenhar:
+
+- **uma visão de topo** que mostre as disputas em curso lado a lado, com o que
+  cada uma exige de atenção agora — não quatro abas para alternar;
+- **prioridade visível**: o item com cronômetro acabando e o que está perdendo
+  pesam mais que o resto;
+- **o chamado para destravar** (captcha) tem de dizer **qual** disputa está parada,
+  porque com quatro no ar "o robô precisa de você" não basta;
+- **o aviso de virada de etapa** por compra, para ela saber de qual pregão veio.
+
+> Isto fica registrado como **decisão de produto do Ian (02/10/2026)**: a
+> usabilidade e a UX das telas do robô dentro do Praefectus são prioridade, e o
+> alvo é a pessoa **não** precisar da tela remota para acompanhar.
+
+#### 02/10 — os botões, fase por fase: o que existe e o que falta
+
+A pergunta: **todo botão que a operação precisa existe, da pré-disputa ao aviso
+depois que a disputa acaba?** O levantamento foi feito nas telas (pasta do
+processo, lista de disputas, admin) e cruzado com os endpoints do agente.
+
+##### Antes da disputa
+
+| O que precisa | Existe? |
+| --- | --- |
+| cadastrar a disputa, com itens, piso e estratégias | ✅ `ConfigurarLanceDialog` |
+| importar os itens do processo em massa | ✅ |
+| **preencher o piso de todos de uma vez** | ✅ **desde 02/10** (antes era um a um — 182 vezes) |
+| conferir alterações da licitação (edital remarcado) | ✅ "Conferir alterações" |
+| definir ou corrigir a data da sessão | ✅ "Definir data da sessão" |
+| ligar e desligar o robô da empresa | ✅ `LigarDesligarRobo` |
+| escolher o nível de automação | ✅ Manual / Semiautomático / Automático |
+| mandar o robô entrar | ✅ "Enviar ao robô" e "Entrar agora" |
+| saber se está tudo pronto | ✅ checklist de ativação |
+
+Nada falta aqui. É a parte mais madura do produto.
+
+##### Durante a disputa
+
+| O que precisa | Existe? |
+| --- | --- |
+| ver o que o robô está fazendo, sem o VNC | ⚠️ existe em **uma linha de texto**; é pouco para acompanhar uma disputa |
+| parar o robô nesta disputa | ✅ |
+| freio geral (todas as sessões) | ✅ `KillSwitchButton` |
+| destravar o captcha | ✅ chamado + tela remota |
+| **mudar o piso com a disputa rodando** | ❌ **não existe** — e é o que mais se pede quando o mercado desaba |
+| **parar UM item e assumir na mão** | ❌ **não existe**: ou o robô segue em todos, ou para em todos |
+| **pausar e retomar sem perder a sessão** | ❌ existe no agente (`/sessao/pausar`, `/sessao/retomar`) e **não na tela** |
+| ver a colocação e os concorrentes | ⚠️ chega do agente desde 02/10; a tela ainda não usa tudo |
+
+> Nota de precisão: o menu tem "Marcar como em disputa (manual)" e "Marcar como
+> aguardando (manual)", e **não** são iniciar/pausar o robô — o próprio código
+> registra, em 14/09, que o rótulo antigo ("Iniciar disputa" / "Pausar disputa")
+> prometia o que o clique não fazia: ele só grava a coluna `status`. O rótulo foi
+> corrigido; a função continua faltando.
+
+##### Depois que a disputa acaba
+
+| O que precisa | Existe? |
+| --- | --- |
+| **saber que acabou** | ✅ **desde 02/10** (`etapa-mudou`, por item e pela compra) |
+| **saber que o robô saiu de um item pelo piso** | ✅ **desde 02/10** (`robo-saiu-do-item`) |
+| ver o chat do pregoeiro e o prazo da convocação | ✅ mensagens no processo, com som quando pedem ação |
+| registrar o desfecho (venceu/perdeu, com motivo) | ✅ |
+| exportar o resultado | ✅ `ExportarResultados` |
+| histórico do que o robô fez | ✅ `robo_historico` (admin da plataforma) |
+| **ser avisado da convocação em si** | ✅ pelo chat — ⚠️ mas a **Central de Notificações do portal** segue sem consumidor, e é ela que alcança compras fora da disputa |
+
+##### O que falta, em ordem — a lista de trabalho de UX
+
+1. **Acompanhamento ao vivo de verdade**, no lugar da linha de texto: cronômetro
+   por item, valores mudando, colocação, concorrentes, etapa. É o que tira a
+   Izabelle do VNC.
+2. **Mudar o piso com a disputa rodando** (endpoint `/sessao/atualizar` + ação na
+   tela).
+3. **Parar um item** sem parar a sessão.
+4. **Pausar/retomar** expostos, ligados ao que o agente já faz.
+5. **Visão de várias disputas ao mesmo tempo**, com prioridade por urgência.
+6. **Central de Notificações** com lugar na tela.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
