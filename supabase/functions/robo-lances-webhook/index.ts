@@ -2987,6 +2987,24 @@ serve(async (req) => {
       if (!user) return naoAutenticado!;
       const verDetalhe = await ehContaDeEngenharia(supabase, user.id);
 
+      // DE QUAL EMPRESA (02/10/2026). Sem `empresa_id`, o comportamento é o de
+      // sempre: o envio mais recente do usuário, na base padrão do agente.
+      //
+      // A conferência é obrigatória porque esta função roda com service role: o
+      // RLS não a barra, então pedir a empresa de outra pessoa instalaria o
+      // certificado dela. Admin da plataforma não é exceção aqui — certificado
+      // digital é credencial da empresa, não operação (19/09/2026).
+      const empresaPedida = (body as { empresa_id?: string } | null)?.empresa_id || null;
+      if (empresaPedida) {
+        const minhas = await empresasDoUsuario(supabase, user.id);
+        if (!minhas.includes(empresaPedida)) {
+          return jsonResponse(
+            { instalado: false, motivo: "Esta empresa não é sua.", certificado: null },
+            403,
+          );
+        }
+      }
+
       // Com agente próprio ativo, o helper escolhe sozinho — como antes. Sem
       // ele, o agente da PLATAFORMA vai como terceiro argumento.
       //
@@ -3021,7 +3039,8 @@ serve(async (req) => {
       const resultado = await instalar(
         supabase,
         user.id,
-        gerenciado ? { ...gerenciado, api_key_hash: chaveGerenciada } : undefined
+        gerenciado ? { ...gerenciado, api_key_hash: chaveGerenciada } : undefined,
+        empresaPedida
       );
 
       if (!resultado.instalado) {
