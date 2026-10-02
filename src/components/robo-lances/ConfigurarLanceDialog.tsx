@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PisoEmMassa from '@/components/robo-lances/PisoEmMassa';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Bot, Trash2, Package, Layers, FileSearch, Loader2, Search, CheckCircle2, Building2, ArrowRight, Pencil, Calculator, Upload, FileText, Sparkles , Target, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -2109,6 +2110,22 @@ export default function ConfigurarLanceDialog({ onSave, editingLance, trigger, p
             {/* Items list */}
             {itens.length > 0 && (
               <div className="space-y-2">
+                {/*
+                  PISO EM MASSA (02/10/2026). Só aparece com a coluna Piso na
+                  grade — com um item, o piso dele é o do cartão "Valor mínimo".
+                  Com 182, digitar um a um era reproduzir no cadastro o trabalho
+                  que o robô existe para tirar.
+                */}
+                {mostrarPiso && (
+                  <PisoEmMassa
+                    itens={itens}
+                    temCusto={itens.some((i) => Number(i.custoUnitario) > 0)}
+                    aoAplicar={(novos, resumo) => {
+                      setItens(novos as DisputeItem[]);
+                      toast.success(resumo);
+                    }}
+                  />
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-base font-semibold text-foreground">
                     {itens.length} {itens.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
