@@ -4146,7 +4146,7 @@ Nada falta aqui. É a parte mais madura do produto.
 2. ~~**Mudar o piso com a disputa rodando**~~ — ✅ **feito em 02/10**.
 3. **Parar um item** sem parar a sessão.
 4. **Pausar/retomar** expostos, ligados ao que o agente já faz.
-5. **Visão de várias disputas ao mesmo tempo**, com prioridade por urgência.
+5. ~~**Visão de várias disputas ao mesmo tempo**~~ — ✅ **feito em 02/10** (15 conferências).
 6. **Central de Notificações** com lugar na tela.
 
 #### 02/10 — a disputa deixa de ser imutável (D-1 a D-4)
@@ -4474,6 +4474,67 @@ perderia justamente o que faz a pessoa agir.
 A central não tem **tela**: o aviso chega pelo sininho e leva para `/robo-lances`.
 Onde essas notificações moram — uma aba própria? dentro da compra? — é decisão de
 produto, e entra junto com a visão de várias disputas.
+
+#### 02/10 — várias disputas ao mesmo tempo (C-5)
+
+Pedido do Ian junto da diretriz de UX: *"só não sei como isso será quando o robô
+conseguir entrar em vários pregões ao mesmo tempo futuramente, tudo isso tem que
+ser pensado"*.
+
+O agente aguenta **quatro simultâneas**, e a operação descreve manhãs com mais de
+um pregão como rotina. Com várias no ar, a pergunta deixa de ser "como mostrar uma
+disputa" e passa a ser **"como mostrar quatro sem a pessoa perder a que importa"**.
+
+**E a resposta não é quatro abas para alternar** — isso devolveria à pessoa
+exatamente o trabalho que o robô existe para tirar: adivinhar em qual olhar. As
+disputas ficam **lado a lado**, em ordem de quem precisa de atenção agora.
+
+##### A ordem, e por que cada peso
+
+| Primeiro | Por quê |
+| --- | --- |
+| **esperando uma pessoa** (captcha, certificado) | o robô **parou**; nenhum cronômetro é mais urgente que isso, porque enquanto ninguém clica nada acontece |
+| **perdendo, com o relógio apertado** | é onde há decisão a tomar e tempo acabando |
+| perdendo, com folga | há decisão, não há pressa |
+| liderando | o robô está dando conta |
+| pausada / encerrada | não há o que fazer agora |
+
+Empate é desfeito pelo **menor cronômetro**: duas disputas igualmente perdidas,
+ganha a que fecha antes.
+
+**A urgência da disputa é a do item mais urgente dela — não a média.** Uma disputa
+com 181 itens tranquilos e um item perdendo com 20 segundos **é** urgente, e a
+média a esconderia. Há teste para isso, com os 182 itens.
+
+##### O cartão diz por que está ali
+
+> *"perdendo em 2 itens · o mais apertado fecha em 01:35"*
+
+Uma lista ordenada por um número invisível é uma lista em que ninguém confia: a
+pessoa precisa poder **conferir se concorda com a ordem**. Por isso cada cartão
+carrega a frase que explica a própria posição — e, quando o robô parou, ela diz
+exatamente isso: *"O robô parou e está esperando uma pessoa"*.
+
+##### O que o cartão mostra
+
+Edital e órgão; o menor cronômetro entre os itens abertos (com o aviso de leitura
+velha, igual ao da sala ao vivo); quantos itens em disputa e em quantos estamos
+perdendo; quantos já encerraram; e o selo **"Precisa de você"** quando o robô
+espera um clique. Clicar leva à disputa.
+
+**Conferências: 15** (`disputas-ao-vivo.test.ts`), incluindo as quatro simultâneas
+que são o limite do agente.
+
+##### Um efeito colateral que valeu o conserto certo
+
+Ligar o painel ao healthcheck do agente (para saber quem espera pessoa) quebrou
+**14 testes** do `PainelDeParticipacoes`: o componente passou a depender de
+react-query, e os testes não tinham `QueryClientProvider`.
+
+Havia a saída fácil — tirar a dependência e perder o "Precisa de você", que é
+justamente o caso mais urgente. O conserto foi o outro: **o teste passou a refletir
+a dependência nova**. Degradar a funcionalidade para não mexer em teste é escolher
+o teste em vez do produto.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
