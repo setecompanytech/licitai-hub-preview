@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { itensDoQuadro, posicaoNoQuadro, resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
+import { concorrentesNoQuadro, itensDoQuadro, posicaoNoQuadro, resumoDoQuadro, type EstadoNoQuadro } from '@/lib/robo/quadro-da-sala';
 
 /**
  * O quadro de status da aba Acompanhamento (D13): uma linha com onde a empresa
@@ -73,5 +73,59 @@ describe('itensDoQuadro', () => {
 
   it('sem por_item, o estado único de antes', () => {
     expect(itensDoQuadro(BAQPLAST)).toEqual([BAQPLAST]);
+  });
+});
+
+/**
+ * A FAIXA DA POSIÇÃO (02/10/2026). A sala do Compras.gov não publica a
+ * colocação: ela é a ORDEM da linha no painel "Melhores valores por
+ * fornecedor". Com valores empatados — há quatro propostas de R$ 1.034,1900
+ * num item real do pregão 37/2026 — não existe posição única.
+ */
+describe('posicaoNoQuadro com empate', () => {
+  it('diz a faixa por extenso, com quantos empataram', () => {
+    expect(posicaoNoQuadro({ item: 2, posicao: null, posicao_de: 4, posicao_ate: 7, empatados: 4 }))
+      .toBe('Entre 4º e 7º (4 empatados)');
+  });
+
+  it('sem empate, a faixa de um valor só vira lugar', () => {
+    expect(posicaoNoQuadro({ item: 2, posicao: null, posicao_de: 6, posicao_ate: 6, empatados: 1 }))
+      .toBe('6º lugar');
+  });
+
+  it('a posição exata continua mandando sobre a faixa', () => {
+    expect(posicaoNoQuadro({ item: 2, posicao: 6, posicao_de: 6, posicao_ate: 6 })).toBe('6º lugar');
+  });
+
+  it('liderar manda sobre tudo', () => {
+    expect(posicaoNoQuadro({ item: 2, sou_lider: true, posicao_de: 1, posicao_ate: 3, empatados: 3 }))
+      .toBe('1º lugar');
+  });
+
+  it('sem posição nenhuma, não inventa', () => {
+    expect(posicaoNoQuadro({ item: 2 })).toBeNull();
+  });
+
+  it('a faixa entra no resumo do quadro', () => {
+    const r = resumoDoQuadro(
+      { item: 2, fase: 'aberta', posicao_de: 4, posicao_ate: 7, empatados: 4, melhor_lance: 493.9 },
+      { sessaoViva: true },
+    );
+    expect(r.partes).toContain('Entre 4º e 7º (4 empatados)');
+    expect(r.partes).toContain('Etapa aberta');
+  });
+});
+
+describe('concorrentesNoQuadro', () => {
+  it('diz quantos já lançaram', () => {
+    expect(concorrentesNoQuadro({ ja_lancaram: 6 })).toBe('6 concorrentes lançaram');
+  });
+
+  it('singular quando é um só', () => {
+    expect(concorrentesNoQuadro({ ja_lancaram: 1 })).toBe('1 concorrente lançou');
+  });
+
+  it('sem o dado, não diz nada', () => {
+    expect(concorrentesNoQuadro({})).toBeNull();
   });
 });

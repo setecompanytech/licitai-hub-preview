@@ -13,6 +13,20 @@ export type EstadoNoQuadro = {
   melhor_lance?: number | null;
   nosso_lance?: number | null;
   posicao?: number | null;
+  /**
+   * A FAIXA, quando há empate (02/10/2026). A sala do Compras.gov não publica a
+   * colocação: ela é a ORDEM da linha no painel "Melhores valores por
+   * fornecedor", e os concorrentes são anônimos. Com valores repetidos — há
+   * quatro propostas de R$ 1.034,1900 num item real — não existe posição única,
+   * e o robô manda a faixa em vez de escolher um número.
+   */
+  posicao_de?: number | null;
+  posicao_ate?: number | null;
+  empatados?: number | null;
+  /** Quantos concorrentes já lançaram (os demais estão só com a proposta). */
+  ja_lancaram?: number | null;
+  /** Quando a posição foi lida: ela não é relida a cada rodada (custa navegação). */
+  posicao_lida_em?: string | null;
   sou_lider?: boolean | null;
   tem_proposta?: boolean | null;
   nossa_desclassificada?: boolean | null;
@@ -43,7 +57,34 @@ export function posicaoNoQuadro(estado: EstadoNoQuadro): string | null {
   if (estado.tem_proposta === false) return 'Sem proposta da empresa';
   if (estado.sou_lider === true) return '1º lugar';
   if (Number.isFinite(estado.posicao as number)) return `${estado.posicao}º lugar`;
+
+  // EMPATE: a faixa, dita por extenso (02/10/2026). Mostrar nada seria pior —
+  // a tela pareceria sem informação justamente quando ela existe. E inventar um
+  // número seria pior ainda: numa disputa, precisão falsa leva a decidir como
+  // se soubesse. "Entre 4º e 7º (4 empatados)" é a resposta honesta, e a
+  // palavra "empatados" explica por que não há um número só.
+  const de = estado.posicao_de;
+  const ate = estado.posicao_ate;
+  if (Number.isFinite(de as number) && Number.isFinite(ate as number) && de !== ate) {
+    const empate = Number.isFinite(estado.empatados as number) && (estado.empatados as number) > 1
+      ? ` (${estado.empatados} empatados)`
+      : '';
+    return `Entre ${de}º e ${ate}º${empate}`;
+  }
+  if (Number.isFinite(de as number)) return `${de}º lugar`;
   return null;
+}
+
+/**
+ * QUANTOS CONCORRENTES JÁ LANÇARAM, para o quadro.
+ *
+ * Quem está só com a proposta inicial ainda não disputou — e isso muda a
+ * leitura de "8 empresas": oito cadastradas com duas lançando é outra disputa.
+ */
+export function concorrentesNoQuadro(estado: EstadoNoQuadro): string | null {
+  const lancaram = estado.ja_lancaram;
+  if (!Number.isFinite(lancaram as number)) return null;
+  return `${lancaram} ${(lancaram as number) === 1 ? 'concorrente lançou' : 'concorrentes lançaram'}`;
 }
 
 export function resumoDoQuadro(
