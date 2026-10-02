@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
+import { agentesMudos, MINUTOS_SEM_HEARTBEAT_PADRAO } from "../_shared/vigia-do-agente.ts";
 import { anteriorDoItem, avisoDeRoboEntrando, avisoDoPrimeiroLance, avisoParaAssistirAoVivo, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   documentosQueVencemAteASessao,
@@ -83,6 +84,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-agent-key, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+/** O padrão vive no módulo testado; o segredo só serve para afrouxar/apertar. */
+const MINUTOS_SEM_HEARTBEAT = Number(
+  Deno.env.get("MINUTOS_SEM_HEARTBEAT") ?? String(MINUTOS_SEM_HEARTBEAT_PADRAO),
+);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -749,6 +755,63 @@ serve(async (req) => {
     // agente, a credencial do portal e o certificado.
     if (action === "disparar-agendadas") {
       if (!autorizadoComoCron(req)) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      // ─── O AGENTE CAIU E NINGUÉM SOUBE (02/10/2026) ───────────────────────
+      //
+      // O `ultimo_heartbeat` era gravado e mostrado numa tela que só a conta de
+      // engenharia abre. Se o agente caísse às 8h50 de um dia de pregão, só se
+      // descobria olhando — e quem avisaria é justamente ele.
+      //
+      // Entra aqui, e não numa rotina nova, porque esta já roda pelo cron e é
+      // a que corre nos minutos que antecedem as sessões: é exatamente quando
+      // o silêncio do agente custa caro.
+      //
+      // Só avisa UMA vez por ausência: o agente volta, o heartbeat volta, e o
+      // próximo silêncio avisa de novo. Alerta que se repete a cada passada do
+      // cron treina a pessoa a ignorá-lo.
+      try {
+        const { data: todos } = await supabase
+          .from("agente_externo_config")
+          .select("id, user_id, nome, ultimo_heartbeat, status");
+
+        // Quem está mudo, e o texto de cada aviso: regra pura, em
+        // _shared/vigia-do-agente.ts, com 13 conferências. Aqui só sobra o
+        // banco — porque este bloco roda dentro de um try/catch que não pode
+        // derrubar o disparo das disputas, e um defeito nele falharia em
+        // silêncio.
+        for (const aviso of agentesMudos(todos ?? [], new Date(), MINUTOS_SEM_HEARTBEAT)) {
+          const { data: jaAvisado } = await supabase
+            .from("webhook_log")
+            .select("id")
+            .eq("tipo", "agente-sem-heartbeat")
+            .contains("payload", { chave: aviso.chave })
+            .limit(1);
+          if (jaAvisado?.length) continue;
+
+          await registrarNoLog(supabase, aviso.userId, "agente-sem-heartbeat", {
+            chave: aviso.chave, agente_id: aviso.agenteId, minutos: aviso.minutos,
+          });
+
+          // Vai para quem opera a plataforma, não para o cliente: quem religa o
+          // agente somos nós, e o cliente não teria o que fazer com o aviso.
+          const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+          const idsAdmin = [...new Set((admins || []).map((a: { user_id: string }) => a.user_id))] as string[];
+          if (idsAdmin.length) {
+            await supabase.from("notificacoes").insert(
+              idsAdmin.map((uid) => ({
+                user_id: uid,
+                tipo: "urgente",
+                titulo: aviso.titulo,
+                mensagem: aviso.mensagem,
+                link: "/admin/robo-lances",
+              })),
+            );
+          }
+        }
+      } catch (e) {
+        // Vigiar o agente não pode impedir as disputas de serem disparadas.
+        await registrarNoLog(supabase, null, "vigia-do-agente-falhou", {}, { erro: String((e as Error)?.message ?? e) });
+      }
 
       const agora = Date.now();
       // Adianta o login: entrar 15 minutos antes dá margem para o captcha do
