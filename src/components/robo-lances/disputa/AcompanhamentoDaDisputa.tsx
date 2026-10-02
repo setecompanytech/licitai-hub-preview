@@ -11,6 +11,7 @@ import ControleDoRobo from '@/components/workspace/robo/ControleDoRobo';
 import { dataHoraDeBrasilia } from '@/components/workspace/robo/formatos';
 import EventosDaDisputa, { type AbaDosEventos } from './EventosDaDisputa';
 import QuadroDaSala from './QuadroDaSala';
+import SalaAoVivo from './SalaAoVivo';
 import type { ParadaDaSessao } from './useParadaDaSessao';
 
 /**
@@ -65,6 +66,17 @@ export default function AcompanhamentoDaDisputa({
     <div className="flex min-w-0 flex-col gap-4">
       {/* O que o robô está vendo na sala agora (D13) — primeiro, porque é a
           pergunta de quem abre a disputa durante o pregão. */}
+      {/*
+        A SALA AO VIVO vem ANTES do resumo em texto (02/10/2026). A diretriz é
+        que a pessoa não precise do VNC para acompanhar: a tabela traz o
+        cronômetro de cada item correndo, os valores, a colocação e o que o robô
+        está fazendo — e a ordem é a de quem disputa, perdendo e acabando
+        primeiro.
+
+        O QuadroDaSala continua embaixo: ele traz o aviso de "sem notícia do
+        robô" e serve quando há um item só, em que a tabela seria exagero.
+      */}
+      <SalaAoVivo sessao={participacao?.sessao ?? null} />
       <QuadroDaSala sessao={participacao?.sessao ?? null} />
 
       {participacao ? (
