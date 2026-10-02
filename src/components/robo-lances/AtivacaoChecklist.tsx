@@ -126,7 +126,11 @@ export default function AtivacaoChecklist({
     try {
       const { data, error } = await supabase.functions.invoke(
         'robo-lances-webhook/instalar-certificado',
-        { body: {} },
+        // A empresa ativa decide de qual certificado se fala, e em qual base do
+        // agente ele entra (02/10/2026). Sem ela o servidor cai no caminho de
+        // sempre — o envio mais recente, na base padrão —, que era o único que
+        // existia e continua valendo para quem tem um certificado só.
+        { body: empresaAtiva ? { empresa_id: empresaAtiva.id } : {} },
       );
 
       // A causa real vem no corpo da resposta; `error.message` traz só
