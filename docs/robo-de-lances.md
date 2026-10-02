@@ -4835,6 +4835,93 @@ Santa Rosa sumiu em 30/09. Agora `instalar` copia o anterior para
 `.anterior-<data>` antes de escrever. **Um arquivo de 4 KB não justifica perder o
 acesso de uma empresa.**
 
+##### O elo que faltava: o CNPJ nunca chegava ao agente
+
+`instalar(buffer, senha, cnpj)` passou a aceitar o CNPJ — mas **nada o mandava**.
+A rota `POST /certificado` lia só `{ arquivo_base64, senha }`, e o helper da edge
+function buscava o envio mais recente **por `user_id`**, ignorando a coluna
+`empresa_id` que o token sempre teve. Resultado: `casaDaConta` recebia `undefined`
+e devolvia `null` sempre. A base por conta existiria e nunca seria usada.
+
+Três elos, ligados em ordem:
+
+| Camada | O que mudou |
+| --- | --- |
+| **agente** | `POST /certificado` aceita `cnpj` e repassa a `instalar`; `GET /certificado/estado?cnpj=` novo, para dizer o que há em CADA base |
+| **servidor** | `instalarCertificadoNoAgente(…, empresaId)` busca o envio **daquela empresa**, lê o CNPJ de `empresas` e o manda no corpo |
+| **tela** | o botão "instalar no robô" manda a empresa ativa |
+
+**Sem CNPJ, tudo cai no caminho de antes** — e é por isso que a Santa Rosa não se
+mexe. A conferência de pertencimento é obrigatória no servidor (`empresasDoUsuario`):
+a função roda com service role, então sem ela pedir a empresa de outra pessoa
+instalaria o certificado dela. Admin da plataforma não é exceção — certificado
+digital é credencial da empresa, não operação (decisão de 19/09).
+
+##### Dois defeitos que a prova expôs — e um deles explica 30/09
+
+Para provar a base por conta sem tocar em nada real, um teste gera um certificado
+autoassinado, instala-o na casa de um CNPJ fictício e confere que a base padrão
+não mudou (`testar-base-por-conta.js`, `testar-troca-de-certificado.js` na VPS —
+limpam tudo no fim, inclusive se falharem no meio).
+
+**1. A base da conta nascia pela metade, e outro comando salvava.**
+
+```
+certutil -N -d sql:… -f <arquivo vazio> --empty-password
+  → password file contains no data / Invalid password
+```
+
+`-f` e `--empty-password` dizem a mesma coisa de jeitos incompatíveis. A instalação
+*parecia* dar certo porque o `pk12util` seguinte também inicializa a base — ou seja,
+o passo falhava e outro o cobria, deixando um erro assustador no log a cada troca.
+Criar a base é **só** `--empty-password`; a leitura segue com `-f`, como a base
+padrão sempre funcionou.
+
+**2. `certutil -F` nunca removeu certificado com espaço no nome.**
+
+Este é o grave, e é anterior a hoje. Medido na VPS, com certificado autoassinado
+nas duas formas:
+
+| Apelido | `-F` com o nome do `-K` | `-F` com prefixo do token |
+| --- | --- | --- |
+| **sem espaço** (`1009992202` — o da base em uso) | remove | remove |
+| **com espaço** (`RAZÃO SOCIAL LTDA:CNPJ` — **todo e-CNPJ real**) | **status 255, não remove** | remove |
+
+O `-K` devolve o apelido puro; o `-L` o mostra qualificado pelo token
+(`NSS Certificate DB:<apelido>`), e é essa forma que o `-F` aceita sempre. A falha
+sai com **status 255 e stderr VAZIO** — o `catch` registrava um aviso e seguia.
+
+> **E isto explica parte do episódio de 30/09.** Trocar um certificado de PJ
+> deixava o anterior na base. Com a policy de auto-seleção de filtro vazio
+> (*"escolha qualquer um"*), dois certificados é imprevisibilidade — não "o novo
+> venceu". Por isso o conserto **não** é só a base por conta: é também remover de
+> verdade o que se quis remover.
+>
+> O `-D` não serve de reserva: apaga o certificado e **deixa a chave privada órfã**,
+> medido nos dois casos.
+
+`removerDaBase` passou a tentar o apelido qualificado primeiro, o puro como reserva,
+e — o que importa — **confere o resultado lendo a base de novo**. A saída do
+`certutil` não prova nada; o apelido ter saído, prova.
+
+E a prova da troca guarda o caso realista: instalar `RAZÃO SOCIAL NOVA SA:CNPJ`
+sobre `RAZÃO SOCIAL ANTIGA LTDA:CNPJ` deixa **um** titular, o novo.
+
+##### A rede de proteção, em três camadas
+
+Como a Santa Rosa está em uso para os testes de pregão, cada passo tem o pior caso
+limitado ao comportamento de hoje:
+
+1. **a casa só vale quando TEM certificado.** `casaDaConta` lê a base NSS, não só o
+   diretório. Casa criada e vazia (instalação interrompida, permissão, disco cheio)
+   faria o Chrome subir sem certificado nenhum e perder também a base padrão, que
+   funcionava;
+2. **casa que não ficou utilizável é removida**, para o navegador voltar à base que
+   funciona;
+3. **a base padrão nunca é tocada quando há CNPJ** — ela fica como reserva.
+
+Provado: casa vazia → `casaDaConta` devolve `null` → Chrome usa o `HOME` de sempre.
+
 ##### Os slots no Praefectus — o que já existe, e o que falta
 
 O Ian perguntou se o sistema já não tinha isso: *"analise se o sistema já não tem
@@ -4846,30 +4933,68 @@ a função.
 | `cert_upload_tokens` | **o caminho que funciona hoje.** `empresa_id` NOT NULL, `cert_file_path`, `senha_cifrada`, `instalado_no_agente_em`. Mas é um **token de uso único**, não um cadastro: responde "este envio aconteceu", não "quais certificados eu tenho" |
 | `financeiro_certificados` | **a tabela que parece ser o slot, e nunca foi usada.** Tem `nome`, `cnpj`, `tipo` (A1/A3), `emissor`, `numero_serie`, `validade_de/ate`, `ativo`, `uso_padrao`. Criada em 25/04 por uma leva do Lovable; **zero referências** em `src/` e em `supabase/functions/` — existe só na migration e no `types.ts` gerado |
 
-**Então "slot" é um cadastro que falta, não um recurso escondido.** O desenho,
-reaproveitando a tabela que já está lá:
+**Então "slot" era um cadastro que faltava, não um recurso escondido.**
 
-1. a lista de certificados da empresa em **Configurações do Robô**, uma linha por
-   CNPJ: nome, CNPJ, validade, "em uso" — e o aviso de vencimento, que a coluna
-   `validade_ate` já permite;
-2. "Registrar outro certificado" gera o link de envio que **já existe**
-   (`gerar-link-certificado`), agora gravando também a linha do slot;
-3. a sessão de disputa escolhe o slot pelo CNPJ da empresa — e é esse CNPJ que o
-   agente usa para achar a casa.
+##### A lista que ficou — e por que uma linha por EMPRESA
 
-> ⚠️ **Dois problemas a resolver antes de escrever a tela**, achados ao auditar:
->
-> **A RLS das duas tabelas é por `user_id`, não por empresa.** `financeiro_certificados`
-> tem coluna `empresa_id` e policies `auth.uid() = user_id`; `cert_upload_tokens`
-> idem no SELECT. Na prática: **o certificado que o Rafael registrar a Izabelle não
-> vê**, mesmo na mesma empresa — e o robô é operado por quem está na operação, não
-> por quem cadastrou. Isso contraria a regra do `CLAUDE.md` ("toda tabela nova:
-> `empresa_id` + policies com `is_empresa_member`") e precisa de migration.
->
-> **O certificado é compartilhado com o Financeiro.** O mesmo bucket `certificados`
-> e o mesmo fluxo de envio servem ao robô e à busca de XML na SEFAZ. Mexer no
-> cadastro mexe nos dois — e `financeiro_certificados` tem prefixo `financeiro_`
-> justamente porque nasceu do outro lado.
+`CertificadosDaConta.tsx`, dentro de **"Gerenciar portais"** na tela do robô — o
+diálogo que já prometia, no próprio texto, *"o login de cada portal **e o
+certificado digital** que o robô usa para entrar em nome de…"*. A promessa existia
+e não era cumprida.
+
+Uma linha por empresa da conta, não por certificado. O robô entra no portal em nome
+de um CNPJ, e **um e-CNPJ A1 por empresa atende ao robô e à SEFAZ** — então "quantos
+certificados tenho" é pergunta menos útil que **"de quais empresas o robô consegue
+ser"**.
+
+A régua, do pior para o melhor (`lib/robo/certificados-da-conta.ts`, 20 conferências):
+
+| Situação | O que é verdade |
+| --- | --- |
+| `sem-certificado` | ninguém enviou nada por esta empresa |
+| `enviado-sem-senha` | o arquivo está no cofre, a senha não — enviado antes de 09/09, quando o sistema passou a guardá-la. **Não há como recuperar: só reenviar** |
+| `enviado-nao-instalado` | arquivo e senha estão lá, o robô não instalou (agente fora do ar, tipicamente) |
+| `em-uso` | o agente confirmou a instalação |
+
+A ordem é a mesma dos cartões das disputas: **quem impede o robô de entrar vem
+primeiro**. Não há cronômetro aqui, mas há a manhã do pregão — descobrir que falta
+certificado quando a sessão abre é tarde. Empate é desfeito pelo nome, para a lista
+não dançar entre carregamentos.
+
+> **E o que a tela deliberadamente NÃO afirma: que o certificado é válido.** A
+> validade está dentro do arquivo, que o sistema não abre. A linha diz *"No robô
+> desde 01/10/2026"* e deixa a inferência a quem opera. Há teste guardando a
+> ausência da palavra — afirmar validade que não se leu é o defeito que o dia
+> inteiro de 02/10 corrigiu em outros avisos.
+
+O resumo diz **"1 de 2 empresas prontas para disputar"**, nunca "tudo certo": uma
+empresa sem certificado é a disputa que não acontece.
+
+##### Dois problemas de permissão, e como foram resolvidos sem migration
+
+**A RLS das duas tabelas é por `user_id`, não por empresa.** `financeiro_certificados`
+tem coluna `empresa_id` e policies `auth.uid() = user_id`; `cert_upload_tokens` idem
+no SELECT. Lido pelo front, **o certificado que o Rafael registrasse a Izabelle não
+veria** — e o robô é operado por quem está na operação, não por quem cadastrou.
+
+A saída foi **ler pelo servidor**, não mexer na RLS: a action
+`certificados-das-empresas` do webhook consulta por `empresa_membros`, que é o
+critério certo. Zero migration, e nenhum risco a uma tabela do Financeiro — porque
+**o certificado é compartilhado**: o mesmo bucket e o mesmo fluxo servem ao robô e à
+busca de XML na SEFAZ.
+
+Duas regras que a action respeita:
+- **nada sensível sai**: nem caminho de arquivo, nem senha. Só fatos — enviado
+  quando, instalado quando, a senha existe;
+- **conta de engenharia recebe lista vazia**, e está correto: admin da plataforma
+  sem empresa nenhuma não tem certificado para ver. Certificado digital é credencial
+  da empresa, não operação (decisão de 19/09).
+
+> **E a mudança de comportamento que isso NÃO faz:** `financeiro_certificados`
+> continua sem uso. Reaproveitá-la exigiria a migration de RLS e tornar as datas de
+> validade opcionais (o slot nasce antes de alguém enviar o arquivo). Fica anotado
+> para quando a validade importar de verdade — o aviso de vencimento, que é o ganho
+> que ela traria.
 
 ##### A dúvida da SEFAZ, respondida sem o Supabase
 
