@@ -4,6 +4,7 @@ import { credencialEmClaro } from "../_shared/credenciais-cifra.ts";
 import { portalDoAgente, idDeArmazenamento } from "../_shared/robo-portais.ts";
 import { autorizadoComoCron } from "../_shared/cron-auth.ts";
 import { agentesMudos, MINUTOS_SEM_HEARTBEAT_PADRAO } from "../_shared/vigia-do-agente.ts";
+import { avisosDaCentral } from "../_shared/notificacoes-do-portal.ts";
 import { anteriorDoItem, avisoDeRoboEntrando, avisoDoPrimeiroLance, avisoParaAssistirAoVivo, eventosDoEstado, mesclarEstadoDoItem, motivoParaPessoas, situacaoDoItem, type EstadoDaSala, type EstadoGravado, type EventoDaSala } from "../_shared/robo-estado-da-sala.ts";
 import {
   documentosQueVencemAteASessao,
@@ -811,6 +812,74 @@ serve(async (req) => {
       } catch (e) {
         // Vigiar o agente não pode impedir as disputas de serem disparadas.
         await registrarNoLog(supabase, null, "vigia-do-agente-falhou", {}, { erro: String((e as Error)?.message ?? e) });
+      }
+
+      // ─── A CENTRAL DE NOTIFICAÇÕES DO PORTAL (02/10/2026) ────────────────
+      //
+      // O agente lê a central do fornecedor quando confere a sessão e guarda o
+      // que viu; `GET /notificacoes-portal` serve. Faltava o consumidor — e com
+      // ele faltava a única fonte que alcança TODAS as compras da empresa,
+      // inclusive as que não estão em disputa.
+      //
+      // O valor foi medido em 01/10: a reabertura do 90029/2026 para o dia
+      // 08/10, que é a próxima disputa real, apareceu só ali. Nenhuma tela do
+      // Praefectus a teria mostrado.
+      //
+      // Quais notificações viram aviso é regra pura, testada em
+      // _shared/notificacoes-do-portal.ts (29 conferências): a central publica
+      // muito registro de andamento, e avisar sobre tudo treina a pessoa a
+      // ignorar o sininho.
+      try {
+        const { data: agentes } = await supabase
+          .from("agente_externo_config")
+          .select("id, user_id, nome, url_base, api_key_hash, status")
+          .eq("status", "ativo");
+
+        for (const agente of agentes ?? []) {
+          const base = String(agente.url_base || "").replace(/\/$/, "");
+          if (!base) continue;
+
+          let corpo: { ligada?: boolean; perfis?: Array<{ itens?: unknown[] }> } | null = null;
+          try {
+            const resp = await fetch(`${base}/notificacoes-portal`, {
+              headers: { "X-Agent-Key": chaveParaOAgente(agente, chaveGerenciada) },
+              signal: AbortSignal.timeout(10000),
+            });
+            if (!resp.ok) continue;
+            corpo = await resp.json();
+          } catch {
+            // Agente fora do ar já é avisado pelo vigia acima; aqui só se segue.
+            continue;
+          }
+          if (!corpo?.ligada) continue;
+
+          const doPortal = (corpo.perfis ?? []).flatMap((p) => (Array.isArray(p?.itens) ? p.itens : []));
+          for (const aviso of avisosDaCentral(doPortal as never[])) {
+            const { data: jaAvisado } = await supabase
+              .from("webhook_log")
+              .select("id")
+              .eq("tipo", "aviso-da-central")
+              .contains("payload", { chave: aviso.chave })
+              .limit(1);
+            if (jaAvisado?.length) continue;
+
+            await registrarNoLog(supabase, agente.user_id, "aviso-da-central", {
+              chave: aviso.chave, compra: aviso.compra, item: aviso.item, urgencia: aviso.urgencia,
+            });
+
+            // Vai para quem opera a EMPRESA — diferente do vigia do agente, que
+            // é da plataforma. Convocação e reabertura são do negócio dela.
+            await supabase.from("notificacoes").insert({
+              user_id: agente.user_id,
+              tipo: aviso.urgencia === "urgente" ? "urgente" : "alerta",
+              titulo: aviso.titulo,
+              mensagem: aviso.mensagem.slice(0, 500),
+              link: "/robo-lances",
+            });
+          }
+        }
+      } catch (e) {
+        await registrarNoLog(supabase, null, "central-do-portal-falhou", {}, { erro: String((e as Error)?.message ?? e) });
       }
 
       const agora = Date.now();
