@@ -4141,9 +4141,8 @@ Nada falta aqui. É a parte mais madura do produto.
 
 ##### O que falta, em ordem — a lista de trabalho de UX
 
-1. **Acompanhamento ao vivo de verdade**, no lugar da linha de texto: cronômetro
-   por item, valores mudando, colocação, concorrentes, etapa. É o que tira a
-   Izabelle do VNC.
+1. ~~**Acompanhamento ao vivo de verdade**~~ — ✅ **feito em 02/10** (`SalaAoVivo`,
+   27 conferências). Falta a visão de VÁRIAS disputas ao mesmo tempo.
 2. ~~**Mudar o piso com a disputa rodando**~~ — ✅ **feito em 02/10**.
 3. **Parar um item** sem parar a sessão.
 4. **Pausar/retomar** expostos, ligados ao que o agente já faz.
@@ -4219,6 +4218,75 @@ achando que o piso novo está em vigor enquanto o robô continua no antigo.
 
 **Conferências: 27 no agente** (`testar-atualizar.js`, com sessão simulada) **e 13
 no front** (`atualizar-sessao.test.ts`).
+
+#### 02/10 — a sala ao vivo dentro do Praefectus (D-5)
+
+Este é o passo que a diretriz de UX pedia: **tirar a operação da tela remota.** O
+VNC existe para passar pelo bloqueio da plataforma; se para saber como o pregão vai
+for preciso olhá-lo, o robô não resolveu o problema de quem opera — mudou a tela em
+que a pessoa passa a manhã.
+
+Até aqui a disputa cabia numa linha de texto ("Item 1 · Modo aberto · 8º lugar ·
+Melhor R$ 3.100,00"). Agora é uma tabela que se atualiza sozinha, com o que a
+operação olha no portal: **cronômetro de cada item correndo**, melhor valor, nosso
+valor, colocação, quantos concorrentes de fato lançaram, e o que o robô está
+fazendo ali.
+
+##### O cronômetro é estimado — e a tela diz isso
+
+É a parte difícil, e o grosso do código. O número chega do robô com alguns segundos
+de atraso; exibi-lo **parado** faria a tela mentir devagar: `01:56` congelado parece
+tempo que se tem.
+
+`tempoRestanteAgora` recalcula a cada segundo a partir da hora da leitura. E, acima
+de tudo, **se declara**: passados dois minutos sem leitura nova, ela **para de
+descontar**, mostra o tempo em cinza com um alerta, e a tela escreve embaixo *"o
+robô não lê a sala há mais de 2 minutos: os tempos em cinza são da última leitura,
+não de agora"*.
+
+> A regra por trás: **um cronômetro estimado sobre leitura velha é pior do que
+> nenhum.** Numa disputa, ele faz a pessoa achar que tem meio minuto quando o item
+> já fechou.
+
+Um defeito foi pego pela bateria na primeira execução: `Number(null)` dá `0`, e zero
+ali vira `00:00` na tela — ou seja, "o item fechou". Ausência tem de continuar sendo
+ausência, e hoje aparece como travessão.
+
+##### A ordem é a de quem disputa
+
+Com 182 itens, mostrar tudo com o mesmo peso é o mesmo que não mostrar nada.
+`urgenciaDoItem` ordena: **perdendo com o relógio acabando primeiro**, encerrados no
+fim. Perder pesa mais que liderar; relógio abaixo de 30 segundos pesa mais que
+relógio folgado; e **tempo não confiável não aumenta a urgência** — a tela não
+inventa pressa a partir de um número velho.
+
+##### O que a tabela mostra, e de onde vem
+
+| Coluna | Fonte |
+| --- | --- |
+| Etapa | `fase`, que só existe desde o R-07 (antes o robô nunca dizia `aberta`) |
+| Tempo | `segundos_restantes` **por item**, recalculado na tela |
+| Melhor / Nosso | lidos da linha do item na sala |
+| Posição | o painel "Melhores valores por fornecedor" (R-09) — com a **faixa**, quando há empate |
+| Concorrentes | quantos já lançaram; os demais estão só com a proposta inicial |
+| O que o robô está fazendo | o motivo da decisão, já em linguagem de cliente |
+
+O `QuadroDaSala` em texto continua embaixo: ele traz o aviso de "sem notícia do
+robô" e serve quando há um item só, em que a tabela seria exagero.
+
+**Conferências: 16 nas funções puras** (`sala-ao-vivo.test.ts`) **e 11 na tela**
+(`SalaAoVivo.test.tsx`), incluindo o cronômetro descendo com o relógio falso, cada
+item com o seu tempo, e o aviso de leitura velha.
+
+##### O que isto ainda não resolve
+
+- **Várias disputas ao mesmo tempo.** Esta tela é de UMA disputa. A visão de topo
+  com quatro pregões lado a lado, com prioridade por urgência, continua no plano —
+  e a régua de urgência já está escrita e testada, pronta para ela.
+- **Tempo real de verdade.** A tabela se atualiza no ritmo em que a página recarrega
+  a participação; o cronômetro corre sozinho, mas valores e posição chegam na
+  cadência do robô. Quem quiser ver o lance no segundo em que acontece ainda abre a
+  tela remota — e isso é aceitável: é exceção, não rotina.
 
 ### 4.3 Licitações-e (BB) — o muro caro
 
