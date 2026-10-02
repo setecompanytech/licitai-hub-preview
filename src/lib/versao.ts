@@ -12,5 +12,11 @@
  * commit chegou ao ar; se não, falta publicar.
  *
  * Formato: AAAA-MM-DD.N — data e a quantas publicações do dia.
+ *
+ * ⚠️ SOBE NO MESMO COMMIT DA LEVA, não depois. Em 02/10/2026 o carimbo entrou
+ * num commit e três levas de front entraram DEPOIS dele: o domínio servia o
+ * mesmo número do repositório, o verificador dizia "tudo publicado", e o piso
+ * em massa e a sala ao vivo não estavam no ar. Carimbo atrasado é pior que
+ * carimbo nenhum — ele transforma "não sei" em "sim" errado.
  */
-export const VERSAO_APP = '2026-10-02.1';
+export const VERSAO_APP = '2026-10-02.2';
