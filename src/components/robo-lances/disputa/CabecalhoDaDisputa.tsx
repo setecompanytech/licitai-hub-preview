@@ -13,6 +13,7 @@ import { ROTULO_DA_ABA, ROTULO_DO_ESTADO_DO_ROBO } from '@/lib/robo/situacao-da-
 import FonteDaFaseTexto from './FonteDaFase';
 import { TOM_DA_ABA } from './leitura-da-participacao';
 import { BotaoDePararRobo, DialogoDeParada } from './ParadaDaSessao';
+import AjustarDisputaAoVivo, { type ItemAoVivo } from './AjustarDisputaAoVivo';
 import type { LeituraDaParada, ParadaDaSessao } from './useParadaDaSessao';
 
 const ROTULO_DO_NIVEL: Record<NivelAutomacao, string> = {
@@ -43,6 +44,17 @@ interface Props {
   editar: ReactNode;
   /** O menu "Ações", já com os handlers da disputa. */
   acoes: ReactNode;
+  /**
+   * A sessão que está rodando agora, e os itens dela — para ajustar piso e
+   * tirar item do robô SEM encerrar a disputa (02/10/2026). Sem sessão viva não
+   * há o que ajustar, e o botão não aparece.
+   */
+  sessaoAtivaId?: string | null;
+  itensAoVivo?: ItemAoVivo[];
+  /** Recarregar depois que o robô confirmar a mudança. */
+  aoAjustar?: () => Promise<void> | void;
+  /** O robô está pausado nesta disputa — o diálogo oferece "Retomar". */
+  pausado?: boolean;
   /** A lista, na aba e com a busca de onde a pessoa veio. */
 }
 
@@ -82,6 +94,10 @@ export default function CabecalhoDaDisputa({
   aoConferirAlteracoes,
   editar,
   acoes,
+  sessaoAtivaId,
+  itensAoVivo,
+  aoAjustar,
+  pausado,
 }: Props) {
   const processo = participacao?.processo ?? null;
   const titulo = processo?.numero || lance.edital || 'Disputa sem número de edital';
@@ -138,7 +154,21 @@ export default function CabecalhoDaDisputa({
 
   const acaoDaAgenda = acaoPrincipalDaAgenda(agenda, agora, roboLigado);
   const principal = emAndamento ? (
-    <BotaoDePararRobo parada={parada} />
+    // Com a disputa rodando há DUAS ações, e a segunda faltava: parar tudo, ou
+    // ajustar o que está valendo. Antes de 02/10/2026 só existia a primeira, e
+    // quem quisesse baixar o piso de um item tinha de derrubar a sessão inteira.
+    <div className="flex flex-wrap items-center gap-2">
+      <BotaoDePararRobo parada={parada} />
+      {sessaoAtivaId && (itensAoVivo?.length ?? 0) > 0 && (
+        <AjustarDisputaAoVivo
+          sessaoId={sessaoAtivaId}
+          itens={itensAoVivo ?? []}
+          podeOperar={podeOperar}
+          pausado={pausado}
+          aoAtualizar={async () => { await aoAjustar?.(); }}
+        />
+      )}
+    </div>
   ) : !podeOperar ? null : acaoDaAgenda.tipo === 'sessao-passou' ? (
     // Não "Definir nova data" (Rafael, 17/09/2026): pregão remarcado costuma
     // voltar com itens, quantidades e unidades diferentes. O nome é do

@@ -238,6 +238,12 @@ function TelaDaDisputa() {
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      {/*
+        AJUSTAR COM A DISPUTA RODANDO (02/10/2026): sessaoAtivaId, itensAoVivo e
+        aoAjustar. A sessão que vale é a que o AGENTE diz estar de pé — é nela
+        que o piso novo passa a valer, na próxima leitura. Sem sessão viva o
+        botão não aparece: não há o que ajustar numa disputa que não começou.
+      */}
       <CabecalhoDaDisputa
         lance={lance}
         participacao={participacao}
@@ -250,6 +256,18 @@ function TelaDaDisputa() {
         roboLigado={roboDaEmpresa.estado.ligado || !roboDaEmpresa.estado.confirmado}
         aoDefinirData={() => { setFocoDaEdicao('data'); setEditando(true); }}
         aoConferirAlteracoes={() => setConferindo(true)}
+        sessaoAtivaId={idSessaoViva ?? idSessao}
+        itensAoVivo={lance.itens.map((i) => ({
+          numero: Number(i.numero),
+          descricao: i.descricao ?? null,
+          valorMinimo: i.valorMinimo ?? null,
+          // O estado por item vem do agente no quadro da sala; sem leitura, o
+          // item conta como no robô — e o botão mostra "Assumir na mão".
+          parado: false,
+          encerradoPeloPortal: i.situacao === 'encerrado',
+        }))}
+        aoAjustar={recarregar}
+        pausado={sessaoViva?.status === 'pausado'}
         editar={
           podeOperar ? (
             <ConfigurarLanceDialog

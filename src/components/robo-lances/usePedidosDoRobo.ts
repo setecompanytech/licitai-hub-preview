@@ -88,9 +88,15 @@ export function usePedidosDoRobo() {
         // memória do agente junto, e contar as encerradas ofereceria freio
         // para o que já parou — que treina a pessoa a ignorar o botão
         // vermelho, o oposto do que ele existe para fazer.
+        //
+        // PAUSADA TAMBÉM ESTÁ DE PÉ (02/10/2026). Ela some do laço, mas o
+        // navegador continua aberto, a sala continua carregada e ela conta na
+        // capacidade do agente. Deixá-la de fora fazia a disputa desaparecer da
+        // tela ao ser pausada — e some junto o botão de retomar, que é o único
+        // jeito de trazê-la de volta sem encerrar.
         sessoesVivas: agentes
           .flatMap((a) => a.sessoes || [])
-          .filter((s) => s.status === 'ativo' || s.status === 'enviando'),
+          .filter((s) => s.status === 'ativo' || s.status === 'enviando' || s.status === 'pausado'),
       };
     },
   });
