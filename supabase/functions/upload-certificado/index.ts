@@ -131,7 +131,17 @@ Deno.serve(async (req) => {
     // o arquivo continua salvo e o Checklist oferece repetir. O que não pode
     // acontecer é a tela dizer "sucesso" quando o robô segue sem certificado —
     // era esse o estado anterior.
-    const instalacao = await instalarCertificadoNoAgente(supabaseAdmin, tokenData.user_id)
+    // A empresa do token decide em QUAL base do agente o certificado entra
+    // (02/10/2026). O link de envio é sempre de uma empresa — então aqui ela é
+    // sempre conhecida, e o certificado de uma nunca mais vai para a base de
+    // outra. A base padrão fica intacta, como reserva: se a base da conta não
+    // ficar utilizável, o agente a remove e o navegador volta a usá-la.
+    const instalacao = await instalarCertificadoNoAgente(
+      supabaseAdmin,
+      tokenData.user_id,
+      undefined,
+      tokenData.empresa_id,
+    )
 
     console.log(
       `[CERT-UPLOAD] Instalação no agente: ${instalacao.instalado ? 'OK' : 'FALHOU — ' + instalacao.motivo}`,
