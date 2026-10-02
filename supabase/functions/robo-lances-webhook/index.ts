@@ -1713,6 +1713,112 @@ serve(async (req) => {
           break;
         }
 
+        // A VIRADA DE ETAPA (02/10/2026). Foi o pedido mais direto da operação
+        // do cliente, dito com todas as letras na reunião de 01/10: *"que desse
+        // um alerta: olha, já acabou aqui a disputa de lance, agora tá na parte
+        // de seleção de fornecedores, fique atento"*.
+        //
+        // Por que isso não podia sair de "sessao-encerrada": o robô encerra a
+        // sessão DELE, que é outra coisa. A disputa de um item acaba enquanto
+        // os outros seguem abertos — cada item tem o seu cronômetro —, e é o
+        // fim da disputa DO ITEM que abre o prazo de 2 horas para apresentar
+        // proposta. Quem perde esse prazo é desclassificado.
+        case "etapa-mudou": {
+          if (!sessao.licitacao_id) break;
+          const mensagem = String(payload.mensagem || "").slice(0, 1000);
+          if (!mensagem) break;
+
+          const acabaram = payload.acabaram_os_lances === true;
+          const item = payload.item ?? null;
+
+          await supabase.from("licitacao_mensagens").insert({
+            licitacao_id: sessao.licitacao_id,
+            user_id: userId,
+            // "alerta" é o tipo que o chat do processo sonoriza. O fim dos
+            // lances pede ação de gente dentro de 2 horas; mudança de situação
+            // sem fim de lances é informação, e entra sem alarme.
+            tipo: acabaram ? "alerta" : "sistema",
+            conteudo: `🔔 **Robô de Lances** (${sessao.portal_nome}): ${mensagem}`,
+            metadata: {
+              origem: "robo",
+              portal: sessao.portal_id,
+              edital: sessao.edital,
+              sessao_id,
+              item,
+              situacao_anterior: payload.situacao_anterior ?? null,
+              situacao: payload.situacao ?? null,
+              acabaram_os_lances: acabaram,
+              compra_inteira: payload.compra_inteira === true,
+            },
+          });
+
+          if (acabaram) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "urgente",
+              titulo: payload.compra_inteira === true
+                ? `🔔 Acabou a disputa — ${sessao.edital}`
+                : `🔔 Acabou a disputa do item ${item ?? "?"} — ${sessao.edital}`,
+              mensagem: mensagem.slice(0, 200),
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
+          break;
+        }
+
+        // O ROBÔ SAIU DE UM ITEM (02/10/2026) — quase sempre porque o próximo
+        // lance ficaria abaixo do piso.
+        //
+        // Até aqui isso acontecia em silêncio: o item batia no piso, o robô
+        // parava de lançar nele, e a tela seguia mostrando "aguardando". De
+        // fora, parece que o robô está trabalhando.
+        //
+        // É o momento de DECIDIR, e por isso vira aviso: a disputa continua sem
+        // nós naquele item, e quem opera pode querer baixar o piso ou assumir na
+        // mão. Quem não é avisado não decide — só descobre depois.
+        case "robo-saiu-do-item": {
+          if (!sessao.licitacao_id) break;
+          const mensagem = String(payload.mensagem || "").slice(0, 1000);
+          if (!mensagem) break;
+          const porPiso = payload.por_piso === true;
+          const item = payload.item ?? null;
+
+          await supabase.from("licitacao_mensagens").insert({
+            licitacao_id: sessao.licitacao_id,
+            user_id: userId,
+            // Bater no piso é parada PREVISTA, não falha: alerta (que o chat
+            // sonoriza) só quando há decisão a tomar, que é o caso do piso.
+            tipo: porPiso ? "alerta" : "sistema",
+            conteudo: `🤖 **Robô de Lances** (${sessao.portal_nome}): ${mensagem}`,
+            metadata: {
+              origem: "robo",
+              portal: sessao.portal_id,
+              edital: sessao.edital,
+              sessao_id,
+              item,
+              por_piso: porPiso,
+              piso: payload.piso ?? null,
+              nosso_lance: payload.nosso_lance ?? null,
+              melhor_lance: payload.melhor_lance ?? null,
+              posicao: payload.posicao ?? null,
+              posicao_de: payload.posicao_de ?? null,
+              posicao_ate: payload.posicao_ate ?? null,
+              motivo: payload.motivo ?? null,
+            },
+          });
+
+          if (porPiso) {
+            await supabase.from("notificacoes").insert({
+              user_id: userId,
+              tipo: "alerta",
+              titulo: `🛑 Robô parou no item ${item ?? "?"} — ${sessao.edital}`,
+              mensagem: mensagem.slice(0, 200),
+              link: `/processo/${sessao.licitacao_id}`,
+            });
+          }
+          break;
+        }
+
         case "erro": {
           const mensagemDoErro = payload.mensagem || "Erro desconhecido";
           // A ENTRADA QUE FALHOU POR FALTA DE CLIQUE VOLTA À AGENDA (16/09/2026).
