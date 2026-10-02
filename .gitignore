@@ -34,3 +34,17 @@ capturas-robo/*.png
 
 # worktrees temporárias dos agentes do Claude Code
 .claude/worktrees/
+
+# Anotações locais sobre os certificados do robô (nunca versionar)
+CERTIFICADOS-ROBO.local.md
+*.pfx
+*.p12
+
+# Gravações e transcrições de reunião com o cliente. Ficam fora por dois motivos:
+# mostram a tela da operação com dados de processos reais, e sao arquivos enormes
+# (a reuniao de 01/10/2026 tem 459 MB) que o git nao solta depois sem reescrever o
+# historico. O que interessa delas entra citado em docs/robo-de-lances.md.
+*.mp4
+*.mkv
+*.webm
+*Reuniao*.txt
