@@ -27,6 +27,12 @@ export type EstadoNoQuadro = {
   ja_lancaram?: number | null;
   /** Quando a posição foi lida: ela não é relida a cada rodada (custa navegação). */
   posicao_lida_em?: string | null;
+  /**
+   * O cronômetro DO ITEM na última leitura, em segundos. Cada item prorroga por
+   * conta própria a cada lance recebido — os dois itens do 37/2026 marcavam
+   * 01:39 e 01:57 ao mesmo tempo —, então não existe "o tempo da sessão".
+   */
+  segundos_restantes?: number | null;
   sou_lider?: boolean | null;
   tem_proposta?: boolean | null;
   nossa_desclassificada?: boolean | null;
@@ -125,4 +131,118 @@ export function itensDoQuadro(estado: EstadoNoQuadro): EstadoNoQuadro[] {
   const porItem = estado.por_item ? Object.values(estado.por_item) : [];
   if (porItem.length === 0) return [estado];
   return [...porItem].sort((a, b) => (Number(a.item) || 0) - (Number(b.item) || 0));
+}
+
+/**
+ * ──────────────────────────────────────────────────────────────────────────
+ * O CRONÔMETRO QUE CORRE NA TELA (02/10/2026)
+ * ──────────────────────────────────────────────────────────────────────────
+ * A sala do Compras.gov mostra um cronômetro POR ITEM, e é por ele que quem
+ * disputa decide. O robô lê esse número a cada rodada e manda junto do estado —
+ * mas o número que chega é de alguns segundos atrás, e exibi-lo parado faria a
+ * tela mentir devagar: "01:56" congelado parece tempo que se tem.
+ *
+ * Aqui o tempo é RECALCULADO a partir de quando foi lido. E, acima de tudo, a
+ * função diz **o quanto se pode confiar**: passada a idade máxima, ela para de
+ * descontar e marca `confiavel: false`, porque um cronômetro estimado sobre uma
+ * leitura velha é pior do que nenhum — numa disputa, ele faz a pessoa achar que
+ * tem meio minuto quando o item já fechou.
+ */
+export interface TempoNaTela {
+  /** Segundos restantes agora, estimados a partir da leitura. `null` = não sei. */
+  segundos: number | null;
+  /** "01:39" — pronto para a tela. */
+  texto: string | null;
+  /** Há quantos segundos a leitura foi feita. */
+  idadeDaLeitura: number | null;
+  /**
+   * `false` quando a leitura ficou velha demais para estimar. A tela mostra o
+   * tempo em cinza, com a hora da leitura ao lado, em vez de fingir precisão.
+   */
+  confiavel: boolean;
+  /** O item fechou enquanto ninguém olhava — pelo menos segundo esta conta. */
+  zerou: boolean;
+}
+
+/**
+ * Quantos segundos a leitura pode ter antes de o cronômetro deixar de ser
+ * confiável. Quatro rodadas de 30 s: além disso, o robô provavelmente não está
+ * lendo, e o número vira adivinhação.
+ */
+export const SEGUNDOS_MAXIMOS_DE_ESTIMATIVA = 120;
+
+export function tempoRestanteAgora(
+  segundosNaLeitura: number | null | undefined,
+  lidoEm: string | null | undefined,
+  agora: Date = new Date(),
+): TempoNaTela {
+  // `Number(null)` e `Number('')` dao 0 — e zero aqui seria "00:00" na tela,
+  // ou seja, "o item fechou". Ausencia tem de continuar sendo ausencia.
+  const base = segundosNaLeitura === null || segundosNaLeitura === undefined
+    ? NaN
+    : Number(segundosNaLeitura);
+  if (!Number.isFinite(base) || base < 0) {
+    return { segundos: null, texto: null, idadeDaLeitura: null, confiavel: false, zerou: false };
+  }
+
+  let idade: number | null = null;
+  if (lidoEm) {
+    const em = new Date(lidoEm).getTime();
+    if (Number.isFinite(em)) idade = Math.max(0, Math.floor((agora.getTime() - em) / 1000));
+  }
+
+  // Sem hora de leitura não há como descontar: mostra o que veio, e diz que não
+  // é de confiança.
+  if (idade === null) {
+    return { segundos: base, texto: formatarRelogio(base), idadeDaLeitura: null, confiavel: false, zerou: base <= 0 };
+  }
+
+  const confiavel = idade <= SEGUNDOS_MAXIMOS_DE_ESTIMATIVA;
+  const restante = Math.max(0, base - idade);
+
+  return {
+    // Leitura velha: devolve o que foi lido, sem descontar — descontar sobre
+    // uma base velha inventa precisão que não existe.
+    segundos: confiavel ? restante : base,
+    texto: formatarRelogio(confiavel ? restante : base),
+    idadeDaLeitura: idade,
+    confiavel,
+    zerou: confiavel && restante === 0,
+  };
+}
+
+/** 99 → "01:39"; 3750 → "1:02:30". */
+export function formatarRelogio(segundos: number): string {
+  const s = Math.max(0, Math.floor(segundos));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const seg = s % 60;
+  const dois = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${dois(m)}:${dois(seg)}` : `${dois(m)}:${dois(seg)}`;
+}
+
+/**
+ * QUANTO ESTE ITEM PEDE ATENÇÃO AGORA — para ordenar e destacar.
+ *
+ * Com 182 itens na tela, mostrar tudo com o mesmo peso é o mesmo que não
+ * mostrar nada. A ordem é a de quem disputa: o que está perdendo com o relógio
+ * acabando vem primeiro; o que já encerrou vai para o fim.
+ *
+ * Número maior = mais urgente. Função pura.
+ */
+export function urgenciaDoItem(estado: EstadoNoQuadro, tempo: TempoNaTela): number {
+  if (estado.fase === 'encerrada') return 0;
+
+  let peso = 10;
+  // Perder é o que exige decisão; liderar, não.
+  if (estado.sou_lider === false) peso += 40;
+  // Sem piso o robô não lança: é um item parado por falta de decisão de alguém.
+  if (estado.decisao?.acao === 'aguardar') peso += 5;
+
+  if (tempo.confiavel && tempo.segundos !== null) {
+    if (tempo.segundos <= 30) peso += 40;
+    else if (tempo.segundos <= 120) peso += 20;
+  }
+  if (estado.fase === 'aberta') peso += 10;
+  return peso;
 }
