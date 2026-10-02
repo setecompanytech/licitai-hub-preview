@@ -4363,6 +4363,60 @@ Com `quedas.jsonl` em mãos, as três medidas restantes deixam de ser palpite:
 Ou seja: pela evidência de hoje, **comprar RAM não resolveria**. O retrato é o que
 transforma essa frase de opinião em dado — ou a desmente, que é igualmente útil.
 
+#### 02/10 — o agente caía e ninguém sabia
+
+Pergunta do Ian depois de o agente subir com erro numa das mudanças desta manhã:
+*"nessa situação você resolveu? e tem logs para caso ocorra esse problema?"*
+
+A resposta honesta eram duas respostas:
+
+| | |
+| --- | --- |
+| **resolvido?** | sim — e o `pm2` reinicia sozinho e sobe no boot (`systemctl is-enabled pm2-root` → `enabled`) |
+| **tem log?** | sim — `logs/error.log` com o rastro, e `pm2 describe` com status, contagem de reinícios e "unstable restarts" |
+| **alguém fica sabendo?** | **não.** E este era o buraco. |
+
+O `ultimo_heartbeat` era gravado a cada chamada e **mostrado numa tela que só a
+conta de engenharia abre**. Nenhuma rotina olhava para ele. Se o agente caísse às
+8h50 de um dia de pregão, só se descobriria olhando — e **quem avisaria é
+justamente ele**.
+
+##### O vigia, e onde ele mora
+
+Entrou na rotina `disparar-agendadas`, que já roda por cron e é a que corre nos
+minutos que antecedem as sessões: é exatamente quando o silêncio do agente custa
+caro. Não precisou de migration nem de cron novo.
+
+A regra ficou **fora** da edge function, em
+`supabase/functions/_shared/vigia-do-agente.ts`, por um motivo prático: o bloco
+roda dentro de um `try/catch` que não pode derrubar o disparo das disputas — ou
+seja, **um defeito ali falharia em silêncio**, que é a pior forma de falhar num
+vigia. Como função pura, tem **13 conferências**.
+
+##### O que a regra decide, e por quê
+
+- **só agente ativo.** Agente desligado de propósito não é notícia;
+- **sem heartbeat nenhum não conta.** É agente recém-cadastrado que nunca subiu;
+  avisar "parou de responder" sobre quem nunca respondeu confundiria quem está
+  instalando;
+- **12 minutos.** O agente manda sinal a cada 30 s: doze minutos é silêncio demais
+  para ser rede ruim, e pouco o bastante para alguém religá-lo antes das 9h;
+- **a chave carrega o último heartbeat.** Enquanto for o mesmo silêncio, o aviso
+  não se repete; o agente volta, o heartbeat muda, e o próximo silêncio é outro
+  aviso. **Alerta que se repete a cada passada do cron treina a pessoa a
+  ignorá-lo** — e um alerta ignorado é pior que nenhum, porque dá a impressão de
+  que alguém está vigiando;
+- **vai para quem opera a plataforma**, não para o cliente: quem religa o agente
+  somos nós, e o cliente não teria o que fazer com o aviso.
+
+E o texto diz a **consequência**, não o sintoma:
+
+> *"O robô 'Agente Praefectus' não dá sinal há 20 minutos. Enquanto ele estiver
+> fora, nenhuma disputa entra e nenhum lance é dado."*
+
+Um dos testes guarda isso literalmente: a mensagem **não pode conter a palavra
+"heartbeat"**. Quem lê precisa saber o que está deixando de acontecer.
+
 ### 4.3 Licitações-e (BB) — o muro caro
 
 Este é o portal nº 1 do cliente, e é o único item da lista que pode exigir
