@@ -3360,14 +3360,97 @@ reunião: *"é bem parecido com essa que eu estava vendo"* / *"só que nessa da�
 não está participando"*. Um robô que confunde as duas diz estar disputando enquanto
 olha de fora, e perde o pregão **em silêncio**. Por isso `ehSalaDeDisputa` exige
 **dois sinais independentes** entre: título `Enviar lance`, rota
-`/fornecedor/disputa`, campo de lance visível, e o texto `Intervalo mínimo entre
-lances`. Um sinal solto não basta, e "não sei" nunca vira "sim".
+`/fornecedor/disputa`, **o componente `app-cabecalho-disputa-fornecedor`**, campo de
+lance visível, e o texto `Intervalo mínimo entre lances`. Um sinal solto não basta,
+e "não sei" nunca vira "sim".
+
+> ⚠️ **E o limiar de dois sinais virou um defeito, corrigido em 03/10/2026.** Está
+> registrado logo abaixo, em "O robô não se reconhecia na sala" — vale ler antes de
+> mexer nesta função.
 
 **O passo 8 é recarregar, não esperar.** A operação foi explícita: *"a gente fica
 atualizando aqui para ver os valores […] atualizou aqui a página, ele já aparece
 novo"*. Só o melhor valor do topo pisca sozinho; a lista de lances, não. Um laço que
 confie na atualização automática lê a tela velha a disputa inteira — e o valor que
 ele lê continua **plausível**, que é o que torna esse defeito invisível em teste.
+
+#### 03/10/2026 — o robô não se reconhecia na sala
+
+Aferido contra o **DOM real** da sala. Em 01/10, com sessão logada, o robô entrou e
+salvou 12 páginas inteiras em `logs/`. O pregão já estava encerrado — e o Ian, que
+mapeou as rotas com a Izabelle, resumiu o que isso vale: *"te mandei muitos prints,
+só que o pregão já tinha encerrado, mas o HTML é praticamente o mesmo"*. Confere: o
+que muda com a etapa aberta é o cronômetro andando e o campo de lance aparecendo; a
+estrutura da página é esta.
+
+**`ehSalaDeDisputa` devolvia `false` para a própria sala.** O que o portal tem,
+medido:
+
+| Onde a função procurava | O que está lá |
+| --- | --- |
+| `<h1>` | **"Compras eletrônicas"** — o nome do sistema |
+| `<h2>` | não existe |
+| `.cp-titulo-pagina` | não existe |
+
+E onde o título está de verdade:
+
+```html
+<p class="titulo">Enviar lance</p>
+<app-cabecalho-compra titulo="Enviar lance">
+<span class="breadcrumb-text">Enviar lance</span>
+<app-cabecalho-disputa-fornecedor>      ← o componente da sala
+```
+
+Ou seja: o sinal do título **nunca casava**. Sobrava a rota — um sinal, com limiar de
+dois.
+
+> **Por que isso importava na hora da disputa, e não antes.** O robô entra na sala
+> **antes** de a etapa abrir — é o fluxo normal: entra e espera. Nesse momento não há
+> campo de lance nem "intervalo mínimo" na tela. Com um sinal só, ele concluiria
+> **"não estou na sala"** estando nela — e é por essa resposta que a guarda de não
+> sair da sala e o laço de lances decidem.
+>
+> Um defeito que não aparece em teste de laboratório, não aparece na captura, e
+> apareceria exatamente no pior momento.
+
+Dois consertos:
+
+1. **o título passa a ser lido onde ele está** — `p.titulo`, o atributo `titulo` do
+   `app-cabecalho-compra`, o breadcrumb, mais os seletores antigos;
+2. **entrou um sinal estrutural**: `app-cabecalho-disputa-fornecedor`, o cabeçalho da
+   sala do fornecedor no Angular do portal. É o mais estável de todos, porque existe
+   com a etapa aberta **e** fechada — justamente o caso que faltava.
+
+##### A bateria que nasceu disso: `testar-dom-real.js`
+
+Roda os leitores do agente contra as páginas salvas, no Chrome, por `file://`. Os
+seletores são de DOM e não dependem de o Angular estar rodando — então o que ele lê
+ali é o que leria na sala. **20 conferências**, e o que elas guardam:
+
+| O que é afirmado | Resultado |
+| --- | --- |
+| as 5 páginas da sala são reconhecidas **sem a rota** (o `file://` não a tem) | ✅ só pelo conteúdo |
+| `CADASTRO-PROPOSTAS` e `Minhas participações` **não** são sala | ✅ nenhum falso positivo |
+| lê 10 itens, com **melhor valor** e **nosso valor** de cada um | ✅ 7,00 × 7,38 · 0,91 × 1,03 · 6,00 × 6,39 |
+| os valores são **número**, não texto | ✅ |
+| as três abas da sala | ✅ Aguardando disputa · Em disputa · Encerrados |
+| **não inventa campo de lance** onde não há (pregão encerrado) | ✅ 0 itens "pode lançar"; `acharCampoDeLance` recusa e diz por quê |
+| o painel do item, nas três abas, com as linhas | ✅ 10 linhas em "Melhores valores", 7 em "Todos os lances" |
+
+> **E uma reclassificação que esta aferição permite.** A leitura de **quem está
+> ganhando** estava marcada no §3 como palpite (`lerMelhorLance`/`souLider`) — era o
+> que justificava a trava do lance. Contra o DOM real ela lê certo: item 1, situação
+> *"Perdendo"*, melhor 7,00, nosso 7,38. Deixa de ser palpite e passa a ser **lido
+> do portal**, com teste que não deixa regredir.
+>
+> O que continua **não exercido** é o envio: o campo de lance só existe com a etapa
+> aberta, e nenhuma captura pode criá-lo. Isso só uma disputa ao vivo responde.
+
+##### O estado do acesso, medido em 03/10
+
+A sessão guardada **caiu** — o portal responde `/acesso-nao-autorizado`. Nada de
+código: é o 2FA do gov.br, que depende do código no celular do Rafael. Enquanto ele
+não chega, a validação de ponta a ponta fica parada no passo 1.
 
 ##### A regra do lance, em uma função só
 
